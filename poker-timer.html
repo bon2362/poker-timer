@@ -248,6 +248,7 @@
         timerId  = null;
         isPaused = true;
         document.body.classList.add('is-over');
+        render();
         return;
       }
 
@@ -311,9 +312,9 @@
       timeLeft     = stages[0].duration;
       isPaused     = true;
       warnedOneMin = false;
-      timerId      = null;
       document.body.classList.remove('is-over', 'is-break', 'is-paused');
       render();
+      timerId      = setInterval(tick, 1000);
     }
 
     // ─── AUDIO ──────────────────────────────────────────────────────────────────
