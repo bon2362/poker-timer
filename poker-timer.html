@@ -163,7 +163,260 @@
   </div>
 
   <script>
-    // JS будет добавлен в следующих задачах
+    // ─── DATA ───────────────────────────────────────────────────────────────────
+
+    const BLIND_LEVELS = [
+      { sb: 10,  bb: 20   },
+      { sb: 20,  bb: 40   },
+      { sb: 30,  bb: 60   },
+      { sb: 40,  bb: 80   },
+      { sb: 60,  bb: 120  },
+      { sb: 80,  bb: 160  },
+      { sb: 100, bb: 200  },
+      { sb: 150, bb: 300  },
+      { sb: 200, bb: 400  },
+      { sb: 300, bb: 600  },
+      { sb: 400, bb: 800  },
+      { sb: 600, bb: 1200 },
+      { sb: 800, bb: 1600 },
+      { sb: 1000,bb: 2000 },
+    ];
+
+    const LEVEL_DURATION = 20 * 60; // 1200 секунд
+    const BREAK_DURATION = 10 * 60; // 600 секунд
+    const BREAK_EVERY    = 2;       // перерыв после каждых N уровней
+
+    // Строим плоский массив этапов: уровни + перерывы
+    // Структура: Level 1, Level 2, Break, Level 3, Level 4, Break, ...
+    // Перерыва после последнего уровня нет
+    function buildStages() {
+      const result = [];
+      for (let i = 0; i < BLIND_LEVELS.length; i++) {
+        const levelNum = i + 1;
+        result.push({
+          type: 'level',
+          levelNum,
+          sb: BLIND_LEVELS[i].sb,
+          bb: BLIND_LEVELS[i].bb,
+          duration: LEVEL_DURATION,
+        });
+        const isLast = levelNum === BLIND_LEVELS.length;
+        if (levelNum % BREAK_EVERY === 0 && !isLast) {
+          result.push({ type: 'break', duration: BREAK_DURATION });
+        }
+      }
+      return result;
+    }
+
+    const stages = buildStages();
+    // stages: 14 уровней + 6 перерывов = 20 этапов
+
+    // ─── STATE ──────────────────────────────────────────────────────────────────
+
+    let currentStage = 0;
+    let timeLeft     = stages[0].duration;
+    let isPaused     = true;
+    let timerId      = null;
+    let warnedOneMin = false; // флаг: предупреждение за 1 мин уже сыграно
+
+    // ─── TIMER ENGINE ───────────────────────────────────────────────────────────
+
+    function tick() {
+      if (isPaused) return;
+
+      // Предупреждение за 60 секунд (только для уровней, не для перерывов)
+      if (timeLeft === 61 && stages[currentStage].type === 'level' && !warnedOneMin) {
+        warnedOneMin = true;
+        playBeep(1);
+      }
+
+      timeLeft--;
+
+      if (timeLeft <= 0) {
+        advanceStage();
+        return;
+      }
+
+      render();
+    }
+
+    function advanceStage() {
+      const nextIdx = currentStage + 1;
+      if (nextIdx >= stages.length) {
+        // Турнир окончен
+        clearInterval(timerId);
+        timerId  = null;
+        isPaused = true;
+        document.body.classList.add('is-over');
+        return;
+      }
+
+      const wasBreak = stages[currentStage].type === 'break';
+      currentStage  = nextIdx;
+      timeLeft      = stages[currentStage].duration;
+      warnedOneMin  = false;
+
+      // Звук при переходе
+      if (stages[currentStage].type === 'break') {
+        playBeep(2); // двойной beep → перерыв
+      } else if (wasBreak) {
+        playBeep(3); // тройной beep → конец перерыва
+      } else {
+        playBeep(2); // двойной beep → новый уровень
+      }
+
+      render();
+    }
+
+    function togglePause() {
+      if (document.body.classList.contains('is-over')) return;
+      isPaused = !isPaused;
+      render();
+    }
+
+    function resetStage() {
+      timeLeft     = stages[currentStage].duration;
+      warnedOneMin = false;
+      render();
+    }
+
+    function prevStage() {
+      if (currentStage > 0) {
+        currentStage--;
+        timeLeft     = stages[currentStage].duration;
+        warnedOneMin = false;
+        render();
+      }
+    }
+
+    function nextStage() {
+      if (currentStage < stages.length - 1) {
+        currentStage++;
+        timeLeft     = stages[currentStage].duration;
+        warnedOneMin = false;
+        render();
+      }
+    }
+
+    function goToLast() {
+      currentStage = stages.length - 1;
+      timeLeft     = stages[currentStage].duration;
+      warnedOneMin = false;
+      render();
+    }
+
+    function restartTournament() {
+      clearInterval(timerId);
+      currentStage = 0;
+      timeLeft     = stages[0].duration;
+      isPaused     = true;
+      warnedOneMin = false;
+      timerId      = null;
+      document.body.classList.remove('is-over', 'is-break', 'is-paused');
+      render();
+    }
+
+    // ─── AUDIO ──────────────────────────────────────────────────────────────────
+
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function playBeep(count = 1, freq = 880, duration = 0.15) {
+      const ctx = getAudioCtx();
+      const gap = 0.1; // пауза между beep-ами
+
+      for (let i = 0; i < count; i++) {
+        const osc   = ctx.createOscillator();
+        const gain  = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.type      = 'sine';
+        osc.frequency.value = freq;
+
+        const start = ctx.currentTime + i * (duration + gap);
+        const end   = start + duration;
+
+        gain.gain.setValueAtTime(0.4, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, end);
+
+        osc.start(start);
+        osc.stop(end);
+      }
+    }
+
+    // ─── HELPERS ────────────────────────────────────────────────────────────────
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function getNextInfo() {
+      const next = stages[currentStage + 1];
+      if (!next) return 'Финал турнира';
+
+      if (next.type === 'break') {
+        // После перерыва — следующий уровень
+        const afterBreak = stages[currentStage + 2];
+        const afterStr = afterBreak ? ` → потом ${afterBreak.sb} / ${afterBreak.bb}` : '';
+        return `☕ Перерыв 10 мин${afterStr}`;
+      }
+
+      if (next.type === 'level') {
+        if (stages[currentStage].type === 'break') {
+          return `Следующий уровень: ${next.sb} / ${next.bb}`;
+        }
+        return `Далее: ${next.sb} / ${next.bb}`;
+      }
+
+      return '';
+    }
+
+    // ─── RENDER ─────────────────────────────────────────────────────────────────
+
+    function render() {
+      const stage = stages[currentStage];
+
+      // body классы
+      document.body.classList.toggle('is-break',  stage.type === 'break');
+      document.body.classList.toggle('is-paused', isPaused);
+
+      // Кнопка паузы
+      document.getElementById('pauseBtn').textContent = isPaused ? '▶' : '⏸';
+
+      // Таймер
+      document.getElementById('timer').textContent = formatTime(timeLeft);
+
+      // Прогресс-бар (доля прошедшего времени)
+      const elapsed  = stage.duration - timeLeft;
+      const pct      = (elapsed / stage.duration) * 100;
+      document.getElementById('progressFill').style.width = pct + '%';
+
+      // Верхняя строка
+      if (stage.type === 'level') {
+        document.getElementById('levelLabel').textContent    = `Round ${stage.levelNum}`;
+        document.getElementById('blindsCurrent').textContent = `${stage.sb} / ${stage.bb}`;
+      } else {
+        document.getElementById('levelLabel').textContent    = '☕ Break';
+        document.getElementById('blindsCurrent').textContent = 'Перерыв';
+      }
+
+      // Нижняя строка "Next:"
+      document.getElementById('nextInfo').innerHTML =
+        `<strong>Next:</strong> ${getNextInfo()}`;
+    }
+
+    // Первый рендер при загрузке
+    render();
+
+    // Запуск интервала (1 раз при загрузке страницы)
+    timerId = setInterval(tick, 1000);
   </script>
 </body>
 </html>
