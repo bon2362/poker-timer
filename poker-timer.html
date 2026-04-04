@@ -163,53 +163,69 @@
   </div>
 
   <script>
-    // ─── DATA ───────────────────────────────────────────────────────────────────
+    // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
-    const BLIND_LEVELS = [
-      { sb: 10,  bb: 20   },
-      { sb: 20,  bb: 40   },
-      { sb: 30,  bb: 60   },
-      { sb: 40,  bb: 80   },
-      { sb: 60,  bb: 120  },
-      { sb: 80,  bb: 160  },
-      { sb: 100, bb: 200  },
-      { sb: 150, bb: 300  },
-      { sb: 200, bb: 400  },
-      { sb: 300, bb: 600  },
-      { sb: 400, bb: 800  },
-      { sb: 600, bb: 1200 },
-      { sb: 800, bb: 1600 },
-      { sb: 1000,bb: 2000 },
-    ];
+    const DEFAULT_CONFIG = {
+      levelDuration: 20,
+      breakDuration: 10,
+      breakEvery: 2,
+      blindLevels: [
+        { sb: 10,  bb: 20   },
+        { sb: 20,  bb: 40   },
+        { sb: 30,  bb: 60   },
+        { sb: 40,  bb: 80   },
+        { sb: 60,  bb: 120  },
+        { sb: 80,  bb: 160  },
+        { sb: 100, bb: 200  },
+        { sb: 150, bb: 300  },
+        { sb: 200, bb: 400  },
+        { sb: 300, bb: 600  },
+        { sb: 400, bb: 800  },
+        { sb: 600, bb: 1200 },
+        { sb: 800, bb: 1600 },
+        { sb: 1000,bb: 2000 },
+      ],
+    };
 
-    const LEVEL_DURATION = 20 * 60; // 1200 секунд
-    const BREAK_DURATION = 10 * 60; // 600 секунд
-    const BREAK_EVERY    = 2;       // перерыв после каждых N уровней
+    function loadConfig() {
+      try {
+        const saved = localStorage.getItem('pokerTimerConfig');
+        return saved ? JSON.parse(saved) : structuredClone(DEFAULT_CONFIG);
+      } catch {
+        return structuredClone(DEFAULT_CONFIG);
+      }
+    }
 
-    // Строим плоский массив этапов: уровни + перерывы
-    // Структура: Level 1, Level 2, Break, Level 3, Level 4, Break, ...
-    // Перерыва после последнего уровня нет
+    function saveConfig(cfg) {
+      localStorage.setItem('pokerTimerConfig', JSON.stringify(cfg));
+    }
+
+    let config = loadConfig();
+
+    // ─── DATA ────────────────────────────────────────────────────────────────────
+
     function buildStages() {
+      const levelDuration = config.levelDuration * 60;
+      const breakDuration = config.breakDuration * 60;
       const result = [];
-      for (let i = 0; i < BLIND_LEVELS.length; i++) {
+      for (let i = 0; i < config.blindLevels.length; i++) {
         const levelNum = i + 1;
         result.push({
           type: 'level',
           levelNum,
-          sb: BLIND_LEVELS[i].sb,
-          bb: BLIND_LEVELS[i].bb,
-          duration: LEVEL_DURATION,
+          sb: config.blindLevels[i].sb,
+          bb: config.blindLevels[i].bb,
+          duration: levelDuration,
         });
-        const isLast = levelNum === BLIND_LEVELS.length;
-        if (levelNum % BREAK_EVERY === 0 && !isLast) {
-          result.push({ type: 'break', duration: BREAK_DURATION });
+        const isLast = levelNum === config.blindLevels.length;
+        if (levelNum % config.breakEvery === 0 && !isLast) {
+          result.push({ type: 'break', duration: breakDuration });
         }
       }
       return result;
     }
 
-    const stages = buildStages();
-    // stages: 14 уровней + 6 перерывов = 20 этапов
+    let stages = buildStages();
 
     // ─── STATE ──────────────────────────────────────────────────────────────────
 
@@ -317,6 +333,13 @@
       timerId      = setInterval(tick, 1000);
     }
 
+    function rebuildStages() {
+      stages = buildStages();
+      currentStage = 0;
+      timeLeft     = stages[0].duration;
+      warnedOneMin = false;
+    }
+
     // ─── AUDIO ──────────────────────────────────────────────────────────────────
 
     let audioCtx = null;
@@ -366,7 +389,7 @@
         // После перерыва — следующий уровень
         const afterBreak = stages[currentStage + 2];
         const afterStr = afterBreak ? ` → потом ${afterBreak.sb} / ${afterBreak.bb}` : '';
-        return `☕ Перерыв 10 мин${afterStr}`;
+        return `☕ Перерыв ${config.breakDuration} мин${afterStr}`;
       }
 
       if (next.type === 'level') {
