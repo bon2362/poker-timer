@@ -129,7 +129,8 @@
     body.is-settings > .top,
     body.is-settings > .timer-wrap,
     body.is-settings > .progress-wrap,
-    body.is-settings > .bottom { display: none; }
+    body.is-settings > .bottom,
+    body.is-settings > .end-screen { display: none; }
 
     .settings-top {
       display: flex; justify-content: space-between; align-items: center;
@@ -612,12 +613,14 @@
       tbody.innerHTML = '';
       formBlinds.forEach((level, i) => {
         const levelNum = i + 1;
+        const sb = Number(level.sb) || 0;
+        const bb = Number(level.bb) || 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="row-num">${levelNum}</td>
-          <td><input type="number" min="1" value="${level.sb}"
+          <td><input type="number" min="1" value="${sb}"
                      oninput="formBlinds[${i}].sb = +this.value"></td>
-          <td><input type="number" min="1" value="${level.bb}"
+          <td><input type="number" min="1" value="${bb}"
                      oninput="formBlinds[${i}].bb = +this.value"></td>
           <td><button class="del-btn" onclick="removeBlindRow(${i})">✕</button></td>
         `;
