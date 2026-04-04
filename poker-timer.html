@@ -666,6 +666,59 @@
       document.querySelectorAll('#blinds-tbody input').forEach(inp => inp.classList.remove('error'));
     }
 
+    function saveSettings() {
+      clearSettingsErrors();
+      let valid = true;
+
+      const levelDuration = parseInt(document.getElementById('cfg-level-duration').value, 10);
+      const breakDuration = parseInt(document.getElementById('cfg-break-duration').value, 10);
+      const breakEvery    = parseInt(document.getElementById('cfg-break-every').value, 10);
+
+      if (!levelDuration || levelDuration < 1 || levelDuration > 999) {
+        document.getElementById('cfg-level-duration').classList.add('error');
+        document.getElementById('err-level-duration').style.display = 'block';
+        valid = false;
+      }
+      if (!breakDuration || breakDuration < 1 || breakDuration > 999) {
+        document.getElementById('cfg-break-duration').classList.add('error');
+        document.getElementById('err-break-duration').style.display = 'block';
+        valid = false;
+      }
+      if (!breakEvery || breakEvery < 1) {
+        document.getElementById('cfg-break-every').classList.add('error');
+        document.getElementById('err-break-every').style.display = 'block';
+        valid = false;
+      }
+
+      if (formBlinds.length === 0) {
+        document.getElementById('err-blinds').style.display = 'block';
+        valid = false;
+      } else {
+        const levelRows = document.querySelectorAll('#blinds-tbody tr:not(.break-divider)');
+        formBlinds.forEach((level, i) => {
+          if (!level.sb || level.sb <= 0 || !level.bb || level.bb <= 0) {
+            if (levelRows[i]) {
+              levelRows[i].querySelectorAll('input').forEach(inp => inp.classList.add('error'));
+            }
+            valid = false;
+          }
+        });
+      }
+
+      if (!valid) return;
+
+      const gameActive = currentStage > 0 || timeLeft < stages[0].duration;
+      if (gameActive) {
+        if (!confirm('Изменение настроек сбросит текущую игру. Продолжить?')) return;
+      }
+
+      config = { levelDuration, breakDuration, breakEvery, blindLevels: formBlinds.map(l => ({ sb: l.sb, bb: l.bb })) };
+      saveConfig(config);
+      rebuildStages();
+      restartTournament();
+      closeSettings();
+    }
+
     // Обновлять разделители при изменении поля "каждые N уровней"
     document.getElementById('cfg-break-every').addEventListener('input', renderBlindsTable);
   </script>
