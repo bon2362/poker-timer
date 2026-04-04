@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poker Timer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1a1a1a;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* TOP BAR */
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px 28px 0;
+    }
+    .corner-btn {
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      width: 32px;
+    }
+    .level-info { text-align: center; flex: 1; }
+    .level-label {
+      font-size: 13px;
+      color: #888;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .blinds-current { font-size: 28px; font-weight: 700; }
+
+    /* TIMER */
+    .timer-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .timer {
+      font-size: clamp(140px, 22vw, 240px);
+      font-weight: 900;
+      letter-spacing: -4px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* PROGRESS BAR */
+    .progress-wrap { padding-bottom: 6px; }
+    .progress-bar { height: 3px; background: #333; }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #7c3aed;
+      transition: width 0.9s linear;
+    }
+
+    /* BOTTOM */
+    .bottom {
+      padding: 8px 28px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .next-info { font-size: 13px; color: #888; letter-spacing: 1px; }
+    .next-info strong { color: #aaa; }
+
+    /* CONTROLS */
+    .controls { display: flex; gap: 10px; align-items: center; }
+    .btn {
+      background: #7c3aed;
+      border: none;
+      color: #fff;
+      border-radius: 8px;
+      width: 44px;
+      height: 38px;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn:hover { background: #6d28d9; }
+    .btn-ghost { background: #2a2a2a; }
+    .btn-ghost:hover { background: #383838; }
+    .btn-lg { width: 52px; height: 42px; font-size: 18px; }
+
+    /* BREAK SCREEN */
+    body.is-break .timer { color: #60a5fa; }
+    body.is-break .progress-fill { background: #2563eb; }
+
+    /* PAUSED STATE */
+    body.is-paused .timer { opacity: 0.6; }
+
+    /* END SCREEN */
+    .end-screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .end-screen h1 { font-size: 48px; font-weight: 900; color: #7c3aed; }
+    .end-screen p { color: #888; font-size: 18px; }
+    body.is-over .end-screen { display: flex; }
+    body.is-over .timer-wrap,
+    body.is-over .progress-wrap,
+    body.is-over .bottom { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="top">
+    <button class="corner-btn" title="Restart" onclick="restartTournament()">↺</button>
+    <div class="level-info">
+      <div class="level-label" id="levelLabel">Round 1</div>
+      <div class="blinds-current" id="blindsCurrent">10 / 20</div>
+    </div>
+    <button class="corner-btn" style="visibility:hidden;">⚙</button>
+  </div>
+
+  <div class="timer-wrap">
+    <div class="timer" id="timer">20:00</div>
+  </div>
+
+  <div class="end-screen">
+    <h1>Tournament Over</h1>
+    <p>Хорошая игра!</p>
+    <button class="btn" style="width:auto;padding:0 24px;height:44px;font-size:15px;" onclick="restartTournament()">↺ Начать заново</button>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="next-info" id="nextInfo">Next: 20 / 40</div>
+    <div class="controls">
+      <button class="btn btn-ghost" title="В начало уровня" onclick="resetStage()">⏮</button>
+      <button class="btn" title="Предыдущий уровень" onclick="prevStage()">⏪</button>
+      <button class="btn btn-lg" id="pauseBtn" onclick="togglePause()">▶</button>
+      <button class="btn" title="Следующий уровень" onclick="nextStage()">⏩</button>
+      <button class="btn btn-ghost" title="Последний уровень" onclick="goToLast()">⏭</button>
+    </div>
+  </div>
+
+  <script>
+    // JS будет добавлен в следующих задачах
+  </script>
+</body>
+</html>
