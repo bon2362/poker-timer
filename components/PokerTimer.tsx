@@ -203,7 +203,7 @@ export function PokerTimer() {
               className="text-[#444] text-[10px] tracking-[3px] uppercase font-medium"
               style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
             >
-              ИГРА
+              ФОНД
             </span>
           </div>
         </div>

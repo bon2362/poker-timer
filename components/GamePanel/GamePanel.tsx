@@ -24,7 +24,7 @@ export function GamePanel({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] shrink-0">
           <div>
-            <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Игра</div>
+            <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Фонд</div>
             <div className="text-[18px] font-bold text-[#ccc] tabular-nums mt-0.5">
               {stats.bank.toLocaleString('ru')} RSD
             </div>
@@ -33,16 +33,11 @@ export function GamePanel({ onClose }: Props) {
         </div>
 
         {/* Stats bar */}
-        <div className="grid grid-cols-2 gap-px bg-[#2a2a2a] border-b border-[#2a2a2a] shrink-0">
-          {[
-            { label: 'Фишек в игре', value: stats.totalChips.toLocaleString('ru') },
-            { label: 'Средний стек', value: stats.avgStack.toLocaleString('ru') },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-[#1a1a1a] px-4 py-2">
-              <div className="text-[10px] text-[#555] uppercase tracking-[1px]">{label}</div>
-              <div className="text-[15px] font-bold text-[#888] tabular-nums">{value}</div>
-            </div>
-          ))}
+        <div className="border-b border-[#2a2a2a] shrink-0">
+          <div className="bg-[#1a1a1a] px-4 py-2">
+            <div className="text-[10px] text-[#555] uppercase tracking-[1px]">Фишек в игре</div>
+            <div className="text-[15px] font-bold text-[#888] tabular-nums">{stats.totalChips.toLocaleString('ru')}</div>
+          </div>
         </div>
 
         {/* Scrollable content */}
