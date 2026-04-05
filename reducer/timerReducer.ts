@@ -147,6 +147,21 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       return { ...state, timeLeft: 65, warnedOneMin: false, pendingSound: null };
     }
 
+    case 'RESTORE_STATE': {
+      const { currentStage, timeLeft, isPaused, isOver, warnedOneMin } = action.payload;
+      // guard: ignore if stage index is out of range (stale DB from different config)
+      if (currentStage >= state.stages.length) return state;
+      return {
+        ...state,
+        currentStage,
+        timeLeft,
+        isPaused,
+        isOver,
+        warnedOneMin,
+        pendingSound: null,
+      };
+    }
+
     case 'TOGGLE_COMBOS': {
       const newConfig = { ...state.config, showCombos: !state.config.showCombos };
       saveConfig(newConfig);

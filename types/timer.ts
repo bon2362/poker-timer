@@ -62,4 +62,5 @@ export type Action =
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }
-  | { type: 'JUMP_TO_END' };
+  | { type: 'JUMP_TO_END' }
+  | { type: 'RESTORE_STATE'; payload: { currentStage: number; timeLeft: number; isPaused: boolean; isOver: boolean; warnedOneMin: boolean } };

@@ -20,5 +20,7 @@ export function getTimerChannel(sessionId: string): RealtimeChannel {
       send: () => Promise.resolve('ok' as const),
     } as unknown as RealtimeChannel;
   }
-  return client.channel(`timer:${sessionId}`);
+  return client.channel(`timer:${sessionId}`, {
+    config: { broadcast: { self: false } },
+  });
 }
