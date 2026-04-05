@@ -1,7 +1,8 @@
 'use client';
 import { useState, Fragment } from 'react';
-import type { Config, BlindLevel } from '@/types/timer';
+import type { Config, BlindLevel, SoundEvent } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
+import { playSound } from '@/lib/audio';
 
 type Props = {
   config: Config;
@@ -230,6 +231,30 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
             />
             <span className="text-[14px] text-[#ccc]">Показывать таблицу покерных комбинаций</span>
           </label>
+        </div>
+
+        {/* Sound section */}
+        <div>
+          <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Звук</div>
+          <div className="grid grid-cols-2 gap-[8px]">
+            {([
+              { event: 'warnBlinds',   label: '1 мин до смены блайндов' },
+              { event: 'blindsUp',     label: 'Блайнды повышаются' },
+              { event: 'warnBreak',    label: '1 мин до перерыва' },
+              { event: 'breakStart',   label: 'Перерыв начался' },
+              { event: 'warnEndBreak', label: '1 мин до конца перерыва' },
+              { event: 'breakOver',    label: 'Перерыв закончился' },
+            ] as { event: SoundEvent; label: string }[]).map(({ event, label }) => (
+              <button
+                key={event}
+                onClick={() => playSound(event)}
+                className="flex items-center gap-[10px] bg-[#242424] border border-[#333] rounded-lg px-[14px] py-[10px] text-left cursor-pointer hover:border-violet-700 hover:bg-[#2a2040] hover:text-white transition-colors"
+              >
+                <span className="text-[18px]">🔔</span>
+                <span className="text-[12px] text-[#aaa]">{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
       </div>
