@@ -95,17 +95,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function load() {
       dispatch({ type: 'SET_LOADING', loading: true });
-      const [playersData, sessionData] = await Promise.all([
-        fetchPlayers(),
-        fetchActiveSession(),
-      ]);
-      dispatch({ type: 'SET_PLAYERS', players: playersData });
-      if (sessionData) {
-        dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
-      } else {
-        dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
+      try {
+        const [playersData, sessionData] = await Promise.all([
+          fetchPlayers(),
+          fetchActiveSession(),
+        ]);
+        dispatch({ type: 'SET_PLAYERS', players: playersData });
+        if (sessionData) {
+          dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
+        } else {
+          dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
+        }
+      } catch (err) {
+        console.error('GameContext: failed to load initial data', err);
+      } finally {
+        dispatch({ type: 'SET_LOADING', loading: false });
       }
-      dispatch({ type: 'SET_LOADING', loading: false });
     }
     load();
   }, []);
@@ -122,9 +127,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removePlayer = useCallback(async (id: string) => {
+    if (state.activeSession && state.sessionPlayers.some(sp => sp.playerId === id)) {
+      console.warn('GameContext: cannot remove player who is in an active session');
+      return;
+    }
     await deletePlayerDB(id);
     dispatch({ type: 'REMOVE_PLAYER', id });
-  }, []);
+  }, [state.activeSession, state.sessionPlayers]);
 
   const startSession = useCallback(async (data: NewSessionData, playerIds: string[]) => {
     const result = await createSession(data, playerIds);
