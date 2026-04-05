@@ -61,4 +61,5 @@ export type Action =
   | { type: 'SAVE_SETTINGS'; config: Config }
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'CLEAR_SOUND' }
-  | { type: 'TOGGLE_COMBOS' };
+  | { type: 'TOGGLE_COMBOS' }
+  | { type: 'JUMP_TO_END' };

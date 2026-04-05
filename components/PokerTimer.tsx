@@ -157,6 +157,7 @@ export function PokerTimer() {
           onPrev={() => dispatch({ type: 'PREV_STAGE' })}
           onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
           onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+          onJumpToEnd={() => dispatch({ type: 'JUMP_TO_END' })}
         />
       )}
 

@@ -143,6 +143,10 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       return { ...state, pendingSound: null };
     }
 
+    case 'JUMP_TO_END': {
+      return { ...state, timeLeft: 65, warnedOneMin: false, pendingSound: null };
+    }
+
     case 'TOGGLE_COMBOS': {
       const newConfig = { ...state.config, showCombos: !state.config.showCombos };
       saveConfig(newConfig);
