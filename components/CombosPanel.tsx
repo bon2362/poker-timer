@@ -85,7 +85,7 @@ export function CombosPanel({ visible, onToggle }: Props) {
           { rank: '7', suit: '\u2666', hidden: true },
         ]} />
         <Row cards={[
-          { rank: 'K', suit: '\u2660', hidden: true }, { rank: '9', suit: '\u2666', hidden: true },
+          { rank: 'K', suit: '\u2660' }, { rank: '9', suit: '\u2666', hidden: true },
           { rank: '3', suit: '\u2663', hidden: true }, { rank: '7', suit: '\u2665', hidden: true },
           { rank: 'J', suit: '\u2660', hidden: true },
         ]} />
