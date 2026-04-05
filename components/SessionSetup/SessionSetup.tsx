@@ -1,8 +1,128 @@
 'use client';
+import { useState } from 'react';
+import { useGame } from '@/context/GameContext';
+import { PrizeConfig } from './PrizeConfig';
+import type { NewSessionData } from '@/types/game';
+
 export function SessionSetup() {
+  const { players, activeSession, startSession } = useGame();
+
+  const [buyIn, setBuyIn] = useState(String(activeSession?.buyIn ?? 1000));
+  const [initialStack, setInitialStack] = useState(String(activeSession?.initialStack ?? 10000));
+  const [rebuyCost, setRebuyCost] = useState(String(activeSession?.rebuyCost ?? 500));
+  const [rebuyChips, setRebuyChips] = useState(String(activeSession?.rebuyChips ?? 5000));
+  const [addonCost, setAddonCost] = useState(String(activeSession?.addonCost ?? 500));
+  const [addonChips, setAddonChips] = useState(String(activeSession?.addonChips ?? 5000));
+  const [prizeSpots, setPrizeSpots] = useState(activeSession?.prizeSpots ?? 3);
+  const [prizePcts, setPrizePcts] = useState<number[]>(activeSession?.prizePcts ?? [50, 30, 20]);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [starting, setStarting] = useState(false);
+
+  if (activeSession) {
+    return (
+      <div className="bg-[#242424] rounded-lg p-4">
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-2">Активная игра</div>
+        <p className="text-[#888] text-[13px]">Сессия запущена. Завершите текущую игру чтобы настроить новую.</p>
+      </div>
+    );
+  }
+
+  function togglePlayer(id: string) {
+    setSelectedPlayerIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleStart() {
+    if (selectedPlayerIds.size < 2) { alert('Выберите минимум 2 игрока'); return; }
+    const sum = prizePcts.reduce((a, b) => a + b, 0);
+    if (sum !== 100) { alert('Сумма призовых процентов должна быть 100%'); return; }
+
+    const data: NewSessionData = {
+      buyIn: parseInt(buyIn, 10) || 0,
+      initialStack: parseInt(initialStack, 10) || 0,
+      rebuyCost: parseInt(rebuyCost, 10) || 0,
+      rebuyChips: parseInt(rebuyChips, 10) || 0,
+      addonCost: parseInt(addonCost, 10) || 0,
+      addonChips: parseInt(addonChips, 10) || 0,
+      prizeSpots,
+      prizePcts,
+    };
+
+    setStarting(true);
+    await startSession(data, Array.from(selectedPlayerIds));
+    setStarting(false);
+  }
+
+  const numInput = 'bg-[#333] border border-[#444] rounded-[6px] text-white px-3 py-2 text-[15px] font-bold w-full focus:outline-none focus:border-violet-600 tabular-nums';
+
   return (
-    <div className="text-[#555] text-[13px]">
-      Настройка игры (Task 11)
+    <div className="flex flex-col gap-5">
+      {/* Section label */}
+      <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Игра</div>
+
+      {/* Financial fields */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: 'Взнос (RSD)', val: buyIn, set: setBuyIn },
+          { label: 'Начальный стек', val: initialStack, set: setInitialStack },
+          { label: 'Ребай (RSD)', val: rebuyCost, set: setRebuyCost },
+          { label: 'Фишек за ребай', val: rebuyChips, set: setRebuyChips },
+          { label: 'Аддон (RSD)', val: addonCost, set: setAddonCost },
+          { label: 'Фишек за аддон', val: addonChips, set: setAddonChips },
+        ].map(({ label, val, set }) => (
+          <div key={label} className="bg-[#242424] rounded-lg p-3">
+            <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-2">{label}</label>
+            <input type="number" min="0" value={val} onChange={e => set(e.target.value)} className={numInput} />
+          </div>
+        ))}
+      </div>
+
+      {/* Prize config */}
+      <div className="bg-[#242424] rounded-lg p-4">
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-3">Призовые места</div>
+        <PrizeConfig
+          spots={prizeSpots}
+          pcts={prizePcts}
+          onSpotsChange={setPrizeSpots}
+          onPctsChange={setPrizePcts}
+        />
+      </div>
+
+      {/* Player selection */}
+      <div className="bg-[#242424] rounded-lg p-4">
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-3">
+          Кто играет сегодня ({selectedPlayerIds.size} выбрано)
+        </div>
+        {players.length === 0 ? (
+          <p className="text-[#555] text-[13px]">Добавьте игроков во вкладке «Игроки»</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {players.map(player => (
+              <label key={player.id} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPlayerIds.has(player.id)}
+                  onChange={() => togglePlayer(player.id)}
+                  className="w-4 h-4 accent-violet-600 cursor-pointer"
+                />
+                <span className="text-[14px] text-[#ccc]">{player.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Start button */}
+      <button
+        onClick={handleStart}
+        disabled={starting || selectedPlayerIds.size < 2}
+        className="bg-green-700 text-white border-none rounded-lg py-3 text-[15px] font-semibold cursor-pointer hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {starting ? 'Запускаем...' : '▶ Начать игру'}
+      </button>
     </div>
   );
 }
