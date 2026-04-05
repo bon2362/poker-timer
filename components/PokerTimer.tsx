@@ -7,6 +7,8 @@ import { TimerDisplay } from './TimerDisplay';
 import { Controls } from './Controls';
 import { CombosPanel } from './CombosPanel';
 import { SettingsScreen } from './SettingsScreen';
+import { GamePanel } from './GamePanel/GamePanel';
+import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import type { Config } from '@/types/timer';
 
 export function PokerTimer() {
@@ -186,19 +188,13 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Game panel placeholder — real component in Task 13 */}
+      {/* Game panel */}
       {gamePanelOpen && activeSession && (
-        <div className="fixed top-0 right-0 bottom-0 w-80 bg-[#111] border-l border-[#222] z-30 flex items-center justify-center">
-          <button className="text-[#555] text-sm" onClick={() => setGamePanelOpen(false)}>Закрыть панель</button>
-        </div>
+        <GamePanel onClose={() => setGamePanelOpen(false)} />
       )}
 
-      {/* Winner screen placeholder — real component in Task 14 */}
-      {showWinner && (
-        <div className="fixed inset-0 z-50 bg-[#0d0d0d] flex items-center justify-center">
-          <span className="text-white text-2xl">🏆 Победитель!</span>
-        </div>
-      )}
+      {/* Winner screen */}
+      {showWinner && <WinnerScreen />}
     </div>
   );
 }
