@@ -19,17 +19,14 @@ export function GamePanel({ onClose }: Props) {
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-30" onClick={onClose} />
-
       {/* Panel */}
-      <div className="fixed top-0 right-0 bottom-0 w-[320px] z-40 bg-[#1a1a1a] border-l border-[#2a2a2a] flex flex-col overflow-hidden">
+      <div className="fixed top-0 left-0 bottom-0 w-[320px] z-40 bg-[#1a1a1a] border-r border-[#2a2a2a] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] shrink-0">
           <div>
             <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Игра</div>
             <div className="text-[18px] font-bold text-[#ccc] tabular-nums mt-0.5">
-              {stats.bank.toLocaleString('ru')} ₽
+              {stats.bank.toLocaleString('ru')} RSD
             </div>
           </div>
           <button onClick={onClose} className="text-[#555] text-[20px] bg-transparent border-none cursor-pointer hover:text-[#999] leading-none">✕</button>

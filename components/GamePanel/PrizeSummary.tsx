@@ -14,7 +14,7 @@ export function PrizeSummary() {
       {stats.payouts.map((amount, i) => (
         <div key={i} className="flex justify-between items-center text-[13px]">
           <span className="text-[#666]">{i + 1}-е место ({activeSession.prizePcts[i]}%)</span>
-          <span className="text-[#ccc] font-bold tabular-nums">{amount.toLocaleString('ru')} ₽</span>
+          <span className="text-[#ccc] font-bold tabular-nums">{amount.toLocaleString('ru')} RSD</span>
         </div>
       ))}
     </div>

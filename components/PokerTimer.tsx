@@ -18,6 +18,19 @@ export function PokerTimer() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [gamePanelOpen, setGamePanelOpen] = useState(false);
+  const gamePanelAutoOpenedRef = useRef(false);
+
+  // Auto-open panel when session becomes active
+  useEffect(() => {
+    if (activeSession && !gamePanelAutoOpenedRef.current) {
+      setGamePanelOpen(true);
+      gamePanelAutoOpenedRef.current = true;
+    }
+    if (!activeSession) {
+      gamePanelAutoOpenedRef.current = false;
+      setGamePanelOpen(false);
+    }
+  }, [activeSession]);
 
   // Auto-hide controls on mouse inactivity
   useEffect(() => {
@@ -95,15 +108,6 @@ export function PokerTimer() {
       <div className="relative w-full px-7 pt-5">
         <BlindInfo stage={stage} breakDuration={state.config.breakDuration} />
         <div className="absolute top-5 right-7 flex gap-1 items-center">
-          {activeSession && (
-            <button
-              className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
-              onClick={() => setGamePanelOpen(o => !o)}
-              title="Игровая панель"
-            >
-              🂡
-            </button>
-          )}
           <button
             className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
             onClick={toggleFullscreen}
@@ -188,7 +192,24 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Game panel */}
+      {/* Game panel — collapsed tab strip when closed */}
+      {activeSession && !gamePanelOpen && (
+        <div
+          className="fixed left-0 top-1/2 -translate-y-1/2 z-30 cursor-pointer"
+          onClick={() => setGamePanelOpen(true)}
+        >
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] border-l-0 rounded-r-lg px-[7px] py-5 flex flex-col items-center">
+            <span
+              className="text-[#444] text-[10px] tracking-[3px] uppercase font-medium"
+              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+            >
+              ИГРА
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Game panel — full panel when open */}
       {gamePanelOpen && activeSession && (
         <GamePanel onClose={() => setGamePanelOpen(false)} />
       )}
