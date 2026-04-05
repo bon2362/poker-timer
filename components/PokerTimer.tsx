@@ -15,6 +15,8 @@ export function PokerTimer() {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
   const suppressUntilRef = useRef<number>(0);
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Timer interval
   useEffect(() => {
@@ -24,6 +26,21 @@ export function PokerTimer() {
 
   // Clock display
   const clock = useClockState();
+
+  // Auto-hide controls on mouse inactivity
+  useEffect(() => {
+    function showControls() {
+      setControlsVisible(true);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
+    }
+    document.addEventListener('mousemove', showControls);
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
+    return () => {
+      document.removeEventListener('mousemove', showControls);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
 
   // Audio side effects
   useEffect(() => {
@@ -88,12 +105,29 @@ export function PokerTimer() {
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
 
+  // Compute next blind info for bottom bar
+  const nextStage = state.stages[state.currentStage + 1];
+  let nextText = '';
+  if (!nextStage) {
+    nextText = 'Финал';
+  } else if (nextStage.type === 'break') {
+    const afterBreak = state.stages[state.currentStage + 2];
+    const afterStr = afterBreak?.type === 'level' ? ` → ${afterBreak.sb}/${afterBreak.bb}` : '';
+    nextText = `☕ Перерыв ${state.config.breakDuration} мин${afterStr}`;
+  } else {
+    nextText = `${nextStage.sb} / ${nextStage.bb}`;
+  }
+
   if (state.screen === 'settings') {
     return (
       <SettingsScreen
         config={state.config}
         onSave={handleSaveSettings}
         onClose={() => dispatch({ type: 'CLOSE_SETTINGS' })}
+        onJumpToEnd={() => {
+          dispatch({ type: 'JUMP_TO_END' });
+          dispatch({ type: 'CLOSE_SETTINGS' });
+        }}
       />
     );
   }
@@ -104,8 +138,6 @@ export function PokerTimer() {
       <div className="flex justify-between items-start px-7 pt-5">
         <BlindInfo
           stage={stage}
-          stages={state.stages}
-          currentStage={state.currentStage}
           breakDuration={state.config.breakDuration}
         />
         <div className="flex gap-1 items-center">
@@ -154,10 +186,10 @@ export function PokerTimer() {
         <Controls
           isPaused={state.isPaused}
           isOver={state.isOver}
+          visible={controlsVisible}
           onPrev={() => dispatch({ type: 'PREV_STAGE' })}
           onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
           onNext={() => dispatch({ type: 'NEXT_STAGE' })}
-          onJumpToEnd={() => dispatch({ type: 'JUMP_TO_END' })}
         />
       )}
 
@@ -167,6 +199,13 @@ export function PokerTimer() {
           visible={state.config.showCombos !== false}
           onToggle={() => dispatch({ type: 'TOGGLE_COMBOS' })}
         />
+      )}
+
+      {/* Next blind info */}
+      {!state.isOver && nextText && (
+        <div className="fixed bottom-[18px] left-1/2 -translate-x-1/2 text-[13px] text-[#444] tracking-[0.5px] pointer-events-none whitespace-nowrap">
+          <span className="text-[#383838]">Далее: </span>{nextText}
+        </div>
       )}
 
       {/* Clock */}

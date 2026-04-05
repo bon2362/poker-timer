@@ -1,45 +1,36 @@
 type Props = {
   isPaused: boolean;
   isOver: boolean;
+  visible: boolean;
   onPrev: () => void;
   onTogglePause: () => void;
   onNext: () => void;
-  onJumpToEnd: () => void;
 };
 
-const btnBase = 'bg-violet-700 border-none text-white rounded-lg flex items-center justify-center cursor-pointer hover:bg-violet-800 transition-colors';
-
-export function Controls({ isPaused, isOver, onPrev, onTogglePause, onNext, onJumpToEnd }: Props) {
+export function Controls({ isPaused, isOver, visible, onPrev, onTogglePause, onNext }: Props) {
   return (
-    <div className="px-7 pb-[18px] flex justify-center">
-      <div className="flex gap-[10px] items-center">
+    <div className={`pb-4 flex flex-col items-center gap-3 transition-opacity duration-500 ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <button
+        className="bg-violet-700 border-none text-white rounded-xl w-16 h-14 text-[22px] flex items-center justify-center cursor-pointer hover:bg-violet-800 transition-colors"
+        onClick={onTogglePause}
+        disabled={isOver}
+      >
+        {isPaused ? '▶' : '⏸'}
+      </button>
+      <div className="flex gap-4">
         <button
-          className={`${btnBase} w-11 h-[38px] text-[15px]`}
+          className="bg-transparent border border-[#333] text-[#666] rounded-lg w-10 h-8 text-[13px] flex items-center justify-center cursor-pointer hover:border-[#555] hover:text-[#999] transition-colors"
           onClick={onPrev}
           title="Previous level"
         >
           ⏪
         </button>
         <button
-          className={`${btnBase} w-[52px] h-[42px] text-[18px]`}
-          onClick={onTogglePause}
-          disabled={isOver}
-        >
-          {isPaused ? '▶' : '⏸'}
-        </button>
-        <button
-          className={`${btnBase} w-11 h-[38px] text-[15px]`}
+          className="bg-transparent border border-[#333] text-[#666] rounded-lg w-10 h-8 text-[13px] flex items-center justify-center cursor-pointer hover:border-[#555] hover:text-[#999] transition-colors"
           onClick={onNext}
           title="Next level"
         >
           ⏩
-        </button>
-        <button
-          className="bg-[#2a2a2a] border-none text-[#666] rounded-lg w-[52px] h-[38px] text-[12px] font-bold cursor-pointer hover:text-[#999] hover:bg-[#333]"
-          onClick={onJumpToEnd}
-          title="Jump to 1:05"
-        >
-          1:05
         </button>
       </div>
     </div>

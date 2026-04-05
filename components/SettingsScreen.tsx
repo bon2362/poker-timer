@@ -3,6 +3,11 @@ import { useState, Fragment } from 'react';
 
 const CHANGELOG = [
   {
+    version: '4.1',
+    date: "05 April '26",
+    notes: 'Авто-скрытие управления при неактивности мыши. Крупные блайнды (clamp 72–120px). Следующие блайнды отображаются внизу экрана. Кнопка 1:05 перенесена в настройки.',
+  },
+  {
     version: '4.0',
     date: "05 April '26",
     notes: 'Переезд на Next.js 15 App Router + TypeScript + Tailwind. Supabase Realtime для трансляции состояния на другие устройства. Полная декомпозиция на компоненты, 38 unit-тестов.',
@@ -51,6 +56,7 @@ type Props = {
   config: Config;
   onSave: (config: Config) => void;
   onClose: () => void;
+  onJumpToEnd?: () => void;
 };
 
 type FormErrors = {
@@ -60,7 +66,7 @@ type FormErrors = {
   blinds?: string;
 };
 
-export function SettingsScreen({ config, onSave, onClose }: Props) {
+export function SettingsScreen({ config, onSave, onClose, onJumpToEnd }: Props) {
   const [levelDuration, setLevelDuration] = useState(String(config.levelDuration));
   const [breakDuration, setBreakDuration] = useState(String(config.breakDuration));
   const [breakEvery, setBreakEvery] = useState(String(config.breakEvery));
@@ -142,15 +148,26 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
       {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
       {/* Header */}
       <div className="flex justify-between items-center px-6 py-4 border-b border-[#2a2a2a] shrink-0">
-        <button
-          className="text-violet-500 text-[14px] bg-transparent border-none cursor-pointer"
-          onClick={onClose}
-        >
-          ← Назад
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="text-violet-500 text-[14px] bg-transparent border-none cursor-pointer"
+            onClick={onClose}
+          >
+            ← Назад
+          </button>
+          {onJumpToEnd && (
+            <button
+              className="text-[#555] text-[11px] bg-transparent border border-[#333] rounded px-[7px] py-[3px] cursor-pointer hover:text-[#888] hover:border-[#555]"
+              onClick={onJumpToEnd}
+              title="Перемотать к последней минуте (для теста)"
+            >
+              1:05
+            </button>
+          )}
+        </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.0</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.1</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
