@@ -43,10 +43,11 @@ export async function fetchActiveSession(): Promise<{ session: Session; sessionP
     .maybeSingle();
   if (!sessionData) return null;
   const session = toSession(sessionData);
-  const { data: spData } = await client
+  const { data: spData, error: spErr } = await client
     .from('session_players')
     .select('*')
     .eq('session_id', session.id);
+  if (spErr) { console.error('fetchActiveSession session_players:', spErr); return null; }
   return { session, sessionPlayers: (spData ?? []).map(toSessionPlayer) };
 }
 
@@ -103,8 +104,10 @@ export async function updateSessionPlayer(
   return toSessionPlayer(data);
 }
 
-export async function finishSession(id: string): Promise<void> {
+export async function finishSession(id: string): Promise<boolean> {
   const client = getClient();
-  if (!client) return;
-  await client.from('sessions').update({ status: 'finished' }).eq('id', id);
+  if (!client) return false;
+  const { error } = await client.from('sessions').update({ status: 'finished' }).eq('id', id);
+  if (error) { console.error('finishSession:', error); return false; }
+  return true;
 }
