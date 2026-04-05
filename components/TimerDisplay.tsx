@@ -48,7 +48,7 @@ export function TimerDisplay({ timeLeft, stage, isPaused }: Props) {
         </div>
       </div>
 
-      <div className="pb-[6px]">
+      <div className="fixed bottom-0 left-0 right-0">
         <div className="h-[3px] bg-[#333]">
           <div
             className={`h-full ${progressColor} ${isOvertime ? 'w-full' : 'transition-[width] duration-[900ms]'}`}
