@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import type { Config, BlindLevel } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 
@@ -167,8 +167,8 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
                 const levelNum = i + 1;
                 const showBreakDivider = levelNum % breakEveryNum === 0 && levelNum < blinds.length;
                 return (
-                  <>
-                    <tr key={i}>
+                  <Fragment key={i}>
+                    <tr>
                       <td className="px-2 py-[3px] text-[#444] text-[12px] text-center">{levelNum}</td>
                       <td className="px-2 py-[3px]">
                         <input
@@ -198,13 +198,13 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
                       </td>
                     </tr>
                     {showBreakDivider && (
-                      <tr key={`break-${i}`}>
+                      <tr>
                         <td colSpan={4} className="px-2 py-[6px] text-[#4a4a7a] text-[11px] tracking-[1px] border-y border-[#2a2a3a]">
                           ── ☕ Перерыв ──────────────────────
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
