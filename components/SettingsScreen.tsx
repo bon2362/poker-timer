@@ -4,12 +4,12 @@ import { useState, Fragment } from 'react';
 const CHANGELOG = [
   {
     version: '4.0',
-    date: '2026-04-05',
+    date: "05 April '26",
     notes: 'Переезд на Next.js 15 App Router + TypeScript + Tailwind. Supabase Realtime для трансляции состояния на другие устройства. Полная декомпозиция на компоненты, 38 unit-тестов.',
   },
   {
     version: '3.19',
-    date: '2026-03-01',
+    date: "04 April '26",
     notes: 'Голосовые уведомления, таблица покерных комбинаций, overtime-режим, предупреждение за 1 минуту.',
   },
 ];
