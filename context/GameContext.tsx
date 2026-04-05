@@ -1,0 +1,196 @@
+// context/GameContext.tsx
+'use client';
+import { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import type { Player, Session, SessionPlayer, NewSessionData } from '@/types/game';
+import { fetchPlayers, createPlayer, updatePlayer as updatePlayerDB, deletePlayer as deletePlayerDB } from '@/lib/supabase/players';
+import { fetchActiveSession, createSession, updateSessionPlayer, finishSession } from '@/lib/supabase/sessions';
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+type GameState = {
+  players: Player[];
+  activeSession: Session | null;
+  sessionPlayers: SessionPlayer[];
+  showWinner: boolean;
+  loading: boolean;
+};
+
+type GameAction =
+  | { type: 'SET_LOADING'; loading: boolean }
+  | { type: 'SET_PLAYERS'; players: Player[] }
+  | { type: 'ADD_PLAYER'; player: Player }
+  | { type: 'UPDATE_PLAYER'; player: Player }
+  | { type: 'REMOVE_PLAYER'; id: string }
+  | { type: 'SET_SESSION'; session: Session | null; sessionPlayers: SessionPlayer[] }
+  | { type: 'UPDATE_SESSION_PLAYER'; sessionPlayer: SessionPlayer }
+  | { type: 'SHOW_WINNER' }
+  | { type: 'HIDE_WINNER' };
+
+function gameReducer(state: GameState, action: GameAction): GameState {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.loading };
+    case 'SET_PLAYERS':
+      return { ...state, players: action.players };
+    case 'ADD_PLAYER':
+      return { ...state, players: [...state.players, action.player] };
+    case 'UPDATE_PLAYER':
+      return { ...state, players: state.players.map(p => p.id === action.player.id ? action.player : p) };
+    case 'REMOVE_PLAYER':
+      return { ...state, players: state.players.filter(p => p.id !== action.id) };
+    case 'SET_SESSION':
+      return { ...state, activeSession: action.session, sessionPlayers: action.sessionPlayers };
+    case 'UPDATE_SESSION_PLAYER':
+      return {
+        ...state,
+        sessionPlayers: state.sessionPlayers.map(sp =>
+          sp.id === action.sessionPlayer.id ? action.sessionPlayer : sp
+        ),
+      };
+    case 'SHOW_WINNER':
+      return { ...state, showWinner: true };
+    case 'HIDE_WINNER':
+      return { ...state, showWinner: false };
+    default:
+      return state;
+  }
+}
+
+// ── Context ────────────────────────────────────────────────────────────────
+
+type GameContextValue = {
+  // state
+  players: Player[];
+  activeSession: Session | null;
+  sessionPlayers: SessionPlayer[];
+  showWinner: boolean;
+  loading: boolean;
+  // player actions
+  addPlayer: (name: string) => Promise<Player | null>;
+  updatePlayer: (id: string, updates: Partial<Pick<Player, 'name' | 'avatarUrl'>>) => Promise<void>;
+  removePlayer: (id: string) => Promise<void>;
+  // session actions
+  startSession: (data: NewSessionData, playerIds: string[]) => Promise<void>;
+  doRebuy: (sessionPlayerId: string) => Promise<void>;
+  doAddon: (sessionPlayerId: string) => Promise<void>;
+  eliminatePlayer: (sessionPlayerId: string) => Promise<void>;
+  declareWinner: (sessionPlayerId: string) => Promise<void>;
+  finishGame: () => Promise<void>;
+};
+
+const GameContext = createContext<GameContextValue | null>(null);
+
+// ── Provider ───────────────────────────────────────────────────────────────
+
+export function GameProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(gameReducer, {
+    players: [],
+    activeSession: null,
+    sessionPlayers: [],
+    showWinner: false,
+    loading: true,
+  });
+
+  // Load initial data
+  useEffect(() => {
+    async function load() {
+      dispatch({ type: 'SET_LOADING', loading: true });
+      const [playersData, sessionData] = await Promise.all([
+        fetchPlayers(),
+        fetchActiveSession(),
+      ]);
+      dispatch({ type: 'SET_PLAYERS', players: playersData });
+      if (sessionData) {
+        dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
+      } else {
+        dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
+      }
+      dispatch({ type: 'SET_LOADING', loading: false });
+    }
+    load();
+  }, []);
+
+  const addPlayer = useCallback(async (name: string): Promise<Player | null> => {
+    const player = await createPlayer(name);
+    if (player) dispatch({ type: 'ADD_PLAYER', player });
+    return player;
+  }, []);
+
+  const updatePlayer = useCallback(async (id: string, updates: Partial<Pick<Player, 'name' | 'avatarUrl'>>) => {
+    const updated = await updatePlayerDB(id, updates);
+    if (updated) dispatch({ type: 'UPDATE_PLAYER', player: updated });
+  }, []);
+
+  const removePlayer = useCallback(async (id: string) => {
+    await deletePlayerDB(id);
+    dispatch({ type: 'REMOVE_PLAYER', id });
+  }, []);
+
+  const startSession = useCallback(async (data: NewSessionData, playerIds: string[]) => {
+    const result = await createSession(data, playerIds);
+    if (result) {
+      dispatch({ type: 'SET_SESSION', session: result.session, sessionPlayers: result.sessionPlayers });
+    }
+  }, []);
+
+  const doRebuy = useCallback(async (sessionPlayerId: string) => {
+    const sp = state.sessionPlayers.find(p => p.id === sessionPlayerId);
+    if (!sp) return;
+    const updated = await updateSessionPlayer(sessionPlayerId, { rebuys: sp.rebuys + 1 });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, [state.sessionPlayers]);
+
+  const doAddon = useCallback(async (sessionPlayerId: string) => {
+    const updated = await updateSessionPlayer(sessionPlayerId, { hasAddon: true });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, []);
+
+  const eliminatePlayer = useCallback(async (sessionPlayerId: string) => {
+    const activePlayers = state.sessionPlayers.filter(p => p.status === 'playing');
+    const position = activePlayers.length; // e.g. 4 active → this player finishes 4th
+    const updated = await updateSessionPlayer(sessionPlayerId, {
+      status: 'eliminated',
+      finishPosition: position,
+      eliminatedAt: new Date().toISOString(),
+    });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, [state.sessionPlayers]);
+
+  const declareWinner = useCallback(async (sessionPlayerId: string) => {
+    const updated = await updateSessionPlayer(sessionPlayerId, {
+      status: 'winner',
+      finishPosition: 1,
+    });
+    if (updated) {
+      dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+      dispatch({ type: 'SHOW_WINNER' });
+    }
+  }, []);
+
+  const finishGame = useCallback(async () => {
+    if (!state.activeSession) return;
+    await finishSession(state.activeSession.id);
+    dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
+    dispatch({ type: 'HIDE_WINNER' });
+  }, [state.activeSession]);
+
+  return (
+    <GameContext.Provider value={{
+      players: state.players,
+      activeSession: state.activeSession,
+      sessionPlayers: state.sessionPlayers,
+      showWinner: state.showWinner,
+      loading: state.loading,
+      addPlayer, updatePlayer, removePlayer,
+      startSession, doRebuy, doAddon, eliminatePlayer, declareWinner, finishGame,
+    }}>
+      {children}
+    </GameContext.Provider>
+  );
+}
+
+export function useGame(): GameContextValue {
+  const ctx = useContext(GameContext);
+  if (!ctx) throw new Error('useGame must be used within GameProvider');
+  return ctx;
+}
