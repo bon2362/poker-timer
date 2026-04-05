@@ -1,9 +1,7 @@
 'use client';
-import { useReducer, useEffect, useRef, useCallback, useState } from 'react';
-import { timerReducer } from '@/reducer/timerReducer';
-import { createInitialState } from '@/reducer/initialState';
-import { playSound } from '@/lib/audio';
-import { getTimerChannel } from '@/supabase/client';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { useTimer } from '@/context/TimerContext';
+import { useGame } from '@/context/GameContext';
 import { BlindInfo } from './BlindInfo';
 import { TimerDisplay } from './TimerDisplay';
 import { Controls } from './Controls';
@@ -12,20 +10,12 @@ import { SettingsScreen } from './SettingsScreen';
 import type { Config } from '@/types/timer';
 
 export function PokerTimer() {
-  const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
-  const suppressUntilRef = useRef<number>(0);
-  const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
+  const { state, dispatch } = useTimer();
+  const { activeSession, showWinner, loading } = useGame();
+
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Timer interval
-  useEffect(() => {
-    const id = setInterval(() => dispatch({ type: 'TICK' }), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Clock display
-  const clock = useClockState();
+  const [gamePanelOpen, setGamePanelOpen] = useState(false);
 
   // Auto-hide controls on mouse inactivity
   useEffect(() => {
@@ -42,45 +32,10 @@ export function PokerTimer() {
     };
   }, []);
 
-  // Audio side effects
-  useEffect(() => {
-    if (!state.pendingSound) return;
-    const event = state.pendingSound;
-    const now = Date.now();
-    if (event === 'tick' && now < suppressUntilRef.current) {
-      dispatch({ type: 'CLEAR_SOUND' });
-      return;
-    }
-    if (event !== 'tick') {
-      suppressUntilRef.current = now + 3500;
-    }
-    playSound(event);
-    dispatch({ type: 'CLEAR_SOUND' });
-  }, [state.pendingSound]);
-
-  // Supabase broadcast — subscribe once
-  useEffect(() => {
-    const channel = channelRef.current;
-    channel.subscribe();
-    return () => { channel.unsubscribe(); };
-  }, []);
-
-  // Supabase broadcast — send state on change
-  useEffect(() => {
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'state',
-      payload: {
-        currentStage: state.currentStage,
-        timeLeft: state.timeLeft,
-        isPaused: state.isPaused,
-      },
-    });
-  }, [state.currentStage, state.timeLeft, state.isPaused]);
-
-  // Keyboard: Space → toggle pause
+  // Keyboard: Space → toggle pause (only when session active)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (!activeSession) return;
       if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
         e.preventDefault();
         dispatch({ type: 'TOGGLE_PAUSE' });
@@ -88,7 +43,7 @@ export function PokerTimer() {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [activeSession, dispatch]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -100,12 +55,12 @@ export function PokerTimer() {
 
   const handleSaveSettings = useCallback((config: Config) => {
     dispatch({ type: 'SAVE_SETTINGS', config });
-  }, []);
+  }, [dispatch]);
 
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
 
-  // Compute next blind info for bottom bar
+  // Next blind info
   const nextStage = state.stages[state.currentStage + 1];
   let nextText = '';
   if (!nextStage) {
@@ -136,11 +91,17 @@ export function PokerTimer() {
     <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
       {/* Top bar */}
       <div className="relative w-full px-7 pt-5">
-        <BlindInfo
-          stage={stage}
-          breakDuration={state.config.breakDuration}
-        />
+        <BlindInfo stage={stage} breakDuration={state.config.breakDuration} />
         <div className="absolute top-5 right-7 flex gap-1 items-center">
+          {activeSession && (
+            <button
+              className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
+              onClick={() => setGamePanelOpen(o => !o)}
+              title="Игровая панель"
+            >
+              🂡
+            </button>
+          )}
           <button
             className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
             onClick={toggleFullscreen}
@@ -158,16 +119,10 @@ export function PokerTimer() {
         </div>
       </div>
 
-      {/* Timer + progress */}
-      {!state.isOver && (
-        <TimerDisplay
-          timeLeft={state.timeLeft}
-          stage={stage}
-          isPaused={state.isPaused}
-        />
-      )}
+      {/* Timer */}
+      {!state.isOver && <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />}
 
-      {/* Tournament over screen */}
+      {/* Tournament over */}
       {state.isOver && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <h1 className="text-[48px] font-black text-violet-600">Tournament Over</h1>
@@ -212,14 +167,43 @@ export function PokerTimer() {
       )}
 
       {/* Clock */}
-      <div className="fixed bottom-[18px] right-7 text-[28px] font-bold text-[#444] tabular-nums tracking-[2px] pointer-events-none">
-        {clock}
-      </div>
+      <ClockDisplay />
+
+      {/* Session overlay — shown when loading done and no active session */}
+      {!loading && !activeSession && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl p-8 text-center max-w-[320px]">
+            <div className="text-4xl mb-4">🃏</div>
+            <h2 className="text-[18px] font-semibold text-[#ccc] mb-2">Игра не настроена</h2>
+            <p className="text-[14px] text-[#666] mb-6">Настройте игроков и параметры сессии перед стартом таймера</p>
+            <button
+              className="bg-violet-700 text-white border-none rounded-lg px-6 py-3 text-[15px] font-semibold cursor-pointer hover:bg-violet-800 w-full"
+              onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
+            >
+              Открыть настройки
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Game panel placeholder — real component in Task 13 */}
+      {gamePanelOpen && activeSession && (
+        <div className="fixed top-0 right-0 bottom-0 w-80 bg-[#111] border-l border-[#222] z-30 flex items-center justify-center">
+          <button className="text-[#555] text-sm" onClick={() => setGamePanelOpen(false)}>Закрыть панель</button>
+        </div>
+      )}
+
+      {/* Winner screen placeholder — real component in Task 14 */}
+      {showWinner && (
+        <div className="fixed inset-0 z-50 bg-[#0d0d0d] flex items-center justify-center">
+          <span className="text-white text-2xl">🏆 Победитель!</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function useClockState(): string {
+function ClockDisplay() {
   const [clock, setClock] = useState('00:00');
   useEffect(() => {
     function update() {
@@ -232,5 +216,9 @@ function useClockState(): string {
     const id = setInterval(update, 60000);
     return () => clearInterval(id);
   }, []);
-  return clock;
+  return (
+    <div className="fixed bottom-[18px] right-7 text-[28px] font-bold text-[#444] tabular-nums tracking-[2px] pointer-events-none">
+      {clock}
+    </div>
+  );
 }
