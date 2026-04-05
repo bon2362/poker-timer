@@ -3,15 +3,14 @@
 ## Стек и ссылки
 
 - **Репозиторий:** https://github.com/bon2362/poker-timer
-- **Прод (Vercel):** https://poker-timer-a78easjy5-bon2362-5067s-projects.vercel.app
+- **Прод (Vercel):** https://poker-timer-black.vercel.app
 - **Бэклог (GitHub Projects):** https://github.com/users/bon2362/projects/2
-- **Основной файл:** `poker-timer.html` (single-file, без зависимостей — весь JS/CSS/HTML внутри)
 
 ## Архитектура
 
-Single-file vanilla HTML/CSS/JS. Никаких фреймворков, никаких зависимостей.
+Next.js 15 App Router + TypeScript + Tailwind CSS + Supabase Realtime.
 Настройки хранятся в `localStorage` (ключ `pokerTimerConfig`).
-Base64-MP3 голосовых фраз встроены прямо в файл.
+Компоненты в `components/`, логика в `lib/` и `reducer/`, типы в `types/`.
 
 ## Деплой
 
@@ -34,12 +33,10 @@ gh issue close <N> --repo bon2362/poker-timer
 
 Текущая версия: **4.0**
 
-Версия отображается в шапке экрана настроек (`poker-timer.html`):
-```html
-<div style="font-size:11px;color:#444;margin-top:2px;">v3.19</div>
-```
+Версия отображается в шапке экрана настроек (`components/SettingsScreen.tsx`).
 
 **Правила:**
-- При каждом изменении кода автоматически увеличивать минорную версию: 3.19 → 3.20 → 3.21 и т.д.
-- Мажорную версию поднимать только по явной просьбе пользователя: 3.x → 4.0
+- При каждом изменении кода автоматически увеличивать минорную версию: 4.0 → 4.1 → 4.2 и т.д.
+- Мажорную версию поднимать только по явной просьбе пользователя: 4.x → 5.0
 - После изменения версии обновлять её в этом файле (строка «Текущая версия»)
+- При добавлении новой фичи добавлять запись в массив `CHANGELOG` в начале `components/SettingsScreen.tsx` — новая версия вставляется первой в массиве
