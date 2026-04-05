@@ -192,26 +192,9 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Game panel — collapsed tab strip when closed */}
-      {activeSession && !gamePanelOpen && (
-        <div
-          className="fixed left-0 top-1/2 -translate-y-1/2 z-30 cursor-pointer"
-          onClick={() => setGamePanelOpen(true)}
-        >
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] border-l-0 rounded-r-lg px-[7px] py-5 flex flex-col items-center">
-            <span
-              className="text-[#444] text-[10px] tracking-[3px] uppercase font-medium"
-              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-            >
-              ФОНД
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Game panel — full panel when open */}
-      {gamePanelOpen && activeSession && (
-        <GamePanel onClose={() => setGamePanelOpen(false)} />
+      {/* Game panel */}
+      {activeSession && (
+        <GamePanel isOpen={gamePanelOpen} onToggle={() => setGamePanelOpen(v => !v)} />
       )}
 
       {/* Winner screen */}
