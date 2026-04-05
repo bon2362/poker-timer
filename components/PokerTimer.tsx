@@ -3,7 +3,6 @@ import { useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
-import { saveConfig } from '@/lib/storage';
 import { getTimerChannel } from '@/supabase/client';
 import { BlindInfo } from './BlindInfo';
 import { TimerDisplay } from './TimerDisplay';
@@ -165,11 +164,7 @@ export function PokerTimer() {
       {!state.isOver && (
         <CombosPanel
           visible={state.config.showCombos !== false}
-          onToggle={() => {
-            const newConfig = { ...state.config, showCombos: !state.config.showCombos };
-            saveConfig(newConfig);
-            dispatch({ type: 'SAVE_SETTINGS', config: newConfig });
-          }}
+          onToggle={() => dispatch({ type: 'TOGGLE_COMBOS' })}
         />
       )}
 
