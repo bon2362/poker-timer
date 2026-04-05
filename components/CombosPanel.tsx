@@ -62,26 +62,32 @@ export function CombosPanel({ visible, onToggle }: Props) {
         ]} />
         <Row cards={[
           { rank: 'J', suit: '\u2660' }, { rank: '7', suit: '\u2660' }, { rank: 'A', suit: '\u2660' },
-          { rank: '4', suit: '\u2660' }, { rank: '2', suit: '\u2660' },
+          { rank: '2', suit: '\u2660' }, { rank: '9', suit: '\u2660' },
         ]} />
         <Row cards={[
-          { rank: '9', suit: '\u2660' }, { rank: '9', suit: '\u2666', red: true },
-          { rank: '9', suit: '\u2663' }, { rank: '9', suit: '\u2665', red: true },
-          { rank: 'K', suit: '\u2660', hidden: true },
+          { rank: '5', suit: '\u2666', red: true }, { rank: '6', suit: '\u2663' },
+          { rank: '7', suit: '\u2660' }, { rank: '8', suit: '\u2665', red: true },
+          { rank: '9', suit: '\u2666', red: true },
         ]} />
         <Row cards={[
-          { rank: 'Q', suit: '\u2660' }, { rank: 'Q', suit: '\u2666', red: true },
-          { rank: 'Q', suit: '\u2663' }, { rank: '7', suit: '\u2666', red: true },
-          { rank: '7', suit: '\u2660' },
+          { rank: 'J', suit: '\u2666', red: true }, { rank: 'J', suit: '\u2663' },
+          { rank: 'J', suit: '\u2665', red: true }, { rank: '6', suit: '\u2660', hidden: true },
+          { rank: 'A', suit: '\u2660', hidden: true },
         ]} />
         <Row cards={[
-          { rank: 'J', suit: '\u2666', red: true }, { rank: '9', suit: '\u2666', red: true },
-          { rank: '8', suit: '\u2663' }, { rank: '7', suit: '\u2663' }, { rank: '6', suit: '\u2660' },
+          { rank: '9', suit: '\u2663' }, { rank: '9', suit: '\u2660' },
+          { rank: '10', suit: '\u2665', red: true }, { rank: '10', suit: '\u2666', red: true },
+          { rank: '3', suit: '\u2666', hidden: true },
         ]} />
         <Row cards={[
-          { rank: 'A', suit: '\u2666', red: true }, { rank: 'K', suit: '\u2666', red: true, hidden: true },
-          { rank: '4', suit: '\u2663' }, { rank: '4', suit: '\u2666', red: true, hidden: true },
-          { rank: '2', suit: '\u2665', red: true },
+          { rank: 'J', suit: '\u2663' }, { rank: 'J', suit: '\u2665', red: true },
+          { rank: 'A', suit: '\u2666', hidden: true }, { rank: '2', suit: '\u2666', hidden: true },
+          { rank: '7', suit: '\u2666', hidden: true },
+        ]} />
+        <Row cards={[
+          { rank: 'K', suit: '\u2660', hidden: true }, { rank: '9', suit: '\u2666', hidden: true },
+          { rank: '3', suit: '\u2663', hidden: true }, { rank: '7', suit: '\u2665', hidden: true },
+          { rank: 'J', suit: '\u2660', hidden: true },
         ]} />
       </div>
     </div>
