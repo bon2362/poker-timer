@@ -203,7 +203,7 @@ export function PokerTimer() {
 
       {/* Next blind info */}
       {!state.isOver && nextText && (
-        <div className="fixed bottom-[18px] left-1/2 -translate-x-1/2 text-[13px] text-[#444] tracking-[0.5px] pointer-events-none whitespace-nowrap">
+        <div className="pb-[22px] text-center text-[13px] text-[#444] tracking-[0.5px] pointer-events-none">
           <span className="text-[#383838]">Далее: </span>{nextText}
         </div>
       )}
