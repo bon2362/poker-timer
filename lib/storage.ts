@@ -24,7 +24,14 @@ export const DEFAULT_CONFIG: Config = {
 };
 
 export function loadConfig(): Config {
-  return structuredClone(DEFAULT_CONFIG);
+  try {
+    const saved = localStorage.getItem('pokerTimerConfig');
+    return saved ? (JSON.parse(saved) as Config) : structuredClone(DEFAULT_CONFIG);
+  } catch {
+    return structuredClone(DEFAULT_CONFIG);
+  }
 }
 
-export function saveConfig(_config: Config): void {}
+export function saveConfig(config: Config): void {
+  localStorage.setItem('pokerTimerConfig', JSON.stringify(config));
+}
