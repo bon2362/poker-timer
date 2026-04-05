@@ -135,12 +135,12 @@ export function PokerTimer() {
   return (
     <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
       {/* Top bar */}
-      <div className="flex justify-between items-start px-7 pt-5">
+      <div className="relative w-full px-7 pt-5">
         <BlindInfo
           stage={stage}
           breakDuration={state.config.breakDuration}
         />
-        <div className="flex gap-1 items-center">
+        <div className="absolute top-5 right-7 flex gap-1 items-center">
           <button
             className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
             onClick={toggleFullscreen}
