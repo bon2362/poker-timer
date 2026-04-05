@@ -1,5 +1,48 @@
 'use client';
 import { useState, Fragment } from 'react';
+
+const CHANGELOG = [
+  {
+    version: '4.0',
+    date: '2026-04-05',
+    notes: 'Переезд на Next.js 15 App Router + TypeScript + Tailwind. Supabase Realtime для трансляции состояния на другие устройства. Полная декомпозиция на компоненты, 38 unit-тестов.',
+  },
+  {
+    version: '3.19',
+    date: '2026-03-01',
+    notes: 'Голосовые уведомления, таблица покерных комбинаций, overtime-режим, предупреждение за 1 минуту.',
+  },
+];
+
+function ChangelogModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 w-[340px] max-w-[90vw] shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-[14px] font-semibold text-[#ccc] tracking-[1px] uppercase">История версий</h2>
+          <button onClick={onClose} className="text-[#555] text-[18px] hover:text-[#999] bg-transparent border-none cursor-pointer leading-none">✕</button>
+        </div>
+        <div className="flex flex-col gap-4">
+          {CHANGELOG.map(({ version, date, notes }) => (
+            <div key={version}>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-violet-400 font-bold text-[13px]">v{version}</span>
+                <span className="text-[#444] text-[11px]">{date}</span>
+              </div>
+              <p className="text-[#888] text-[12px] leading-[1.6]">{notes}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 import type { Config, BlindLevel, SoundEvent } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import { playSound } from '@/lib/audio';
@@ -22,6 +65,7 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
   const [breakDuration, setBreakDuration] = useState(String(config.breakDuration));
   const [breakEvery, setBreakEvery] = useState(String(config.breakEvery));
   const [showCombos, setShowCombos] = useState(config.showCombos !== false);
+  const [showChangelog, setShowChangelog] = useState(false);
   const [blinds, setBlinds] = useState<BlindLevel[]>(
     config.blindLevels.map(l => ({ sb: l.sb, bb: l.bb }))
   );
@@ -95,6 +139,7 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
 
   return (
     <div className="flex flex-col h-screen bg-[#1a1a1a] text-white">
+      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
       {/* Header */}
       <div className="flex justify-between items-center px-6 py-4 border-b border-[#2a2a2a] shrink-0">
         <button
@@ -105,7 +150,7 @@ export function SettingsScreen({ config, onSave, onClose }: Props) {
         </button>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px]">v3.20</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.0</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
