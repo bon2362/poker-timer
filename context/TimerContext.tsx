@@ -107,9 +107,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       warnedOneMin: state.warnedOneMin,
     };
 
-    // Save to DB + broadcast to other devices
+    // Save to DB + broadcast to other devices (only when WebSocket is connected)
     saveTimerState(payload);
-    channelRef.current.send({ type: 'broadcast', event: 'state', payload });
+    if (channelRef.current.state === 'joined') {
+      channelRef.current.send({ type: 'broadcast', event: 'state', payload });
+    }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
 
   return (

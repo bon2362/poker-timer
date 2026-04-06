@@ -22,10 +22,8 @@ export async function uploadSlideshowPhoto(file: File): Promise<boolean> {
   if (!client) return false;
   // Сохраняем оригинальное имя файла (с префиксом для уникальности)
   const path = `${Date.now()}-${file.name}`;
-  console.log('[slideshow] uploading as path:', path);
-  const { data, error } = await client.storage.from(BUCKET).upload(path, file);
+  const { error } = await client.storage.from(BUCKET).upload(path, file);
   if (error) console.error('[slideshow] upload error:', error.message, error);
-  console.log('[slideshow] upload result path:', data?.path);
   return !error;
 }
 
