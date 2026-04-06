@@ -20,8 +20,8 @@ export async function listSlideshowPhotos(): Promise<string[]> {
 export async function uploadSlideshowPhoto(file: File): Promise<boolean> {
   const client = getClient();
   if (!client) return false;
-  const ext = file.name.split('.').pop() ?? 'jpg';
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  // Сохраняем оригинальное имя файла (с префиксом для уникальности)
+  const path = `${Date.now()}-${file.name}`;
   const { error } = await client.storage.from(BUCKET).upload(path, file);
   if (error) console.error('[slideshow] upload error:', error.message, error);
   return !error;
