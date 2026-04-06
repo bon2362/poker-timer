@@ -81,9 +81,7 @@ export function PokerTimer() {
   if (!nextStage) {
     nextText = 'Финал';
   } else if (nextStage.type === 'break') {
-    const afterBreak = state.stages[state.currentStage + 2];
-    const afterStr = afterBreak?.type === 'level' ? ` → ${afterBreak.sb}/${afterBreak.bb}` : '';
-    nextText = `☕ Перерыв ${state.config.breakDuration} мин${afterStr}`;
+    nextText = `☕ Перерыв ${state.config.breakDuration} мин`;
   } else {
     nextText = `${nextStage.sb} / ${nextStage.bb}`;
   }
