@@ -31,7 +31,7 @@ gh issue close <N> --repo bon2362/poker-timer
 
 ## Версионирование
 
-Текущая версия: **4.5**
+Текущая версия: **4.6**
 
 Версия отображается в шапке экрана настроек (`components/SettingsScreen.tsx`).
 

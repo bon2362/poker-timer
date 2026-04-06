@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTimer } from '@/context/TimerContext';
+import { MobileAdminPanel } from './MobileAdminPanel';
 import { formatTime } from '@/lib/timer';
 import type { Stage } from '@/types/timer';
 
@@ -40,6 +41,19 @@ function Clock() {
 /* ── Main mobile view ── */
 export function MobileView() {
   const { state, dispatch } = useTimer();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const lastTapRef = useRef<number>(0);
+
+  // Double-tap on blind info → open admin panel
+  function handleBlindDoubleTap() {
+    const now = Date.now();
+    if (now - lastTapRef.current < 400) setIsAdmin(true);
+    lastTapRef.current = now;
+  }
+
+  if (isAdmin) {
+    return <MobileAdminPanel onClose={() => setIsAdmin(false)} />;
+  }
 
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
@@ -78,8 +92,11 @@ export function MobileView() {
   return (
     <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
 
-      {/* Top: blind info */}
-      <div className="flex items-center justify-center pt-10 pb-2 px-6">
+      {/* Top: blind info — double-tap to enter admin mode */}
+      <div
+        className="flex items-center justify-center pt-10 pb-2 px-6 cursor-default"
+        onClick={handleBlindDoubleTap}
+      >
         <MobileBlindInfo stage={stage} breakDuration={state.config.breakDuration} />
       </div>
 
