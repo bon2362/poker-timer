@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const PokerTimer = dynamic(
@@ -6,6 +7,21 @@ const PokerTimer = dynamic(
   { ssr: false }
 );
 
+const MobileView = dynamic(
+  () => import('@/components/MobileView').then(m => ({ default: m.MobileView })),
+  { ssr: false }
+);
+
 export default function Home() {
-  return <PokerTimer />;
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Mobile: narrow screen (portrait phone) — threshold 768px
+    setIsMobile(window.innerWidth < 768);
+  }, []);
+
+  // Avoid rendering until client-side check completes (prevent flash)
+  if (isMobile === null) return null;
+
+  return isMobile ? <MobileView /> : <PokerTimer />;
 }
