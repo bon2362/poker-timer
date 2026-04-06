@@ -46,7 +46,8 @@ export async function fetchActiveSession(): Promise<{ session: Session; sessionP
   const { data: spData, error: spErr } = await client
     .from('session_players')
     .select('*')
-    .eq('session_id', session.id);
+    .eq('session_id', session.id)
+    .order('created_at', { ascending: true });
   if (spErr) { console.error('fetchActiveSession session_players:', spErr); return null; }
   return { session, sessionPlayers: (spData ?? []).map(toSessionPlayer) };
 }

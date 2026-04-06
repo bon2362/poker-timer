@@ -167,9 +167,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           }
         }
       )
-      .subscribe((status, err) => {
-        console.log('[GameContext] Realtime status:', status, err ?? '');
-      });
+      .subscribe();
 
     return () => { client.removeChannel(channel); };
   }, []);

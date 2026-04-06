@@ -9,6 +9,11 @@ import { SessionSetup } from './SessionSetup/SessionSetup';
 
 const CHANGELOG = [
   {
+    version: '4.7',
+    date: "06 April '26",
+    notes: 'Фикс порядка игроков: теперь порядок не меняется после ребаев/аддонов при перезагрузке страницы.',
+  },
+  {
     version: '4.6',
     date: "06 April '26",
     notes: 'Мобильная панель администратора: двойной тап по блайндам открывает управление игрой (ребаи, аддоны, вылеты, победитель). При перезагрузке сбрасывается.',
@@ -122,7 +127,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd }: Props) 
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.6</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.7</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
