@@ -116,10 +116,11 @@ export function PokerTimer() {
     slideshowIndexRef.current = 0;
     setSlideshowCurrentUrl(urls[idxs[0]]);
 
+    const speed = Math.max(1, state.config.slideshowSpeed || 5) * 1000;
     slideshowTimerRef.current = setInterval(() => {
       slideshowIndexRef.current = (slideshowIndexRef.current + 1) % slideshowShuffledRef.current.length;
       setSlideshowCurrentUrl(urls[slideshowShuffledRef.current[slideshowIndexRef.current]]);
-    }, state.config.slideshowSpeed * 1000);
+    }, speed);
 
     return () => { if (slideshowTimerRef.current) clearInterval(slideshowTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps

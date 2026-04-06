@@ -28,7 +28,9 @@ export const DEFAULT_CONFIG: Config = {
 export function loadConfig(): Config {
   try {
     const saved = localStorage.getItem('pokerTimerConfig');
-    return saved ? (JSON.parse(saved) as Config) : JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    if (!saved) return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    // Merge with defaults so newly added fields always have values
+    return { ...JSON.parse(JSON.stringify(DEFAULT_CONFIG)), ...(JSON.parse(saved) as Partial<Config>) };
   } catch {
     return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   }
