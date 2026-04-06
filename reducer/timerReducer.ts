@@ -2,22 +2,36 @@ import { buildStages } from '@/lib/timer';
 import { saveConfig } from '@/lib/storage';
 import type { TimerState, Action, SoundEvent } from '@/types/timer';
 
+/** Compute timeLeft from anchor timestamp (wall-clock based). */
+function computeTimeLeft(state: TimerState): number {
+  const dur = state.stages[state.currentStage].duration;
+  if (state.isPaused) {
+    return dur - state.elapsedBeforePause;
+  }
+  const sinceResume = Math.floor((Date.now() - state.anchorTs) / 1000);
+  return dur - state.elapsedBeforePause - sinceResume;
+}
+
 export function timerReducer(state: TimerState, action: Action): TimerState {
   switch (action.type) {
     case 'TICK': {
       if (state.isPaused) return state;
 
+      const newTimeLeft = computeTimeLeft(state);
       const isLastStage = state.currentStage === state.stages.length - 1;
 
       // Overtime: last stage, timer continues negative
-      if (isLastStage && state.timeLeft <= 0) {
-        return { ...state, timeLeft: state.timeLeft - 1, pendingSound: null };
+      if (isLastStage && newTimeLeft <= 0) {
+        // First entry into overtime — play blindsUp
+        const pendingSound: SoundEvent | null =
+          state.timeLeft > 0 && newTimeLeft <= 0 ? 'blindsUp' : null;
+        return { ...state, timeLeft: newTimeLeft, pendingSound };
       }
 
-      // 1-minute warning
+      // 1-minute warning (robust: <= 60 transition, not exact === 61)
       let pendingSound: SoundEvent | null = null;
       let warnedOneMin = state.warnedOneMin;
-      if (state.timeLeft === 61 && !state.warnedOneMin) {
+      if (newTimeLeft <= 60 && state.timeLeft > 60 && !state.warnedOneMin) {
         warnedOneMin = true;
         const cur = state.stages[state.currentStage];
         const nxt = state.stages[state.currentStage + 1];
@@ -28,8 +42,6 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         }
       }
 
-      const newTimeLeft = state.timeLeft - 1;
-
       // Tick sound in last 5 seconds
       if (newTimeLeft <= 5 && newTimeLeft > 0 && !pendingSound) {
         pendingSound = 'tick';
@@ -37,13 +49,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
 
       if (newTimeLeft <= 0) {
         if (isLastStage) {
-          // First tick into overtime: play blindsUp sound
-          return {
-            ...state,
-            timeLeft: newTimeLeft,
-            warnedOneMin,
-            pendingSound: 'blindsUp',
-          };
+          return { ...state, timeLeft: newTimeLeft, warnedOneMin, pendingSound: 'blindsUp' };
         }
         // Advance to next stage
         return advanceStage({ ...state, warnedOneMin, pendingSound });
@@ -54,7 +60,26 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
 
     case 'TOGGLE_PAUSE': {
       if (state.isOver) return state;
-      return { ...state, isPaused: !state.isPaused };
+      if (state.isPaused) {
+        // Resume — set fresh anchor
+        return {
+          ...state,
+          isPaused: false,
+          anchorTs: Date.now(),
+          timeLeft: computeTimeLeft(state),
+        };
+      } else {
+        // Pause — accumulate elapsed time
+        const elapsed = Math.floor((Date.now() - state.anchorTs) / 1000);
+        const newElapsed = state.elapsedBeforePause + elapsed;
+        const dur = state.stages[state.currentStage].duration;
+        return {
+          ...state,
+          isPaused: true,
+          elapsedBeforePause: newElapsed,
+          timeLeft: dur - newElapsed,
+        };
+      }
     }
 
     case 'NEXT_STAGE': {
@@ -63,6 +88,8 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       return {
         ...state,
         currentStage: next,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
         timeLeft: state.stages[next].duration,
         warnedOneMin: false,
         pendingSound: null,
@@ -75,6 +102,8 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       return {
         ...state,
         currentStage: prev,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
         timeLeft: state.stages[prev].duration,
         warnedOneMin: false,
         pendingSound: null,
@@ -84,6 +113,8 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     case 'RESET_STAGE': {
       return {
         ...state,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
         timeLeft: state.stages[state.currentStage].duration,
         warnedOneMin: false,
         pendingSound: null,
@@ -95,6 +126,8 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       return {
         ...state,
         currentStage: last,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
         timeLeft: state.stages[last].duration,
         warnedOneMin: false,
         pendingSound: null,
@@ -105,6 +138,8 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       return {
         ...state,
         currentStage: 0,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
         timeLeft: state.stages[0].duration,
         isPaused: true,
         isOver: false,
@@ -130,6 +165,8 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         config: action.config,
         stages,
         currentStage: 0,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
         timeLeft: stages[0].duration,
         isPaused: true,
         isOver: false,
@@ -144,20 +181,13 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     }
 
     case 'JUMP_TO_END': {
-      return { ...state, timeLeft: 65, warnedOneMin: false, pendingSound: null };
-    }
-
-    case 'RESTORE_STATE': {
-      const { currentStage, timeLeft, isPaused, isOver, warnedOneMin } = action.payload;
-      // guard: ignore if stage index is out of range (stale DB from different config)
-      if (currentStage >= state.stages.length) return state;
+      const dur = state.stages[state.currentStage].duration;
       return {
         ...state,
-        currentStage,
-        timeLeft,
-        isPaused,
-        isOver,
-        warnedOneMin,
+        anchorTs: Date.now(),
+        elapsedBeforePause: dur - 65,
+        timeLeft: 65,
+        warnedOneMin: false,
         pendingSound: null,
       };
     }
@@ -166,6 +196,23 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       const newConfig = { ...state.config, showCombos: !state.config.showCombos };
       saveConfig(newConfig);
       return { ...state, config: newConfig };
+    }
+
+    case 'RESTORE_STATE': {
+      const { currentStage, anchorTs, elapsedBeforePause, isPaused, isOver, warnedOneMin } = action.payload;
+      // Guard: ignore if stage index out of range (stale DB from different config)
+      if (currentStage >= state.stages.length) return state;
+      const restored: TimerState = {
+        ...state,
+        currentStage,
+        anchorTs,
+        elapsedBeforePause,
+        isPaused,
+        isOver,
+        warnedOneMin,
+        pendingSound: null,
+      };
+      return { ...restored, timeLeft: computeTimeLeft(restored) };
     }
 
     default:
@@ -190,6 +237,8 @@ function advanceStage(state: TimerState): TimerState {
   return {
     ...state,
     currentStage: nextIdx,
+    anchorTs: Date.now(),
+    elapsedBeforePause: 0,
     timeLeft: nextStage.duration,
     warnedOneMin: false,
     pendingSound,

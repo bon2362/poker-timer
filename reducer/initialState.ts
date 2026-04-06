@@ -9,6 +9,8 @@ export function createInitialState(): TimerState {
     stages,
     currentStage: 0,
     timeLeft: stages[0].duration,
+    anchorTs: Date.now(),
+    elapsedBeforePause: 0,
     isPaused: true,
     isOver: false,
     warnedOneMin: false,

@@ -18,11 +18,19 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
   const suppressUntilRef = useRef<number>(0);
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
-  // Always-current ref for the periodic save interval
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
-  // Timer tick
+  // Echo suppression: skip sync effect when state came from a broadcast
+  const fromBroadcastRef = useRef(false);
+
+  // Track previous sync-relevant values to detect changes
+  const prevSyncRef = useRef({
+    currentStage: state.currentStage,
+    anchorTs: state.anchorTs,
+    isPaused: state.isPaused,
+    isOver: state.isOver,
+  });
+
+  // Timer tick — just recomputes timeLeft from anchor, no decrement
   useEffect(() => {
     const id = setInterval(() => dispatch({ type: 'TICK' }), 1000);
     return () => clearInterval(id);
@@ -49,46 +57,60 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // --- Persist timer state to DB every 5 seconds ---
-  useEffect(() => {
-    const id = setInterval(() => {
-      const s = stateRef.current;
-      saveTimerState({
-        currentStage: s.currentStage,
-        timeLeft: s.timeLeft,
-        isPaused: s.isPaused,
-        isOver: s.isOver,
-        warnedOneMin: s.warnedOneMin,
-      });
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  // --- Realtime: subscribe + receive state from other devices ---
+  // --- Realtime: subscribe + receive anchor state from other devices ---
   useEffect(() => {
     const channel = channelRef.current;
-    // Receive state broadcast from other devices (self: false ensures no echo)
     channel.on('broadcast', { event: 'state' }, ({ payload }) => {
+      fromBroadcastRef.current = true;
       dispatch({ type: 'RESTORE_STATE', payload });
     });
     channel.subscribe();
     return () => { channel.unsubscribe(); };
   }, []);
 
-  // --- Realtime: send state every second so other devices stay in sync ---
+  // --- Event-driven sync: persist + broadcast only when significant state changes ---
   useEffect(() => {
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'state',
-      payload: {
+    // Skip if this change came from a broadcast (avoid echo loop)
+    if (fromBroadcastRef.current) {
+      fromBroadcastRef.current = false;
+      prevSyncRef.current = {
         currentStage: state.currentStage,
-        timeLeft: state.timeLeft,
+        anchorTs: state.anchorTs,
         isPaused: state.isPaused,
         isOver: state.isOver,
-        warnedOneMin: state.warnedOneMin,
-      },
-    });
-  }, [state.currentStage, state.timeLeft, state.isPaused, state.isOver, state.warnedOneMin]);
+      };
+      return;
+    }
+
+    const prev = prevSyncRef.current;
+    const changed =
+      state.currentStage !== prev.currentStage ||
+      state.anchorTs !== prev.anchorTs ||
+      state.isPaused !== prev.isPaused ||
+      state.isOver !== prev.isOver;
+
+    prevSyncRef.current = {
+      currentStage: state.currentStage,
+      anchorTs: state.anchorTs,
+      isPaused: state.isPaused,
+      isOver: state.isOver,
+    };
+
+    if (!changed) return;
+
+    const payload = {
+      currentStage: state.currentStage,
+      anchorTs: state.anchorTs,
+      elapsedBeforePause: state.elapsedBeforePause,
+      isPaused: state.isPaused,
+      isOver: state.isOver,
+      warnedOneMin: state.warnedOneMin,
+    };
+
+    // Save to DB + broadcast to other devices
+    saveTimerState(payload);
+    channelRef.current.send({ type: 'broadcast', event: 'state', payload });
+  }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
 
   return (
     <TimerContext.Provider value={{ state, dispatch }}>

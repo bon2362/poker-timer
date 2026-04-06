@@ -40,7 +40,9 @@ export type Screen = 'timer' | 'settings';
 export type TimerState = {
   stages: Stage[];
   currentStage: number;
-  timeLeft: number;        // секунды, может быть отрицательным (overtime)
+  timeLeft: number;            // секунды, вычисляется из anchor (может быть отрицательным — overtime)
+  anchorTs: number;            // Unix ms — когда начался текущий сегмент отсчёта
+  elapsedBeforePause: number;  // секунды, накопленные до последней паузы
   isPaused: boolean;
   isOver: boolean;
   warnedOneMin: boolean;
@@ -63,4 +65,7 @@ export type Action =
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }
   | { type: 'JUMP_TO_END' }
-  | { type: 'RESTORE_STATE'; payload: { currentStage: number; timeLeft: number; isPaused: boolean; isOver: boolean; warnedOneMin: boolean } };
+  | { type: 'RESTORE_STATE'; payload: {
+      currentStage: number; anchorTs: number; elapsedBeforePause: number;
+      isPaused: boolean; isOver: boolean; warnedOneMin: boolean;
+    } };
