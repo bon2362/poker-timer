@@ -5,7 +5,7 @@ import type { Session, SessionPlayer } from '@/types/game';
 const baseSession: Session = {
   id: 's1', createdAt: '', status: 'active',
   buyIn: 1000, initialStack: 10000,
-  rebuyCost: 500, rebuyChips: 5000,
+  rebuyCost: 500, rebuyChips: 5000, maxRebuys: 0,
   addonCost: 500, addonChips: 5000,
   prizeSpots: 3, prizePcts: [50, 30, 20],
 };

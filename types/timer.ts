@@ -9,6 +9,8 @@ export type Config = {
   breakEvery: number;
   showCombos: boolean;
   blindLevels: BlindLevel[];
+  slideshowEnabled: boolean;
+  slideshowSpeed: number;  // секунды между фото
 };
 
 export type LevelStage = {

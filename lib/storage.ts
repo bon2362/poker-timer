@@ -5,6 +5,8 @@ export const DEFAULT_CONFIG: Config = {
   breakDuration: 10,
   breakEvery: 2,
   showCombos: true,
+  slideshowEnabled: false,
+  slideshowSpeed: 5,
   blindLevels: [
     { sb: 10,  bb: 20   },
     { sb: 20,  bb: 40   },

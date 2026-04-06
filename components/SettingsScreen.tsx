@@ -1,13 +1,19 @@
 // components/SettingsScreen.tsx
 'use client';
-import { useState, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import type { Config, BlindLevel, SoundEvent } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import { playSound } from '@/lib/audio';
+import { listSlideshowPhotos, uploadSlideshowPhoto, deleteAllSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { PlayerManager } from './PlayerManager/PlayerManager';
 import { SessionSetup } from './SessionSetup/SessionSetup';
 
 const CHANGELOG = [
+  {
+    version: '4.9',
+    date: "06 April '26",
+    notes: 'Слайдшоу фотографий на перерывах: загрузка фото в Supabase Storage, автозапуск во время перерыва, таймер поверх фото.',
+  },
   {
     version: '4.8',
     date: "06 April '26",
@@ -91,6 +97,7 @@ type Props = {
   onSave: (config: Config) => void;
   onClose: () => void;
   onJumpToEnd?: () => void;
+  onSlideshowChanged: () => void;
 };
 
 type FormErrors = {
@@ -100,7 +107,7 @@ type FormErrors = {
   blinds?: string;
 };
 
-export function SettingsScreen({ config, onSave, onClose, onJumpToEnd }: Props) {
+export function SettingsScreen({ config, onSave, onClose, onJumpToEnd, onSlideshowChanged }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('tournament');
   const [showChangelog, setShowChangelog] = useState(false);
 
@@ -132,7 +139,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd }: Props) 
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.8</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.9</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
@@ -165,7 +172,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd }: Props) 
           <TournamentTab config={config} onSave={onSave} onClose={onClose} />
         )}
         {activeTab === 'players' && <PlayerManager />}
-        {activeTab === 'display' && <DisplayTab />}
+        {activeTab === 'display' && <DisplayTab config={config} onSave={onSave} onSlideshowChanged={onSlideshowChanged} />}
       </div>
     </div>
   );
@@ -200,7 +207,7 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
     if (blinds.some(b => !b.sb || b.sb <= 0 || !b.bb || b.bb <= 0)) errs.blinds = 'Все SB и BB должны быть положительными числами';
     setErrors(errs);
     if (Object.keys(errs).length > 0) return null;
-    return { levelDuration: ld, breakDuration: bd, breakEvery: be, showCombos: config.showCombos, blindLevels: blinds };
+    return { ...config, levelDuration: ld, breakDuration: bd, breakEvery: be, blindLevels: blinds };
   }
 
   function handleSave() { const cfg = validate(); if (cfg) onSave(cfg); }
@@ -326,9 +333,37 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
 
 // ── Display Tab ───────────────────────────────────────────────────────────
 
-function DisplayTab() {
+function DisplayTab({ config, onSave, onSlideshowChanged }: { config: Config; onSave: (c: Config) => void; onSlideshowChanged: () => void }) {
+  const [photoCount, setPhotoCount] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    listSlideshowPhotos().then(urls => setPhotoCount(urls.length));
+  }, []);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    await Promise.all(files.map(uploadSlideshowPhoto));
+    const updated = await listSlideshowPhotos();
+    setPhotoCount(updated.length);
+    onSlideshowChanged();
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleDeleteAll() {
+    if (!confirm(`Удалить все фотографии (${photoCount})?`)) return;
+    await deleteAllSlideshowPhotos();
+    setPhotoCount(0);
+    onSlideshowChanged();
+  }
+
   return (
     <div className="px-6 py-5 flex flex-col gap-5">
+      {/* Sound section */}
       <div>
         <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Звук</div>
         <div className="grid grid-cols-2 gap-[8px]">
@@ -346,6 +381,58 @@ function DisplayTab() {
               <span className="text-[12px] text-[#aaa]">{label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Slideshow section */}
+      <div>
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Слайдшоу на перерыве</div>
+
+        <label className="flex items-center gap-3 bg-[#242424] border border-[#333] rounded-lg px-4 py-3 cursor-pointer mb-3">
+          <input
+            type="checkbox"
+            checked={config.slideshowEnabled}
+            onChange={e => onSave({ ...config, slideshowEnabled: e.target.checked })}
+            className="w-4 h-4 accent-violet-600 cursor-pointer"
+          />
+          <span className="text-[14px] text-[#ccc]">Показывать фото во время перерыва</span>
+        </label>
+
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="bg-[#242424] rounded-lg p-3">
+            <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-2">Смена фото (сек)</label>
+            <input
+              type="number" min="1" max="60"
+              value={config.slideshowSpeed}
+              onChange={e => onSave({ ...config, slideshowSpeed: Math.max(1, parseInt(e.target.value) || 5) })}
+              className="bg-[#333] border border-[#444] rounded-[6px] text-white px-3 py-2 text-[15px] font-bold w-full focus:outline-none focus:border-violet-600 tabular-nums"
+            />
+          </div>
+          <div className="bg-[#242424] rounded-lg p-3 flex flex-col gap-1">
+            <label className="block text-[11px] text-[#666] uppercase tracking-[1px]">Фото в базе</label>
+            <span className="text-[20px] font-bold text-[#ccc] tabular-nums mt-1">
+              {photoCount === null ? '…' : photoCount}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex-1 bg-[#242424] border border-[#444] text-[#ccc] rounded-lg px-4 py-2 text-[13px] cursor-pointer hover:border-violet-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? 'Загружаем…' : '+ Добавить фото'}
+          </button>
+          {(photoCount ?? 0) > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="bg-[#242424] border border-[#444] text-[#666] rounded-lg px-3 py-2 text-[13px] cursor-pointer hover:border-red-700 hover:text-red-400 transition-colors"
+            >
+              Удалить все
+            </button>
+          )}
         </div>
       </div>
     </div>

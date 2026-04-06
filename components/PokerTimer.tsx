@@ -9,6 +9,8 @@ import { CombosPanel } from './CombosPanel';
 import { SettingsScreen } from './SettingsScreen';
 import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
+import { SlideshowOverlay } from './SlideshowOverlay';
+import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import type { Config } from '@/types/timer';
 
 export function PokerTimer() {
@@ -19,6 +21,13 @@ export function PokerTimer() {
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [gamePanelOpen, setGamePanelOpen] = useState(false);
   const gamePanelAutoOpenedRef = useRef(false);
+
+  // Slideshow state
+  const [slideshowUrls, setSlideshowUrls] = useState<string[]>([]);
+  const [slideshowCurrentUrl, setSlideshowCurrentUrl] = useState<string | null>(null);
+  const slideshowTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const slideshowIndexRef = useRef(0);
+  const slideshowShuffledRef = useRef<number[]>([]);
 
   // Auto-open panel when session becomes active
   useEffect(() => {
@@ -60,6 +69,16 @@ export function PokerTimer() {
     return () => document.removeEventListener('keydown', onKey);
   }, [activeSession, dispatch]);
 
+  // Load slideshow photos on mount
+  useEffect(() => {
+    listSlideshowPhotos().then(setSlideshowUrls);
+  }, []);
+
+  async function handleSlideshowChanged() {
+    const urls = await listSlideshowPhotos();
+    setSlideshowUrls(urls);
+  }
+
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -74,6 +93,37 @@ export function PokerTimer() {
 
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
+  const isOnBreak = !state.isOver && stage?.type === 'break';
+
+  // Slideshow start/stop
+  useEffect(() => {
+    const urls = slideshowUrls;
+    const shouldStart = isOnBreak && state.config.slideshowEnabled && urls.length > 0;
+
+    if (!shouldStart) {
+      if (slideshowTimerRef.current) { clearInterval(slideshowTimerRef.current); slideshowTimerRef.current = null; }
+      setSlideshowCurrentUrl(null);
+      return;
+    }
+
+    // Fisher-Yates shuffle
+    const idxs = urls.map((_, i) => i);
+    for (let i = idxs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+    }
+    slideshowShuffledRef.current = idxs;
+    slideshowIndexRef.current = 0;
+    setSlideshowCurrentUrl(urls[idxs[0]]);
+
+    slideshowTimerRef.current = setInterval(() => {
+      slideshowIndexRef.current = (slideshowIndexRef.current + 1) % slideshowShuffledRef.current.length;
+      setSlideshowCurrentUrl(urls[slideshowShuffledRef.current[slideshowIndexRef.current]]);
+    }, state.config.slideshowSpeed * 1000);
+
+    return () => { if (slideshowTimerRef.current) clearInterval(slideshowTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnBreak, state.config.slideshowEnabled, slideshowUrls.length]);
 
   // Next blind info
   const nextStage = state.stages[state.currentStage + 1];
@@ -96,6 +146,7 @@ export function PokerTimer() {
           dispatch({ type: 'JUMP_TO_END' });
           dispatch({ type: 'CLOSE_SETTINGS' });
         }}
+        onSlideshowChanged={handleSlideshowChanged}
       />
     );
   }
@@ -158,6 +209,11 @@ export function PokerTimer() {
           visible={state.config.showCombos !== false}
           onToggle={() => dispatch({ type: 'TOGGLE_COMBOS' })}
         />
+      )}
+
+      {/* Slideshow overlay — shown during breaks when enabled and photos are loaded */}
+      {slideshowCurrentUrl && isOnBreak && (
+        <SlideshowOverlay url={slideshowCurrentUrl} timeLeft={state.timeLeft} />
       )}
 
       {/* Next blind info */}
