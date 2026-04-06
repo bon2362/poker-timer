@@ -16,8 +16,32 @@ function parseDateFromUrl(url: string): string | null {
   return `${parseInt(day, 10)} ${monthName} ${year}`;
 }
 
+type SlotProps = { src: string; visible: boolean };
+
+/** Один слот: размытый фон + полное фото поверх, с fade-переходом */
+function Slot({ src, visible }: SlotProps) {
+  return (
+    <div
+      className={`absolute inset-0 transition-opacity duration-[2000ms] ease-in-out ${visible ? 'opacity-100' : 'opacity-0'}`}
+    >
+      {/* Размытый фон из того же фото */}
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-50"
+      />
+      {/* Полное фото по центру */}
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain"
+      />
+    </div>
+  );
+}
+
 export function SlideshowOverlay({ url, timeLeft }: Props) {
-  // Cross-fade: two image slots, alternating which is on top
+  // Cross-fade: два слота, чередуем какой сверху
   const [imgA, setImgA] = useState(url);
   const [imgB, setImgB] = useState('');
   const [showB, setShowB] = useState(false);
@@ -25,12 +49,10 @@ export function SlideshowOverlay({ url, timeLeft }: Props) {
 
   useEffect(() => {
     if (activeIsB.current) {
-      // B is on top — load new photo into A and bring A up
       setImgA(url);
       setShowB(false);
       activeIsB.current = false;
     } else {
-      // A is on top (or initial) — load new photo into B and bring B up
       setImgB(url);
       setShowB(true);
       activeIsB.current = true;
@@ -46,20 +68,8 @@ export function SlideshowOverlay({ url, timeLeft }: Props) {
 
   return (
     <div className="fixed inset-0 z-20 bg-black overflow-hidden">
-      {/* Image A */}
-      <img
-        src={imgA}
-        alt=""
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms] ease-in-out ${showB ? 'opacity-0' : 'opacity-100'}`}
-      />
-      {/* Image B */}
-      {imgB && (
-        <img
-          src={imgB}
-          alt=""
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms] ease-in-out ${showB ? 'opacity-100' : 'opacity-0'}`}
-        />
-      )}
+      <Slot src={imgA} visible={!showB} />
+      {imgB && <Slot src={imgB} visible={showB} />}
 
       {/* Timer — top */}
       <div className="absolute top-10 inset-x-0 flex justify-center pointer-events-none select-none">
