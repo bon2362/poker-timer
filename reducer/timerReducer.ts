@@ -150,7 +150,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     }
 
     case 'OPEN_SETTINGS': {
-      return { ...state, screen: 'settings', isPaused: true };
+      return { ...state, screen: 'settings' };
     }
 
     case 'CLOSE_SETTINGS': {
