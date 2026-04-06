@@ -17,17 +17,17 @@ export function GamePanel({ isOpen, onToggle }: Props) {
       <div
         className="fixed left-0 top-0 bottom-0 w-[32px] z-30 cursor-pointer group"
         onClick={onToggle}
-        title="Открыть фонд"
+        title="Игроки"
       >
         {/* Subtle left edge line */}
         <div className="absolute inset-y-0 left-0 w-px bg-[#2a2a2a] group-hover:bg-[#3a3a3a] transition-colors" />
-        {/* Vertical label centered */}
+        {/* Vertical label — visible only on hover */}
         <div className="absolute inset-0 flex items-center justify-center">
           <span
-            className="text-[#383838] group-hover:text-[#555] text-[10px] tracking-[3px] uppercase font-medium transition-colors select-none"
+            className="opacity-0 group-hover:opacity-100 text-[#666] text-[10px] tracking-[3px] uppercase font-medium transition-opacity select-none"
             style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
           >
-            ФОНД
+            ИГРОКИ
           </span>
         </div>
       </div>
