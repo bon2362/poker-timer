@@ -120,7 +120,7 @@ export function PokerTimer() {
             onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
             title="Settings"
           >
-            ⚙
+            {'⚙\uFE0E'}
           </button>
         </div>
       </div>
