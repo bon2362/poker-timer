@@ -8,71 +8,134 @@ import type { SessionPlayer } from '@/types/game';
 type Props = { sp: SessionPlayer };
 
 export function PlayerRow({ sp }: Props) {
-  const { players, activeSession, doRebuy, doAddon, eliminatePlayer, declareWinner, sessionPlayers } = useGame();
-  const [confirming, setConfirming] = useState(false);
+  const {
+    players, activeSession,
+    doRebuy, undoRebuy, doAddon, undoAddon,
+    eliminatePlayer, undoEliminate, declareWinner,
+    sessionPlayers,
+  } = useGame();
+  const [expanded, setExpanded] = useState(false);
+  const [undoHover, setUndoHover] = useState(false);
   const player = players.find(p => p.id === sp.playerId);
   if (!player || !activeSession) return null;
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
   const isLastPlayer = activePlayers.length === 1 && sp.status === 'playing';
 
+  /* ── Eliminated / winner row ── */
   if (sp.status === 'eliminated' || sp.status === 'winner') {
     return (
-      <div className="flex items-center gap-3 py-2 opacity-50">
+      <div
+        className="flex items-center gap-3 py-2 group cursor-pointer"
+        onMouseEnter={() => setUndoHover(true)}
+        onMouseLeave={() => setUndoHover(false)}
+      >
         <Avatar player={player} size={32} />
         <span className="flex-1 text-[13px] text-[#666] line-through">{player.name}</span>
-        <span className="text-[11px] text-[#444]">{sp.finishPosition}-е</span>
+        {sp.status === 'eliminated' && undoHover ? (
+          <button
+            onClick={() => undoEliminate(sp.id)}
+            title="Восстановить игрока"
+            className="text-[11px] bg-[#2a2020] border border-[#664444] text-[#cc8888] rounded px-2 py-0.5 cursor-pointer hover:bg-[#3a2020] transition-colors"
+          >
+            ↩ вернуть
+          </button>
+        ) : (
+          <span className="text-[11px] text-[#444]">{sp.finishPosition}-е</span>
+        )}
       </div>
     );
   }
 
+  /* ── Active player row ── */
   return (
     <div className="flex flex-col gap-2 py-2 border-b border-[#242424] last:border-0">
       <div className="flex items-center gap-3">
         <Avatar player={player} size={36} />
         <span
           className="flex-1 text-[14px] text-[#ccc] cursor-pointer hover:text-white"
-          onClick={() => !isLastPlayer && setConfirming(c => !c)}
+          onClick={() => !isLastPlayer && setExpanded(e => !e)}
         >
           {player.name}
         </span>
+
+        {/* Rebuy button — shows ±controls when expanded */}
         {activeSession.rebuyCost > 0 && (
-          <button
-            onClick={() => doRebuy(sp.id)}
-            className="text-[11px] bg-[#2a2040] border border-[#443366] text-violet-400 rounded px-2 py-1 cursor-pointer hover:bg-[#3a2060]"
-          >
-            Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
-          </button>
+          expanded ? (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => undoRebuy(sp.id)}
+                disabled={sp.rebuys === 0}
+                className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#333] text-[#888] rounded cursor-pointer hover:bg-[#2a2040] hover:text-violet-300 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                −
+              </button>
+              <span className="text-[11px] text-violet-400 min-w-[44px] text-center">
+                Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
+              </span>
+              <button
+                onClick={() => doRebuy(sp.id)}
+                className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#443366] text-violet-400 rounded cursor-pointer hover:bg-[#3a2060]"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => doRebuy(sp.id)}
+              className="text-[11px] bg-[#2a2040] border border-[#443366] text-violet-400 rounded px-2 py-1 cursor-pointer hover:bg-[#3a2060]"
+            >
+              Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
+            </button>
+          )
         )}
+
+        {/* Addon button — shows ±controls when expanded */}
         {activeSession.addonCost > 0 && (
-          <button
-            onClick={() => !sp.hasAddon && doAddon(sp.id)}
-            disabled={sp.hasAddon}
-            className={`text-[11px] rounded px-2 py-1 cursor-pointer border ${
-              sp.hasAddon
-                ? 'bg-transparent border-[#333] text-[#444] cursor-not-allowed'
-                : 'bg-[#1a2a1a] border-[#336633] text-green-400 hover:bg-[#2a3a2a]'
-            }`}
-          >
-            {sp.hasAddon ? 'Аддон ✓' : 'Аддон'}
-          </button>
+          expanded ? (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => sp.hasAddon && undoAddon(sp.id)}
+                disabled={!sp.hasAddon}
+                className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#333] text-[#888] rounded cursor-pointer hover:bg-[#1a2a1a] hover:text-green-300 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                −
+              </button>
+              <span className={`text-[11px] min-w-[44px] text-center ${sp.hasAddon ? 'text-green-400' : 'text-[#555]'}`}>
+                {sp.hasAddon ? 'Аддон ✓' : 'Аддон'}
+              </span>
+              <button
+                onClick={() => !sp.hasAddon && doAddon(sp.id)}
+                disabled={sp.hasAddon}
+                className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#336633] text-green-400 rounded cursor-pointer hover:bg-[#2a3a2a] disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => !sp.hasAddon && doAddon(sp.id)}
+              disabled={sp.hasAddon}
+              className={`text-[11px] rounded px-2 py-1 cursor-pointer border ${
+                sp.hasAddon
+                  ? 'bg-transparent border-[#333] text-[#444] cursor-not-allowed'
+                  : 'bg-[#1a2a1a] border-[#336633] text-green-400 hover:bg-[#2a3a2a]'
+              }`}
+            >
+              {sp.hasAddon ? 'Аддон ✓' : 'Аддон'}
+            </button>
+          )
         )}
       </div>
 
-      {confirming && !isLastPlayer && (
-        <div className="flex items-center gap-2 pl-[48px]">
-          <span className="text-[12px] text-[#888]">Вылетел?</span>
+      {/* Expanded menu — elimination (#53: no question, rename, no cancel) */}
+      {expanded && !isLastPlayer && (
+        <div className="pl-[48px]">
           <button
-            onClick={async () => { await eliminatePlayer(sp.id); setConfirming(false); }}
+            onClick={async () => { await eliminatePlayer(sp.id); setExpanded(false); }}
             className="text-[12px] bg-red-900 border border-red-700 text-red-300 rounded px-3 py-1 cursor-pointer hover:bg-red-800"
           >
-            Да, вылетел
-          </button>
-          <button
-            onClick={() => setConfirming(false)}
-            className="text-[12px] bg-transparent border border-[#333] text-[#666] rounded px-3 py-1 cursor-pointer"
-          >
-            Отмена
+            Вылетел:а
           </button>
         </div>
       )}

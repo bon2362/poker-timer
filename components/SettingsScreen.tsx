@@ -4,7 +4,6 @@ import { useState, Fragment } from 'react';
 import type { Config, BlindLevel, SoundEvent } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import { playSound } from '@/lib/audio';
-import { useTimer } from '@/context/TimerContext';
 import { PlayerManager } from './PlayerManager/PlayerManager';
 import { SessionSetup } from './SessionSetup/SessionSetup';
 
@@ -156,6 +155,12 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
   const [blinds, setBlinds] = useState<BlindLevel[]>(config.blindLevels.map(l => ({ sb: l.sb, bb: l.bb })));
   const [errors, setErrors] = useState<FormErrors>({});
 
+  const isDirty =
+    levelDuration !== String(config.levelDuration) ||
+    breakDuration !== String(config.breakDuration) ||
+    breakEvery !== String(config.breakEvery) ||
+    JSON.stringify(blinds) !== JSON.stringify(config.blindLevels.map(l => ({ sb: l.sb, bb: l.bb })));
+
   const breakEveryNum = Math.max(1, parseInt(breakEvery, 10) || 1);
 
   function validate(): Config | null {
@@ -278,13 +283,18 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
       {/* Session setup */}
       <SessionSetup />
 
-      {/* Save timer settings button */}
-      <button
-        className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[10px] text-[15px] font-semibold cursor-pointer hover:bg-violet-800 w-full"
-        onClick={handleSave}
-      >
-        Сохранить настройки таймера
-      </button>
+      {/* Save timer settings button — sticky bottom, disabled when no changes */}
+      <div className="sticky bottom-0 bg-[#1a1a1a] pt-2 pb-1 -mx-6 px-6">
+        <button
+          onClick={handleSave}
+          disabled={!isDirty}
+          className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[10px] text-[15px] font-semibold w-full transition-opacity
+            enabled:cursor-pointer enabled:hover:bg-violet-800
+            disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Сохранить настройки таймера
+        </button>
+      </div>
     </div>
   );
 }
@@ -292,23 +302,8 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
 // ── Display Tab ───────────────────────────────────────────────────────────
 
 function DisplayTab() {
-  const { state, dispatch } = useTimer();
-  const showCombos = state.config.showCombos !== false;
-
   return (
     <div className="px-6 py-5 flex flex-col gap-5">
-      <div>
-        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Отображение</div>
-        <label className="flex items-center gap-3 cursor-pointer bg-[#242424] rounded-lg p-[12px_14px]">
-          <input
-            type="checkbox"
-            checked={showCombos}
-            onChange={() => dispatch({ type: 'TOGGLE_COMBOS' })}
-            className="w-[18px] h-[18px] accent-violet-600 cursor-pointer"
-          />
-          <span className="text-[14px] text-[#ccc]">Показывать таблицу покерных комбинаций</span>
-        </label>
-      </div>
       <div>
         <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Звук</div>
         <div className="grid grid-cols-2 gap-[8px]">

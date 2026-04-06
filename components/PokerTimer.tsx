@@ -116,7 +116,7 @@ export function PokerTimer() {
             ⛶
           </button>
           <button
-            className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
+            className="bg-transparent border-none text-[#383838] text-[20px] cursor-pointer p-1 w-8 hover:text-[#555] transition-colors"
             onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
             title="Settings"
           >

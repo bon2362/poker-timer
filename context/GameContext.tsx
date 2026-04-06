@@ -74,8 +74,11 @@ type GameContextValue = {
   doRebuy: (sessionPlayerId: string) => Promise<void>;
   doAddon: (sessionPlayerId: string) => Promise<void>;
   eliminatePlayer: (sessionPlayerId: string) => Promise<void>;
+  undoEliminate: (sessionPlayerId: string) => Promise<void>;
   declareWinner: (sessionPlayerId: string) => Promise<void>;
   finishGame: () => Promise<void>;
+  undoRebuy: (sessionPlayerId: string) => Promise<void>;
+  undoAddon: (sessionPlayerId: string) => Promise<void>;
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -176,6 +179,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const undoEliminate = useCallback(async (sessionPlayerId: string) => {
+    const updated = await updateSessionPlayer(sessionPlayerId, {
+      status: 'playing',
+      finishPosition: null,
+      eliminatedAt: null,
+    });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, []);
+
+  const undoRebuy = useCallback(async (sessionPlayerId: string) => {
+    const sp = state.sessionPlayers.find(p => p.id === sessionPlayerId);
+    if (!sp || sp.rebuys <= 0) return;
+    const updated = await updateSessionPlayer(sessionPlayerId, { rebuys: sp.rebuys - 1 });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, [state.sessionPlayers]);
+
+  const undoAddon = useCallback(async (sessionPlayerId: string) => {
+    const updated = await updateSessionPlayer(sessionPlayerId, { hasAddon: false });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, []);
+
   const finishGame = useCallback(async () => {
     if (!state.activeSession) return;
     await finishSession(state.activeSession.id);
@@ -191,7 +215,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       showWinner: state.showWinner,
       loading: state.loading,
       addPlayer, updatePlayer, removePlayer,
-      startSession, doRebuy, doAddon, eliminatePlayer, declareWinner, finishGame,
+      startSession, doRebuy, doAddon, undoRebuy, undoAddon,
+      eliminatePlayer, undoEliminate, declareWinner, finishGame,
     }}>
       {children}
     </GameContext.Provider>
