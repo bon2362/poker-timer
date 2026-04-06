@@ -32,8 +32,15 @@ function Clock() {
       setClock(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
     }
     tick();
-    const id = setInterval(tick, 60000);
-    return () => clearInterval(id);
+    // Align to next minute boundary, then tick every 60s
+    const now = new Date();
+    const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    let intervalId: ReturnType<typeof setInterval>;
+    const timeoutId = setTimeout(() => {
+      tick();
+      intervalId = setInterval(tick, 60000);
+    }, msToNextMinute);
+    return () => { clearTimeout(timeoutId); clearInterval(intervalId); };
   }, []);
   return <span className="text-[#333] text-[20px] font-bold tabular-nums">{clock}</span>;
 }

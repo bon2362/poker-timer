@@ -213,8 +213,15 @@ function ClockDisplay() {
       setClock(`${h}:${m}`);
     }
     update();
-    const id = setInterval(update, 60000);
-    return () => clearInterval(id);
+    // Align to next minute boundary, then tick every 60s
+    const now = new Date();
+    const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    let intervalId: ReturnType<typeof setInterval>;
+    const timeoutId = setTimeout(() => {
+      update();
+      intervalId = setInterval(update, 60000);
+    }, msToNextMinute);
+    return () => { clearTimeout(timeoutId); clearInterval(intervalId); };
   }, []);
   return (
     <div className="fixed bottom-[18px] right-7 text-[28px] font-bold text-[#444] tabular-nums tracking-[2px] pointer-events-none">
