@@ -61,20 +61,10 @@ export function CombosPanel({ visible, onToggle }: Props) {
 
   /* ── Full panel ── */
   return (
-    <div className="fixed top-0 right-0 bottom-0 w-[300px] z-40 bg-[#1a1a1a] border-l border-[#2a2a2a] flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] shrink-0">
-        <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Комбинации</div>
-        <button
-          onClick={onToggle}
-          className="text-[#555] text-[20px] bg-transparent border-none cursor-pointer hover:text-[#999] leading-none"
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Cards */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-[7px]">
+    <div
+      className="fixed right-[42px] top-1/2 -translate-y-1/2 z-30 cursor-pointer flex flex-col gap-[7px]"
+      onClick={onToggle}
+    >
         <Row cards={[
           { rank: '10', suit: '\u2665', red: true }, { rank: 'J', suit: '\u2665', red: true },
           { rank: 'Q', suit: '\u2665', red: true }, { rank: 'K', suit: '\u2665', red: true },
@@ -122,7 +112,6 @@ export function CombosPanel({ visible, onToggle }: Props) {
           { rank: '3', suit: '\u2663', hidden: true }, { rank: '7', suit: '\u2665', hidden: true },
           { rank: 'J', suit: '\u2660', hidden: true },
         ]} />
-      </div>
     </div>
   );
 }
