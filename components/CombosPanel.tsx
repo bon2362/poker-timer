@@ -36,12 +36,45 @@ type Props = {
 };
 
 export function CombosPanel({ visible, onToggle }: Props) {
+  /* ── Collapsed strip ── */
+  if (!visible) {
+    return (
+      <div
+        className="fixed right-0 top-0 bottom-0 w-[32px] z-30 cursor-pointer group"
+        onClick={onToggle}
+        title="Комбинации"
+      >
+        {/* Subtle right edge line */}
+        <div className="absolute inset-y-0 right-0 w-px bg-[#2a2a2a] group-hover:bg-[#3a3a3a] transition-colors" />
+        {/* Vertical label — visible only on hover */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className="opacity-0 group-hover:opacity-100 text-[#666] text-[10px] tracking-[3px] uppercase font-medium transition-opacity select-none"
+            style={{ writingMode: 'vertical-rl' }}
+          >
+            КОМБИНАЦИИ
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Full panel ── */
   return (
-    <div
-      className="fixed right-[42px] top-1/2 -translate-y-1/2 z-10 cursor-pointer"
-      onClick={onToggle}
-    >
-      <div className={`flex flex-col gap-[7px] ${visible ? 'visible' : 'invisible'}`}>
+    <div className="fixed top-0 right-0 bottom-0 w-[300px] z-40 bg-[#1a1a1a] border-l border-[#2a2a2a] flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] shrink-0">
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Комбинации</div>
+        <button
+          onClick={onToggle}
+          className="text-[#555] text-[20px] bg-transparent border-none cursor-pointer hover:text-[#999] leading-none"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Cards */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-[7px]">
         <Row cards={[
           { rank: '10', suit: '\u2665', red: true }, { rank: 'J', suit: '\u2665', red: true },
           { rank: 'Q', suit: '\u2665', red: true }, { rank: 'K', suit: '\u2665', red: true },
