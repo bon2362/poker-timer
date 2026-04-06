@@ -216,6 +216,20 @@ export function PokerTimer() {
         <SlideshowOverlay url={slideshowCurrentUrl} timeLeft={state.timeLeft} />
       )}
 
+      {/* Controls on top of slideshow — appear on mouse move */}
+      {slideshowCurrentUrl && isOnBreak && (
+        <div className="fixed inset-x-0 bottom-0 z-30">
+          <Controls
+            isPaused={state.isPaused}
+            isOver={state.isOver}
+            visible={controlsVisible}
+            onPrev={() => dispatch({ type: 'PREV_STAGE' })}
+            onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
+            onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+          />
+        </div>
+      )}
+
       {/* Next blind info */}
       {!state.isOver && nextText && (
         <div className="pb-[22px] text-center pointer-events-none">
