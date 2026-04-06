@@ -13,6 +13,7 @@ export function SessionSetup() {
   const [initialStack, setInitialStack] = useState(String(activeSession?.initialStack ?? 2000));
   const [rebuyCost, setRebuyCost] = useState(String(activeSession?.rebuyCost ?? 1000));
   const [rebuyChips, setRebuyChips] = useState(String(activeSession?.rebuyChips ?? 2000));
+  const [maxRebuys, setMaxRebuys] = useState(String(activeSession?.maxRebuys ?? 0));
   const [addonCost, setAddonCost] = useState(String(activeSession?.addonCost ?? 1000));
   const [addonChips, setAddonChips] = useState(String(activeSession?.addonChips ?? 3000));
   const [prizeSpots, setPrizeSpots] = useState(activeSession?.prizeSpots ?? 3);
@@ -43,6 +44,7 @@ export function SessionSetup() {
       initialStack: parseInt(initialStack, 10) || 0,
       rebuyCost: parseInt(rebuyCost, 10) || 0,
       rebuyChips: parseInt(rebuyChips, 10) || 0,
+      maxRebuys: parseInt(maxRebuys, 10) || 0,
       addonCost: parseInt(addonCost, 10) || 0,
       addonChips: parseInt(addonChips, 10) || 0,
       prizeSpots,
@@ -97,6 +99,23 @@ export function SessionSetup() {
           </div>
         ))}
       </div>
+
+      {/* Max rebuys — shown only when rebuys are enabled */}
+      {parseInt(rebuyCost, 10) > 0 && (
+        <div className={`bg-[#242424] rounded-lg p-3 ${locked ? 'opacity-60' : ''}`}>
+          <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-2">
+            Макс. ребаев (0 = без лимита)
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={maxRebuys}
+            onChange={e => !locked && setMaxRebuys(e.target.value)}
+            disabled={locked}
+            className={numInput(locked)}
+          />
+        </div>
+      )}
 
       {/* Prize config */}
       <div className={`bg-[#242424] rounded-lg p-4 ${locked ? 'opacity-60 pointer-events-none' : ''}`}>

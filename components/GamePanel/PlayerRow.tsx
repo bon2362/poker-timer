@@ -60,35 +60,62 @@ export function PlayerRow({ sp }: Props) {
         </span>
 
         {/* Rebuy button — shows ±controls when expanded */}
-        {activeSession.rebuyCost > 0 && (
-          expanded ? (
-            <div className="flex items-center gap-1">
+        {activeSession.rebuyCost > 0 && (() => {
+          const maxR = activeSession.maxRebuys;
+          const atMax = maxR > 0 && sp.rebuys >= maxR;
+          const isSingle = maxR === 1;
+
+          if (expanded) {
+            return (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => undoRebuy(sp.id)}
+                  disabled={sp.rebuys === 0}
+                  className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#333] text-[#888] rounded cursor-pointer hover:bg-[#2a2040] hover:text-violet-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  −
+                </button>
+                <span className="text-[11px] text-violet-400 min-w-[44px] text-center">
+                  Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
+                </span>
+                <button
+                  onClick={() => doRebuy(sp.id)}
+                  disabled={atMax}
+                  className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#443366] text-violet-400 rounded cursor-pointer hover:bg-[#3a2060] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  +
+                </button>
+              </div>
+            );
+          }
+
+          // Collapsed — toggle style when maxRebuys === 1
+          if (isSingle) {
+            return (
               <button
-                onClick={() => undoRebuy(sp.id)}
-                disabled={sp.rebuys === 0}
-                className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#333] text-[#888] rounded cursor-pointer hover:bg-[#2a2040] hover:text-violet-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => sp.rebuys > 0 ? undoRebuy(sp.id) : doRebuy(sp.id)}
+                className={`text-[11px] rounded px-2 py-1 cursor-pointer border transition-colors ${
+                  sp.rebuys > 0
+                    ? 'bg-[#2a2040] border-[#443366] text-violet-400 hover:bg-[#2a1a1a] hover:border-[#664444] hover:text-red-400'
+                    : 'bg-[#2a2040] border-[#443366] text-violet-400 hover:bg-[#3a2060]'
+                }`}
               >
-                −
+                {sp.rebuys > 0 ? 'Ребай ✓' : 'Ребай'}
               </button>
-              <span className="text-[11px] text-violet-400 min-w-[44px] text-center">
-                Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
-              </span>
-              <button
-                onClick={() => doRebuy(sp.id)}
-                className="text-[13px] w-6 h-6 flex items-center justify-center bg-[#1a1a1a] border border-[#443366] text-violet-400 rounded cursor-pointer hover:bg-[#3a2060]"
-              >
-                +
-              </button>
-            </div>
-          ) : (
+            );
+          }
+
+          // Collapsed — counter style (default)
+          return (
             <button
-              onClick={() => doRebuy(sp.id)}
-              className="text-[11px] bg-[#2a2040] border border-[#443366] text-violet-400 rounded px-2 py-1 cursor-pointer hover:bg-[#3a2060]"
+              onClick={() => !atMax && doRebuy(sp.id)}
+              disabled={atMax}
+              className="text-[11px] bg-[#2a2040] border border-[#443366] text-violet-400 rounded px-2 py-1 cursor-pointer hover:bg-[#3a2060] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
             </button>
-          )
-        )}
+          );
+        })()}
 
         {/* Addon button — shows ±controls when expanded */}
         {activeSession.addonCost > 0 && (

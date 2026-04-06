@@ -15,6 +15,7 @@ export type Session = {
   initialStack: number    // chips
   rebuyCost: number       // RSD, 0 = disabled
   rebuyChips: number      // chips per rebuy
+  maxRebuys: number       // 0 = unlimited
   addonCost: number       // RSD, 0 = disabled
   addonChips: number      // chips per addon
   prizeSpots: number
