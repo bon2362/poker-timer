@@ -61,23 +61,23 @@ export function SlideshowOverlay({ url, timeLeft }: Props) {
         />
       )}
 
-      {/* Timer — bottom left */}
-      <div
-        className="absolute bottom-6 left-8 font-black text-white/85 tabular-nums tracking-[-2px] pointer-events-none select-none"
-        style={textStyle}
-      >
-        {formatTime(timeLeft)}
-      </div>
-
-      {/* Date — bottom right */}
-      {date && (
+      {/* Timer + date — centered */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none gap-2">
         <div
-          className="absolute bottom-6 right-8 font-black text-white/70 tracking-[-1px] pointer-events-none select-none text-right"
+          className="font-black text-white/85 tabular-nums tracking-[-2px]"
           style={textStyle}
         >
-          {date}
+          {formatTime(timeLeft)}
         </div>
-      )}
+        {date && (
+          <div
+            className="font-black text-white/70 tracking-[-1px]"
+            style={textStyle}
+          >
+            {date}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
