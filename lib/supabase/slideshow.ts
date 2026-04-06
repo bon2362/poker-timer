@@ -23,6 +23,7 @@ export async function uploadSlideshowPhoto(file: File): Promise<boolean> {
   const ext = file.name.split('.').pop() ?? 'jpg';
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await client.storage.from(BUCKET).upload(path, file);
+  if (error) console.error('[slideshow] upload error:', error.message, error);
   return !error;
 }
 
