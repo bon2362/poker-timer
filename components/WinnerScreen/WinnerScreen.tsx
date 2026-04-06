@@ -37,7 +37,7 @@ export function WinnerScreen() {
         )}
 
         <div className="text-[36px] font-black text-yellow-400 tabular-nums">
-          {stats.payouts[0]?.toLocaleString('ru')} ₽
+          {stats.payouts[0]?.toLocaleString('ru')} RSD
         </div>
 
         {runnerUps.length > 0 && (
@@ -48,7 +48,7 @@ export function WinnerScreen() {
               if (!p || !payout) return null;
               return (
                 <div key={sp.id} className="text-[#666] text-[14px]">
-                  {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} ₽
+                  {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
                 </div>
               );
             })}
