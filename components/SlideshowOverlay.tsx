@@ -7,7 +7,9 @@ type Props = { url: string; timeLeft: number };
 
 function parseDateFromUrl(url: string): string | null {
   const filename = decodeURIComponent(url.split('/').pop()?.split('?')[0] ?? '');
+  console.log('[slideshow] filename:', filename);
   const match = filename.match(/(\d{2})-(\d{2})-(\d{4})/);
+  console.log('[slideshow] date match:', match);
   if (!match) return null;
   const [, day, month, year] = match;
   const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
