@@ -1,11 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { useGame } from '@/context/GameContext';
+import { useTimer } from '@/context/TimerContext';
 import { PrizeConfig } from './PrizeConfig';
 import type { NewSessionData } from '@/types/game';
 
 export function SessionSetup() {
   const { players, sessionPlayers, activeSession, startSession } = useGame();
+  const { dispatch: timerDispatch } = useTimer();
 
   const [buyIn, setBuyIn] = useState(String(activeSession?.buyIn ?? 1000));
   const [initialStack, setInitialStack] = useState(String(activeSession?.initialStack ?? 2000));
@@ -49,6 +51,7 @@ export function SessionSetup() {
 
     setStarting(true);
     await startSession(data, Array.from(selectedPlayerIds));
+    timerDispatch({ type: 'RESTART' });
     setStarting(false);
   }
 
