@@ -10,6 +10,11 @@ import { SessionSetup } from './SessionSetup/SessionSetup';
 
 const CHANGELOG = [
   {
+    version: '4.3',
+    date: "06 April '26",
+    notes: 'Anchor-based таймер: точное восстановление после перезагрузки, синхронизация между устройствами без прыжков. Панель Фонд — кликабельная область. Заблокированные настройки при активной сессии.',
+  },
+  {
     version: '4.2',
     date: "05 April '26",
     notes: 'Управление игроками с аватарками. Настройка игровой сессии (взносы, стеки, ребай, аддон, призы). Live-трекинг: вылеты, ребаи, аддоны. Авторасчёт банка и выплат. Экран победителя.',
@@ -103,7 +108,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd }: Props) 
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.2</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.3</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
