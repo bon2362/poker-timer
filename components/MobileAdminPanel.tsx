@@ -118,7 +118,7 @@ export function MobileAdminPanel({ onClose }: Props) {
     .sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0));
 
   return (
-    <div className="flex flex-col h-screen bg-[#1a1a1a] text-white overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-[#1a1a1a] text-white overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#2a2a2a] shrink-0">
         <div>
@@ -142,7 +142,7 @@ export function MobileAdminPanel({ onClose }: Props) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 pb-8 flex flex-col gap-4">
           {/* Active players */}
           {activePlayers.length > 0 && (
             <div className="flex flex-col gap-3">

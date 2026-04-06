@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { GameProvider } from '@/context/GameContext';
 import { TimerProvider } from '@/context/TimerContext';
@@ -6,6 +6,12 @@ import { TimerProvider } from '@/context/TimerContext';
 export const metadata: Metadata = {
   title: 'Poker Timer',
   description: 'Poker tournament timer',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

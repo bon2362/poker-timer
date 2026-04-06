@@ -4,6 +4,20 @@ import { createContext, useContext, useReducer, useEffect, useCallback, ReactNod
 import type { Player, Session, SessionPlayer, NewSessionData } from '@/types/game';
 import { fetchPlayers, createPlayer, updatePlayer as updatePlayerDB, deletePlayer as deletePlayerDB } from '@/lib/supabase/players';
 import { fetchActiveSession, createSession, updateSessionPlayer, finishSession } from '@/lib/supabase/sessions';
+import { getClient } from '@/supabase/client';
+
+function rowToSessionPlayer(row: Record<string, unknown>): SessionPlayer {
+  return {
+    id: row.id as string,
+    sessionId: row.session_id as string,
+    playerId: row.player_id as string,
+    rebuys: row.rebuys as number,
+    hasAddon: row.has_addon as boolean,
+    status: row.status as SessionPlayer['status'],
+    finishPosition: row.finish_position as number | null,
+    eliminatedAt: row.eliminated_at as string | null,
+  };
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -116,6 +130,46 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
     load();
+  }, []);
+
+  // Realtime: sync session_players and sessions changes from other devices
+  useEffect(() => {
+    const client = getClient();
+    if (!client) return;
+
+    const channel = client
+      .channel('game-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'session_players' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
+            dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: sp });
+            // Show winner screen when winner is declared remotely
+            if (sp.status === 'winner') dispatch({ type: 'SHOW_WINNER' });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'sessions' },
+        async (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row.status === 'finished') {
+            dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
+            dispatch({ type: 'HIDE_WINNER' });
+          } else if (row.status === 'active') {
+            const sessionData = await fetchActiveSession();
+            if (sessionData) {
+              dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { client.removeChannel(channel); };
   }, []);
 
   const addPlayer = useCallback(async (name: string): Promise<Player | null> => {

@@ -90,7 +90,7 @@ export function MobileView() {
   }
 
   return (
-    <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
+    <div className={`flex flex-col h-[100dvh] overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
 
       {/* Top: blind info — double-tap to enter admin mode */}
       <div
