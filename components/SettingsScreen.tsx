@@ -63,12 +63,12 @@ const CHANGELOG = [
 function ChangelogModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 w-[340px] max-w-[90vw] shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 w-[340px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4 shrink-0">
           <h2 className="text-[14px] font-semibold text-[#ccc] tracking-[1px] uppercase">История версий</h2>
           <button onClick={onClose} className="text-[#555] text-[18px] hover:text-[#999] bg-transparent border-none cursor-pointer leading-none">✕</button>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 overflow-y-auto pr-1">
           {CHANGELOG.map(({ version, date, notes }) => (
             <div key={version}>
               <div className="flex items-baseline gap-2 mb-1">
