@@ -114,11 +114,10 @@ export function PlayerRow({ sp }: Props) {
             </div>
           ) : (
             <button
-              onClick={() => !sp.hasAddon && doAddon(sp.id)}
-              disabled={sp.hasAddon}
-              className={`text-[11px] rounded px-2 py-1 cursor-pointer border ${
+              onClick={() => sp.hasAddon ? undoAddon(sp.id) : doAddon(sp.id)}
+              className={`text-[11px] rounded px-2 py-1 cursor-pointer border transition-colors ${
                 sp.hasAddon
-                  ? 'bg-transparent border-[#333] text-[#444] cursor-not-allowed'
+                  ? 'bg-[#1a2a1a] border-[#336633] text-green-400 hover:bg-[#2a1a1a] hover:border-[#664444] hover:text-red-400'
                   : 'bg-[#1a2a1a] border-[#336633] text-green-400 hover:bg-[#2a3a2a]'
               }`}
             >
