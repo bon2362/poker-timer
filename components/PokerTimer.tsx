@@ -69,9 +69,12 @@ export function PokerTimer() {
     return () => document.removeEventListener('keydown', onKey);
   }, [activeSession, dispatch]);
 
-  // Load slideshow photos on mount
+  // Load slideshow photos on mount and preload them into browser cache
   useEffect(() => {
-    listSlideshowPhotos().then(setSlideshowUrls);
+    listSlideshowPhotos().then(urls => {
+      setSlideshowUrls(urls);
+      urls.forEach(url => { const img = new Image(); img.src = url; });
+    });
   }, []);
 
   async function handleSlideshowChanged() {
