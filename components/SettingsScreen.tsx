@@ -10,6 +10,11 @@ import { SessionSetup } from './SessionSetup/SessionSetup';
 
 const CHANGELOG = [
   {
+    version: '4.10',
+    date: "07 April '26",
+    notes: 'Улучшения слайдшоу: фото показывается целиком с размытым фоном, таймер вверху/дата внизу, фикс мерцания через прелоад, фикс скорости на новых устройствах.',
+  },
+  {
     version: '4.9',
     date: "06 April '26",
     notes: 'Слайдшоу фотографий на перерывах: загрузка фото в Supabase Storage, автозапуск во время перерыва, таймер поверх фото.',
@@ -139,7 +144,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd, onSlidesh
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.9</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.10</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
