@@ -10,81 +10,127 @@ import { playWinnerFanfare } from '@/lib/audio';
 export function WinnerScreen() {
   const { activeSession, sessionPlayers, players, finishGame } = useGame();
   const [winnerImageUrl, setWinnerImageUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    playWinnerFanfare();
-    getWinnerImageUrl().then(url => setWinnerImageUrl(url));
-  }, []);
-
-  if (!activeSession) return null;
+  const [imageReady, setImageReady] = useState(false);
 
   const winner = sessionPlayers.find(sp => sp.status === 'winner');
   const winnerPlayer = winner ? players.find(p => p.id === winner.playerId) : null;
-  const stats = calcGameStats(activeSession, sessionPlayers);
 
+  useEffect(() => {
+    playWinnerFanfare();
+    if (winnerPlayer) {
+      getWinnerImageUrl(winnerPlayer.id).then(url => setWinnerImageUrl(url));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winnerPlayer?.id]);
+
+  if (!activeSession) return null;
+
+  const stats = calcGameStats(activeSession, sessionPlayers);
   const runnerUps = sessionPlayers
     .filter(sp => sp.status === 'eliminated' && (sp.finishPosition ?? 99) <= activeSession.prizeSpots)
     .sort((a, b) => (a.finishPosition ?? 99) - (b.finishPosition ?? 99));
 
+  /* ── Fullscreen image mode ── */
+  if (winnerImageUrl) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-hidden bg-black">
+        <ConfettiLayer />
+
+        {/* Background image — full screen */}
+        <img
+          src={winnerImageUrl}
+          alt="Победитель"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: imageReady ? 1 : 0, transition: 'opacity 0.6s ease' }}
+          onLoad={() => setImageReady(true)}
+        />
+
+        {/* Dark gradient overlay at bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black via-black/80 to-transparent" />
+
+        {/* Content — anchored to bottom */}
+        <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 pb-10 px-8 text-center">
+
+          {/* Winner name + title */}
+          {winnerPlayer && (
+            <div>
+              <div className="text-[13px] text-violet-400 tracking-[5px] uppercase font-semibold mb-1">
+                Победитель
+              </div>
+              <h1 className="text-[42px] font-black text-white uppercase tracking-[2px] leading-tight drop-shadow-lg">
+                {winnerPlayer.name}
+              </h1>
+            </div>
+          )}
+
+          {/* Payout */}
+          <div className="text-[38px] font-black text-yellow-400 tabular-nums drop-shadow-lg">
+            {stats.payouts[0]?.toLocaleString('ru')} RSD
+          </div>
+
+          {/* Runner-ups */}
+          {runnerUps.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {runnerUps.map(sp => {
+                const p = players.find(pl => pl.id === sp.playerId);
+                const payout = stats.payouts[(sp.finishPosition ?? 2) - 1];
+                if (!p || !payout) return null;
+                return (
+                  <div key={sp.id} className="flex items-center gap-2 justify-center">
+                    <Avatar player={p} size={24} />
+                    <span className="text-[#888] text-[13px]">
+                      {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            onClick={finishGame}
+            className="mt-2 bg-black/40 border border-white/20 text-white/60 rounded-xl px-8 py-3 text-[14px] cursor-pointer hover:border-white/40 hover:text-white/90 transition-colors backdrop-blur-sm"
+          >
+            Завершить игру
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Default mode (no image) ── */
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0d0d0d] overflow-hidden">
-      {/* CSS confetti */}
       <ConfettiLayer />
 
-      <div className="flex flex-col items-center gap-6 text-center px-8 relative z-10 w-full max-w-[640px]">
+      <div className="flex flex-col items-center gap-6 text-center px-8 relative z-10 w-full max-w-[480px]">
+        <div className="text-[48px]">🏆</div>
 
-        {/* Winner image (16:9) or avatar */}
-        {winnerImageUrl ? (
-          <div className="w-full relative rounded-2xl overflow-hidden shadow-2xl" style={{ aspectRatio: '16/9' }}>
-            <img
-              src={winnerImageUrl}
-              alt="Победитель"
-              className="w-full h-full object-cover"
-            />
-            {/* Name overlay */}
-            {winnerPlayer && (
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-6 py-4">
-                <div className="text-[28px] font-black text-white uppercase tracking-[2px]">
-                  {winnerPlayer.name}
-                </div>
-                <div className="text-[13px] text-violet-400 tracking-[4px] uppercase font-semibold">
-                  Победитель
-                </div>
-              </div>
-            )}
+        {winnerPlayer && (
+          <div className="flex flex-col items-center gap-3">
+            <Avatar player={winnerPlayer} size={160} />
+            <h1 className="text-[32px] font-black text-white uppercase tracking-[2px]">
+              {winnerPlayer.name}
+            </h1>
+            <div className="text-[16px] text-violet-400 tracking-[4px] uppercase font-semibold">
+              Победитель
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="text-[48px]">🏆</div>
-            {winnerPlayer && (
-              <div className="flex flex-col items-center gap-3">
-                <Avatar player={winnerPlayer} size={160} />
-                <h1 className="text-[32px] font-black text-white uppercase tracking-[2px]">
-                  {winnerPlayer.name}
-                </h1>
-                <div className="text-[16px] text-violet-400 tracking-[4px] uppercase font-semibold">
-                  Победитель
-                </div>
-              </div>
-            )}
-          </>
         )}
 
-        {/* Payout */}
         <div className="text-[36px] font-black text-yellow-400 tabular-nums">
           {stats.payouts[0]?.toLocaleString('ru')} RSD
         </div>
 
-        {/* Runner-ups with avatars */}
         {runnerUps.length > 0 && (
-          <div className="flex flex-col gap-2 mt-1">
+          <div className="flex flex-col gap-2">
             {runnerUps.map(sp => {
               const p = players.find(pl => pl.id === sp.playerId);
               const payout = stats.payouts[(sp.finishPosition ?? 2) - 1];
               if (!p || !payout) return null;
               return (
                 <div key={sp.id} className="flex items-center gap-3 justify-center">
-                  <Avatar player={p} size={32} />
+                  <Avatar player={p} size={28} />
                   <span className="text-[#666] text-[14px]">
                     {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
                   </span>
@@ -96,7 +142,7 @@ export function WinnerScreen() {
 
         <button
           onClick={finishGame}
-          className="mt-4 bg-[#1e1e1e] border border-[#333] text-[#888] rounded-xl px-8 py-3 text-[15px] cursor-pointer hover:border-[#555] hover:text-[#ccc] transition-colors"
+          className="mt-2 bg-[#1e1e1e] border border-[#333] text-[#888] rounded-xl px-8 py-3 text-[15px] cursor-pointer hover:border-[#555] hover:text-[#ccc] transition-colors"
         >
           Завершить игру
         </button>
@@ -106,11 +152,11 @@ export function WinnerScreen() {
 }
 
 function ConfettiLayer() {
-  const pieces = Array.from({ length: 24 }, (_, i) => i);
+  const pieces = Array.from({ length: 28 }, (_, i) => i);
   const colors = ['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#db2777'];
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
       <style>{`
         @keyframes confetti-fall {
           0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
