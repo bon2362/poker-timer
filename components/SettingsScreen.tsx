@@ -8,7 +8,11 @@ import { listSlideshowPhotos, uploadSlideshowPhoto, deleteAllSlideshowPhotos } f
 import { PlayerManager } from './PlayerManager/PlayerManager';
 import { SessionSetup } from './SessionSetup/SessionSetup';
 
-const CHANGELOG = [
+type ChangelogEntry =
+  | { version: string; date: string; notes: string; divider?: false }
+  | { divider: true; label: string };
+
+const CHANGELOG: ChangelogEntry[] = [
   {
     version: '4.13',
     date: "08 April '26",
@@ -79,10 +83,21 @@ const CHANGELOG = [
     date: "05 April '26",
     notes: 'Переезд на Next.js 15 App Router + TypeScript + Tailwind. Supabase Realtime. Полная декомпозиция на компоненты, 38 unit-тестов.',
   },
+  { divider: true, label: 'Предыстория' },
   {
-    version: '3.19',
+    version: '3.x',
+    date: "April '26",
+    notes: 'Одностраничное приложение на голом JS. Голосовые уведомления, таблица покерных комбинаций, overtime-режим, предупреждение за 1 минуту до смены блайндов — всё это появилось здесь. Написано уже после первой игры, на волне желания сделать лучше.',
+  },
+  {
+    version: '2.0',
     date: "04 April '26",
-    notes: 'Голосовые уведомления, таблица покерных комбинаций, overtime-режим, предупреждение за 1 минуту.',
+    notes: 'Настройки блайндов, длительности уровней и перерывов. Именно эта версия крутилась на экране 4 апреля 2026 — на первой игре. Написана в спешке, но выдержала.',
+  },
+  {
+    version: '1.0',
+    date: "April '26",
+    notes: 'Одностраничный таймер, написанный за полчаса. Блайнды зашиты в код, никаких настроек. Просто работало.',
   },
 ];
 
@@ -95,15 +110,26 @@ function ChangelogModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-[#555] text-[18px] hover:text-[#999] bg-transparent border-none cursor-pointer leading-none">✕</button>
         </div>
         <div className="flex flex-col gap-4 overflow-y-auto pr-1">
-          {CHANGELOG.map(({ version, date, notes }) => (
-            <div key={version}>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-violet-400 font-bold text-[13px]">v{version}</span>
-                <span className="text-[#444] text-[11px]">{date}</span>
+          {CHANGELOG.map((entry, i) => {
+            if (entry.divider) {
+              return (
+                <div key={`divider-${i}`} className="flex items-center gap-3 pt-1">
+                  <div className="flex-1 h-px bg-[#2a2a2a]" />
+                  <span className="text-[10px] text-[#444] tracking-[2px] uppercase shrink-0">{entry.label}</span>
+                  <div className="flex-1 h-px bg-[#2a2a2a]" />
+                </div>
+              );
+            }
+            return (
+              <div key={entry.version}>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-violet-400 font-bold text-[13px]">v{entry.version}</span>
+                  <span className="text-[#444] text-[11px]">{entry.date}</span>
+                </div>
+                <p className="text-[#888] text-[12px] leading-[1.6]">{entry.notes}</p>
               </div>
-              <p className="text-[#888] text-[12px] leading-[1.6]">{notes}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
