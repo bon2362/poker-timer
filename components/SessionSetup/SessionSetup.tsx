@@ -13,7 +13,7 @@ export function SessionSetup() {
   const [initialStack, setInitialStack] = useState(String(activeSession?.initialStack ?? 2000));
   const [rebuyCost, setRebuyCost] = useState(String(activeSession?.rebuyCost ?? 1000));
   const [rebuyChips, setRebuyChips] = useState(String(activeSession?.rebuyChips ?? 2000));
-  const [maxRebuys, setMaxRebuys] = useState(String(activeSession?.maxRebuys ?? 0));
+  const [maxRebuys, setMaxRebuys] = useState(String(activeSession?.maxRebuys ?? 1));
   const [addonCost, setAddonCost] = useState(String(activeSession?.addonCost ?? 1000));
   const [addonChips, setAddonChips] = useState(String(activeSession?.addonChips ?? 3000));
   const [prizeSpots, setPrizeSpots] = useState(activeSession?.prizeSpots ?? 3);

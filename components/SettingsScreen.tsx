@@ -10,6 +10,11 @@ import { SessionSetup } from './SessionSetup/SessionSetup';
 
 const CHANGELOG = [
   {
+    version: '4.12',
+    date: "08 April '26",
+    notes: 'Изображение победителя 16:9 + фанфары. Управление экраном (игроки/комбо) из мобильного админа с синхронизацией. По умолчанию 1 ребай. На последнем уровне убраны "далее финал" и лишние звуковые уведомления.',
+  },
+  {
     version: '4.11',
     date: "08 April '26",
     notes: 'Фикс инпутов настроек: убраны стрелки (spinners), надёжный ввод цифр, нормализация пустых полей. Настройки слайдшоу больше не закрывают экран. Кнопка сохранения таймера не закрывает настройки.',
@@ -150,7 +155,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.11</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.12</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"

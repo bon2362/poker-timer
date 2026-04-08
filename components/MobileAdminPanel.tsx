@@ -1,5 +1,6 @@
 'use client';
 import { useGame } from '@/context/GameContext';
+import { useTimer } from '@/context/TimerContext';
 import { Avatar } from './PlayerManager/PlayerManager';
 import type { SessionPlayer, Player } from '@/types/game';
 
@@ -111,11 +112,19 @@ function EliminatedAdminRow({ sp, player }: { sp: SessionPlayer; player: Player 
 /* ── Main admin panel ── */
 export function MobileAdminPanel({ onClose }: Props) {
   const { activeSession, sessionPlayers, players } = useGame();
+  const { state: timerState, dispatch: timerDispatch } = useTimer();
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
   const eliminated = sessionPlayers
     .filter(p => p.status === 'eliminated' || p.status === 'winner')
     .sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0));
+
+  const btnToggle = (active: boolean) =>
+    `flex-1 py-3 rounded-xl border font-semibold text-[13px] cursor-pointer active:scale-95 transition-all ${
+      active
+        ? 'bg-violet-900 border-violet-600 text-violet-200'
+        : 'bg-[#242424] border-[#333] text-[#555]'
+    }`;
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#1a1a1a] text-white overflow-hidden">
@@ -131,6 +140,25 @@ export function MobileAdminPanel({ onClose }: Props) {
         >
           ✕
         </button>
+      </div>
+
+      {/* Display toggles */}
+      <div className="px-4 pt-4 pb-2 shrink-0">
+        <div className="text-[11px] text-[#444] tracking-[2px] uppercase mb-2 px-1">Экран</div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => timerDispatch({ type: 'TOGGLE_GAME_PANEL' })}
+            className={btnToggle(timerState.config.showPlayers)}
+          >
+            👥 Игроки
+          </button>
+          <button
+            onClick={() => timerDispatch({ type: 'TOGGLE_COMBOS' })}
+            className={btnToggle(timerState.config.showCombos !== false)}
+          >
+            🃏 Комбинации
+          </button>
+        </div>
       </div>
 
       {/* Content */}

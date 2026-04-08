@@ -20,12 +20,9 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       const newTimeLeft = computeTimeLeft(state);
       const isLastStage = state.currentStage === state.stages.length - 1;
 
-      // Overtime: last stage, timer continues negative
+      // Overtime: last stage, timer continues negative (no sound — level is infinite)
       if (isLastStage && newTimeLeft <= 0) {
-        // First entry into overtime — play blindsUp
-        const pendingSound: SoundEvent | null =
-          state.timeLeft > 0 && newTimeLeft <= 0 ? 'blindsUp' : null;
-        return { ...state, timeLeft: newTimeLeft, pendingSound };
+        return { ...state, timeLeft: newTimeLeft, pendingSound: null };
       }
 
       // 1-minute warning (robust: <= 60 transition, not exact === 61)
@@ -35,7 +32,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         warnedOneMin = true;
         const cur = state.stages[state.currentStage];
         const nxt = state.stages[state.currentStage + 1];
-        if (cur.type === 'level') {
+        if (cur.type === 'level' && !isLastStage) {
           pendingSound = nxt?.type === 'break' ? 'warnBreak' : 'warnBlinds';
         } else if (cur.type === 'break') {
           pendingSound = 'warnEndBreak';
@@ -198,6 +195,18 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
 
     case 'TOGGLE_COMBOS': {
       const newConfig = { ...state.config, showCombos: !state.config.showCombos };
+      saveConfig(newConfig);
+      return { ...state, config: newConfig };
+    }
+
+    case 'TOGGLE_GAME_PANEL': {
+      const newConfig = { ...state.config, showPlayers: !state.config.showPlayers };
+      saveConfig(newConfig);
+      return { ...state, config: newConfig };
+    }
+
+    case 'RESTORE_DISPLAY': {
+      const newConfig = { ...state.config, showCombos: action.showCombos, showPlayers: action.showPlayers };
       saveConfig(newConfig);
       return { ...state, config: newConfig };
     }

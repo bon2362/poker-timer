@@ -5,6 +5,7 @@ export const DEFAULT_CONFIG: Config = {
   breakDuration: 10,
   breakEvery: 2,
   showCombos: true,
+  showPlayers: true,
   slideshowEnabled: false,
   slideshowSpeed: 5,
   blindLevels: [

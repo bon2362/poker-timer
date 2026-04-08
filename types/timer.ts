@@ -8,6 +8,7 @@ export type Config = {
   breakDuration: number;   // минуты
   breakEvery: number;
   showCombos: boolean;
+  showPlayers: boolean;    // показывать панель игроков на главном экране
   blindLevels: BlindLevel[];
   slideshowEnabled: boolean;
   slideshowSpeed: number;  // секунды между фото
@@ -67,6 +68,8 @@ export type Action =
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }
+  | { type: 'TOGGLE_GAME_PANEL' }
+  | { type: 'RESTORE_DISPLAY'; showCombos: boolean; showPlayers: boolean }
   | { type: 'JUMP_TO_END' }
   | { type: 'RESTORE_STATE'; payload: {
       currentStage: number; anchorTs: number; elapsedBeforePause: number;

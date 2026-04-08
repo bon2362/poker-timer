@@ -21,6 +21,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   // Echo suppression: skip sync effect when state came from a broadcast
   const fromBroadcastRef = useRef(false);
+  const fromDisplayBroadcastRef = useRef(false);
 
   // Track previous sync-relevant values to detect changes
   const prevSyncRef = useRef({
@@ -28,6 +29,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     anchorTs: state.anchorTs,
     isPaused: state.isPaused,
     isOver: state.isOver,
+  });
+
+  const prevDisplayRef = useRef({
+    showCombos: state.config.showCombos,
+    showPlayers: state.config.showPlayers,
   });
 
   // Timer tick — just recomputes timeLeft from anchor, no decrement
@@ -63,6 +69,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     channel.on('broadcast', { event: 'state' }, ({ payload }) => {
       fromBroadcastRef.current = true;
       dispatch({ type: 'RESTORE_STATE', payload });
+    });
+    channel.on('broadcast', { event: 'display' }, ({ payload }) => {
+      fromDisplayBroadcastRef.current = true;
+      dispatch({ type: 'RESTORE_DISPLAY', showCombos: payload.showCombos, showPlayers: payload.showPlayers });
     });
     channel.subscribe();
     return () => { channel.unsubscribe(); };
@@ -113,6 +123,27 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       channelRef.current.send({ type: 'broadcast', event: 'state', payload });
     }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
+
+  // --- Broadcast display config changes (showCombos / showPlayers) ---
+  useEffect(() => {
+    if (fromDisplayBroadcastRef.current) {
+      fromDisplayBroadcastRef.current = false;
+      prevDisplayRef.current = { showCombos: state.config.showCombos, showPlayers: state.config.showPlayers };
+      return;
+    }
+
+    const prev = prevDisplayRef.current;
+    if (state.config.showCombos === prev.showCombos && state.config.showPlayers === prev.showPlayers) return;
+
+    prevDisplayRef.current = { showCombos: state.config.showCombos, showPlayers: state.config.showPlayers };
+
+    if (channelRef.current.state === 'joined') {
+      channelRef.current.send({
+        type: 'broadcast', event: 'display',
+        payload: { showCombos: state.config.showCombos, showPlayers: state.config.showPlayers },
+      });
+    }
+  }, [state.config.showCombos, state.config.showPlayers]);
 
   return (
     <TimerContext.Provider value={{ state, dispatch }}>

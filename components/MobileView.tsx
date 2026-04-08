@@ -87,7 +87,7 @@ export function MobileView() {
   // Next stage label
   const nextStage = state.stages[state.currentStage + 1];
   let nextText = '';
-  if (!nextStage) nextText = 'Финал';
+  if (!nextStage) nextText = '';
   else if (nextStage.type === 'break') {
     const afterBreak = state.stages[state.currentStage + 2];
     const after = afterBreak?.type === 'level' ? ` → ${afterBreak.sb}/${afterBreak.bb}` : '';

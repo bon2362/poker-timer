@@ -1,11 +1,21 @@
 // components/WinnerScreen/WinnerScreen.tsx
 'use client';
+import { useEffect, useState } from 'react';
 import { useGame } from '@/context/GameContext';
 import { calcGameStats } from '@/lib/game';
 import { Avatar } from '../PlayerManager/PlayerManager';
+import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
+import { playWinnerFanfare } from '@/lib/audio';
 
 export function WinnerScreen() {
   const { activeSession, sessionPlayers, players, finishGame } = useGame();
+  const [winnerImageUrl, setWinnerImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    playWinnerFanfare();
+    getWinnerImageUrl().then(url => setWinnerImageUrl(url));
+  }, []);
+
   if (!activeSession) return null;
 
   const winner = sessionPlayers.find(sp => sp.status === 'winner');
@@ -21,34 +31,63 @@ export function WinnerScreen() {
       {/* CSS confetti */}
       <ConfettiLayer />
 
-      <div className="flex flex-col items-center gap-6 text-center px-8 relative z-10">
-        <div className="text-[48px]">🏆</div>
+      <div className="flex flex-col items-center gap-6 text-center px-8 relative z-10 w-full max-w-[640px]">
 
-        {winnerPlayer && (
-          <div className="flex flex-col items-center gap-3">
-            <Avatar player={winnerPlayer} size={160} />
-            <h1 className="text-[32px] font-black text-white uppercase tracking-[2px]">
-              {winnerPlayer.name}
-            </h1>
-            <div className="text-[16px] text-violet-400 tracking-[4px] uppercase font-semibold">
-              Победитель
-            </div>
+        {/* Winner image (16:9) or avatar */}
+        {winnerImageUrl ? (
+          <div className="w-full relative rounded-2xl overflow-hidden shadow-2xl" style={{ aspectRatio: '16/9' }}>
+            <img
+              src={winnerImageUrl}
+              alt="Победитель"
+              className="w-full h-full object-cover"
+            />
+            {/* Name overlay */}
+            {winnerPlayer && (
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-6 py-4">
+                <div className="text-[28px] font-black text-white uppercase tracking-[2px]">
+                  {winnerPlayer.name}
+                </div>
+                <div className="text-[13px] text-violet-400 tracking-[4px] uppercase font-semibold">
+                  Победитель
+                </div>
+              </div>
+            )}
           </div>
+        ) : (
+          <>
+            <div className="text-[48px]">🏆</div>
+            {winnerPlayer && (
+              <div className="flex flex-col items-center gap-3">
+                <Avatar player={winnerPlayer} size={160} />
+                <h1 className="text-[32px] font-black text-white uppercase tracking-[2px]">
+                  {winnerPlayer.name}
+                </h1>
+                <div className="text-[16px] text-violet-400 tracking-[4px] uppercase font-semibold">
+                  Победитель
+                </div>
+              </div>
+            )}
+          </>
         )}
 
+        {/* Payout */}
         <div className="text-[36px] font-black text-yellow-400 tabular-nums">
           {stats.payouts[0]?.toLocaleString('ru')} RSD
         </div>
 
+        {/* Runner-ups with avatars */}
         {runnerUps.length > 0 && (
-          <div className="flex flex-col gap-1 mt-2">
+          <div className="flex flex-col gap-2 mt-1">
             {runnerUps.map(sp => {
               const p = players.find(pl => pl.id === sp.playerId);
               const payout = stats.payouts[(sp.finishPosition ?? 2) - 1];
               if (!p || !payout) return null;
               return (
-                <div key={sp.id} className="text-[#666] text-[14px]">
-                  {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
+                <div key={sp.id} className="flex items-center gap-3 justify-center">
+                  <Avatar player={p} size={32} />
+                  <span className="text-[#666] text-[14px]">
+                    {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
+                  </span>
                 </div>
               );
             })}

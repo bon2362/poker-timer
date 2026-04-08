@@ -19,7 +19,6 @@ export function PokerTimer() {
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [gamePanelOpen, setGamePanelOpen] = useState(false);
   const gamePanelAutoOpenedRef = useRef(false);
 
   // Slideshow state
@@ -29,16 +28,16 @@ export function PokerTimer() {
   const slideshowIndexRef = useRef(0);
   const slideshowShuffledRef = useRef<number[]>([]);
 
-  // Auto-open panel when session becomes active
+  // Auto-open panel when session becomes active (if not already explicitly hidden)
   useEffect(() => {
     if (activeSession && !gamePanelAutoOpenedRef.current) {
-      setGamePanelOpen(true);
+      dispatch({ type: 'RESTORE_DISPLAY', showCombos: state.config.showCombos, showPlayers: true });
       gamePanelAutoOpenedRef.current = true;
     }
     if (!activeSession) {
       gamePanelAutoOpenedRef.current = false;
-      setGamePanelOpen(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession]);
 
   // Auto-hide controls on mouse inactivity
@@ -133,11 +132,11 @@ export function PokerTimer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnBreak, state.config.slideshowEnabled, slideshowUrls.length]);
 
-  // Next blind info
+  // Next blind info (last stage has no "next" — level is infinite)
   const nextStage = state.stages[state.currentStage + 1];
   let nextText = '';
   if (!nextStage) {
-    nextText = 'Финал';
+    nextText = '';
   } else if (nextStage.type === 'break') {
     nextText = `☕ Перерыв ${state.config.breakDuration} мин`;
   } else {
@@ -271,7 +270,7 @@ export function PokerTimer() {
 
       {/* Game panel */}
       {activeSession && (
-        <GamePanel isOpen={gamePanelOpen} onToggle={() => setGamePanelOpen(v => !v)} />
+        <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
       )}
 
       {/* Winner screen */}
