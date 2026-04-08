@@ -172,8 +172,12 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         isOver: false,
         warnedOneMin: false,
         pendingSound: null,
-        screen: 'timer',
       };
+    }
+
+    case 'SAVE_DISPLAY_CONFIG': {
+      saveConfig(action.config);
+      return { ...state, config: action.config };
     }
 
     case 'CLEAR_SOUND': {

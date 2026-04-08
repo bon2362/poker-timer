@@ -63,6 +63,7 @@ export type Action =
   | { type: 'RESTART' }
   | { type: 'OPEN_SETTINGS' }
   | { type: 'SAVE_SETTINGS'; config: Config }
+  | { type: 'SAVE_DISPLAY_CONFIG'; config: Config }
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }

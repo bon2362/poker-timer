@@ -94,6 +94,10 @@ export function PokerTimer() {
     dispatch({ type: 'SAVE_SETTINGS', config });
   }, [dispatch]);
 
+  const handleSaveDisplayConfig = useCallback((config: Config) => {
+    dispatch({ type: 'SAVE_DISPLAY_CONFIG', config });
+  }, [dispatch]);
+
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
@@ -145,6 +149,7 @@ export function PokerTimer() {
       <SettingsScreen
         config={state.config}
         onSave={handleSaveSettings}
+        onDisplaySave={handleSaveDisplayConfig}
         onClose={() => dispatch({ type: 'CLOSE_SETTINGS' })}
         onJumpToEnd={() => {
           dispatch({ type: 'JUMP_TO_END' });

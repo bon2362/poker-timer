@@ -10,6 +10,11 @@ import { SessionSetup } from './SessionSetup/SessionSetup';
 
 const CHANGELOG = [
   {
+    version: '4.11',
+    date: "08 April '26",
+    notes: 'Фикс инпутов настроек: убраны стрелки (spinners), надёжный ввод цифр, нормализация пустых полей. Настройки слайдшоу больше не закрывают экран. Кнопка сохранения таймера не закрывает настройки.',
+  },
+  {
     version: '4.10',
     date: "07 April '26",
     notes: 'Улучшения слайдшоу: фото показывается целиком с размытым фоном, таймер вверху/дата внизу, фикс мерцания через прелоад, фикс скорости на новых устройствах.',
@@ -100,6 +105,7 @@ type Tab = 'tournament' | 'players' | 'display';
 type Props = {
   config: Config;
   onSave: (config: Config) => void;
+  onDisplaySave: (config: Config) => void;
   onClose: () => void;
   onJumpToEnd?: () => void;
   onSlideshowChanged: () => void;
@@ -112,7 +118,7 @@ type FormErrors = {
   blinds?: string;
 };
 
-export function SettingsScreen({ config, onSave, onClose, onJumpToEnd, onSlideshowChanged }: Props) {
+export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpToEnd, onSlideshowChanged }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('tournament');
   const [showChangelog, setShowChangelog] = useState(false);
 
@@ -144,7 +150,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd, onSlidesh
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.10</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.11</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
@@ -177,7 +183,7 @@ export function SettingsScreen({ config, onSave, onClose, onJumpToEnd, onSlidesh
           <TournamentTab config={config} onSave={onSave} onClose={onClose} />
         )}
         {activeTab === 'players' && <PlayerManager />}
-        {activeTab === 'display' && <DisplayTab config={config} onSave={onSave} onSlideshowChanged={onSlideshowChanged} />}
+        {activeTab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} onSlideshowChanged={onSlideshowChanged} />}
       </div>
     </div>
   );
@@ -240,9 +246,9 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
   const blindInputBase = 'bg-[#242424] border border-[#333] rounded-[6px] text-white px-[10px] py-[6px] text-[15px] w-[90px] text-right tabular-nums focus:outline-none focus:border-violet-600 focus:bg-[#2a2a2a]';
 
   const timeFields = [
-    { label: 'Длительность уровня', id: 'level', val: levelDuration, set: setLevelDuration, unit: 'мин', err: errors.levelDuration },
-    { label: 'Перерыв', id: 'break', val: breakDuration, set: setBreakDuration, unit: 'мин', err: errors.breakDuration },
-    { label: 'Перерыв каждые', id: 'every', val: breakEvery, set: setBreakEvery, unit: 'уровня', err: errors.breakEvery },
+    { label: 'Длительность уровня', id: 'level', val: levelDuration, set: setLevelDuration, unit: 'мин', err: errors.levelDuration, fallback: String(DEFAULT_CONFIG.levelDuration) },
+    { label: 'Перерыв', id: 'break', val: breakDuration, set: setBreakDuration, unit: 'мин', err: errors.breakDuration, fallback: String(DEFAULT_CONFIG.breakDuration) },
+    { label: 'Перерыв каждые', id: 'every', val: breakEvery, set: setBreakEvery, unit: 'уровня', err: errors.breakEvery, fallback: String(DEFAULT_CONFIG.breakEvery) },
   ];
 
   return (
@@ -251,12 +257,18 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
       <div>
         <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Время</div>
         <div className="flex gap-3">
-          {timeFields.map(({ label, id, val, set, unit, err }) => (
+          {timeFields.map(({ label, id, val, set, unit, err, fallback }) => (
             <div key={id} className="flex-1 bg-[#242424] rounded-lg p-[12px_14px]">
               <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-[6px]">{label}</label>
               <div className="flex items-center gap-2">
-                <input type="number" min="1" max="999" value={val} onChange={e => set(e.target.value)}
-                  className={`${inputBase} ${err ? 'border-red-500' : ''}`} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={val}
+                  onChange={e => set(e.target.value.replace(/\D/g, ''))}
+                  onBlur={() => { if (!parseInt(val, 10)) set(fallback); }}
+                  className={`${inputBase} ${err ? 'border-red-500' : ''}`}
+                />
                 <span className="text-[#555] text-[13px]">{unit}</span>
               </div>
               {err && <div className="text-red-500 text-[11px] mt-1">{err}</div>}
@@ -290,10 +302,10 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
                   <tr>
                     <td className="px-2 py-[3px] text-[#444] text-[12px] text-center">{levelNum}</td>
                     <td className="px-2 py-[3px]">
-                      <input type="number" min="1" value={level.sb || ''} onChange={e => updateBlind(i, 'sb', e.target.value)} className={blindInputBase} />
+                      <input type="text" inputMode="numeric" value={level.sb || ''} onChange={e => updateBlind(i, 'sb', e.target.value.replace(/\D/g, ''))} className={blindInputBase} />
                     </td>
                     <td className="px-2 py-[3px]">
-                      <input type="number" min="1" value={level.bb || ''} onChange={e => updateBlind(i, 'bb', e.target.value)} className={blindInputBase} />
+                      <input type="text" inputMode="numeric" value={level.bb || ''} onChange={e => updateBlind(i, 'bb', e.target.value.replace(/\D/g, ''))} className={blindInputBase} />
                     </td>
                     <td className="px-2 py-[3px]">
                       <button onClick={() => removeBlind(i)} className="bg-transparent border-none text-[#444] cursor-pointer text-[16px] px-2 py-1 rounded hover:text-red-500 hover:bg-[#2a1a1a]">✕</button>
@@ -329,7 +341,7 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
             enabled:cursor-pointer enabled:hover:bg-violet-800
             disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          Сохранить настройки таймера
+          Применить время и блайнды
         </button>
       </div>
     </div>
@@ -338,7 +350,9 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
 
 // ── Display Tab ───────────────────────────────────────────────────────────
 
-function DisplayTab({ config, onSave, onSlideshowChanged }: { config: Config; onSave: (c: Config) => void; onSlideshowChanged: () => void }) {
+function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Config; onDisplaySave: (c: Config) => void; onSlideshowChanged: () => void }) {
+  const [slideshowEnabled, setSlideshowEnabled] = useState(config.slideshowEnabled);
+  const [slideshowSpeed, setSlideshowSpeed] = useState(String(config.slideshowSpeed ?? 5));
   const [photoCount, setPhotoCount] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -396,8 +410,11 @@ function DisplayTab({ config, onSave, onSlideshowChanged }: { config: Config; on
         <label className="flex items-center gap-3 bg-[#242424] border border-[#333] rounded-lg px-4 py-3 cursor-pointer mb-3">
           <input
             type="checkbox"
-            checked={config.slideshowEnabled}
-            onChange={e => onSave({ ...config, slideshowEnabled: e.target.checked })}
+            checked={slideshowEnabled}
+            onChange={e => {
+              setSlideshowEnabled(e.target.checked);
+              onDisplaySave({ ...config, slideshowEnabled: e.target.checked, slideshowSpeed: Math.max(1, parseInt(slideshowSpeed, 10) || 5) });
+            }}
             className="w-4 h-4 accent-violet-600 cursor-pointer"
           />
           <span className="text-[14px] text-[#ccc]">Показывать фото во время перерыва</span>
@@ -407,9 +424,15 @@ function DisplayTab({ config, onSave, onSlideshowChanged }: { config: Config; on
           <div className="bg-[#242424] rounded-lg p-3">
             <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-2">Смена фото (сек)</label>
             <input
-              type="number" min="1" max="60"
-              value={config.slideshowSpeed}
-              onChange={e => onSave({ ...config, slideshowSpeed: Math.max(1, parseInt(e.target.value) || 5) })}
+              type="text"
+              inputMode="numeric"
+              value={slideshowSpeed}
+              onChange={e => setSlideshowSpeed(e.target.value.replace(/\D/g, ''))}
+              onBlur={() => {
+                const n = Math.max(1, parseInt(slideshowSpeed, 10) || 5);
+                setSlideshowSpeed(String(n));
+                onDisplaySave({ ...config, slideshowEnabled, slideshowSpeed: n });
+              }}
               className="bg-[#333] border border-[#444] rounded-[6px] text-white px-3 py-2 text-[15px] font-bold w-full focus:outline-none focus:border-violet-600 tabular-nums"
             />
           </div>

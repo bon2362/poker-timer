@@ -58,7 +58,7 @@ export function SessionSetup() {
   }
 
   const numInput = (disabled: boolean) =>
-    `bg-[#333] border rounded-[6px] text-white px-3 py-2 text-[15px] font-bold w-full focus:outline-none tabular-nums ${
+    `bg-[#333] border rounded-[6px] text-white px-3 py-2 text-[15px] font-bold w-full focus:outline-none tabular-nums [appearance:textfield] ${
       disabled
         ? 'border-[#333] text-[#666] cursor-not-allowed'
         : 'border-[#444] focus:border-violet-600'
@@ -89,10 +89,11 @@ export function SessionSetup() {
           <div key={label} className="bg-[#242424] rounded-lg p-3">
             <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-2">{label}</label>
             <input
-              type="number"
-              min="0"
+              type="text"
+              inputMode="numeric"
               value={val}
-              onChange={e => !locked && set(e.target.value)}
+              onChange={e => !locked && set(e.target.value.replace(/\D/g, ''))}
+              onBlur={() => { if (!locked && val === '') set('0'); }}
               disabled={locked}
               className={numInput(locked)}
             />
@@ -107,10 +108,11 @@ export function SessionSetup() {
             Макс. ребаев (0 = без лимита)
           </label>
           <input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
             value={maxRebuys}
-            onChange={e => !locked && setMaxRebuys(e.target.value)}
+            onChange={e => !locked && setMaxRebuys(e.target.value.replace(/\D/g, ''))}
+            onBlur={() => { if (!locked && maxRebuys === '') setMaxRebuys('0'); }}
             disabled={locked}
             className={numInput(locked)}
           />
