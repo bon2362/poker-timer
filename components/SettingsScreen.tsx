@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.14',
+    date: "09 April '26",
+    notes: 'iOS-приложение на SwiftUI + Live Activity: управление таймером с Lock Screen (пауза, след./пред. уровень). Supabase: новая таблица timer_commands, поля stage_type/sb/bb/stage_duration в timer_state.',
+  },
+  {
     version: '4.13',
     date: "08 April '26",
     notes: 'Изображение победителя — отдельное для каждого игрока. Миниатюра 16:9 прямо в строке игрока в настройках. При наличии изображения экран победителя — полноэкранный фон с оверлеем.',
@@ -186,7 +191,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.13</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.14</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"

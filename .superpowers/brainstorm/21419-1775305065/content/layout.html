@@ -1,0 +1,65 @@
+<h2>Макет главного экрана</h2>
+<p class="subtitle">Один экран — вся игра. Нажми, чтобы выбрать вариант.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="A" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:20px;border-radius:8px;font-family:monospace;color:white;">
+      <div style="text-align:center;margin-bottom:8px;font-size:11px;opacity:0.6;letter-spacing:2px;">УРОВЕНЬ 3 / 14</div>
+      <div style="text-align:center;font-size:48px;font-weight:900;color:#22c55e;letter-spacing:4px;">18:42</div>
+      <div style="text-align:center;font-size:11px;opacity:0.5;margin-bottom:16px;">ДО СМЕНЫ БЛАЙНДОВ</div>
+      <div style="display:flex;justify-content:space-around;margin-bottom:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;opacity:0.5;letter-spacing:1px;">СЕЙЧАС</div>
+          <div style="font-size:22px;font-weight:700;">30 / 60</div>
+        </div>
+        <div style="text-align:center;opacity:0.4;">
+          <div style="font-size:10px;opacity:0.7;letter-spacing:1px;">ДАЛЕЕ</div>
+          <div style="font-size:16px;font-weight:600;">40 / 80</div>
+        </div>
+      </div>
+      <div style="text-align:center;background:#1e3a5f;border-radius:6px;padding:6px;font-size:11px;color:#60a5fa;">
+        ☕ ПЕРЕРЫВ ПОСЛЕ ЭТОГО УРОВНЯ — 10 МИН
+      </div>
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:14px;">
+        <div style="background:#374151;border-radius:6px;padding:6px 18px;font-size:13px;cursor:pointer;">⏸ Пауза</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Вариант A — Лаконичный</h3>
+      <p>Тёмный фон, большой зелёный таймер в центре. Минимум элементов, максимум читаемости с расстояния.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="B" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a2e;padding:20px;border-radius:8px;font-family:sans-serif;color:white;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:11px;opacity:0.5;letter-spacing:1px;">УРОВЕНЬ 3</div>
+        <div style="background:#7c3aed;border-radius:12px;padding:2px 10px;font-size:10px;">Texas Hold'em</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;background:#16213e;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;opacity:0.5;margin-bottom:4px;">ТЕКУЩИЕ</div>
+          <div style="font-size:20px;font-weight:800;color:#a78bfa;">30 / 60</div>
+        </div>
+        <div style="flex:1;background:#16213e;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;opacity:0.5;margin-bottom:4px;">СЛЕДУЮЩИЕ</div>
+          <div style="font-size:20px;font-weight:800;color:#6b7280;">40 / 80</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:52px;font-weight:900;color:#f59e0b;letter-spacing:2px;margin-bottom:4px;">18:42</div>
+      <div style="text-align:center;font-size:10px;opacity:0.4;margin-bottom:12px;">ОСТАЛОСЬ ДО КОНЦА УРОВНЯ</div>
+      <div style="background:#1e293b;border-radius:6px;padding:6px;text-align:center;font-size:11px;color:#60a5fa;margin-bottom:10px;">
+        Далее: ☕ Перерыв 10 мин → потом 40/80
+      </div>
+      <div style="display:flex;justify-content:center;">
+        <div style="background:#374151;border-radius:6px;padding:6px 18px;font-size:12px;">⏸ Пауза</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Вариант B — Информационный</h3>
+      <p>Блайнды в карточках сверху, таймер в центре, статус внизу. Больше информации на экране.</p>
+    </div>
+  </div>
+
+</div>

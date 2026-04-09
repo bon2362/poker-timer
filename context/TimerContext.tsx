@@ -5,6 +5,7 @@ import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getTimerChannel } from '@/supabase/client';
 import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
+import { subscribeToTimerCommands } from '@/lib/supabase/timerCommands';
 import type { TimerState, Action } from '@/types/timer';
 
 type TimerContextValue = {
@@ -108,6 +109,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     if (!changed) return;
 
+    const stage = state.stages[state.currentStage];
     const payload = {
       currentStage: state.currentStage,
       anchorTs: state.anchorTs,
@@ -115,6 +117,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       isPaused: state.isPaused,
       isOver: state.isOver,
       warnedOneMin: state.warnedOneMin,
+      // Stage info for iOS Live Activity
+      stageType: stage.type,
+      levelNum: stage.type === 'level' ? stage.levelNum : 0,
+      sb: stage.type === 'level' ? stage.sb : 0,
+      bb: stage.type === 'level' ? stage.bb : 0,
+      stageDurationSecs: stage.duration,
     };
 
     // Save to DB + broadcast to other devices (only when WebSocket is connected)
@@ -123,6 +131,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       channelRef.current.send({ type: 'broadcast', event: 'state', payload });
     }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
+
+  // --- iOS remote control: process commands from the timer_commands table ---
+  useEffect(() => {
+    const unsubscribe = subscribeToTimerCommands((action) => {
+      dispatch({ type: action });
+    });
+    return unsubscribe;
+  }, [dispatch]);
 
   // --- Broadcast display config changes (showCombos / showPlayers) ---
   useEffect(() => {
