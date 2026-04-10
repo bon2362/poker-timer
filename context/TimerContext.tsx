@@ -4,7 +4,8 @@ import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
-import { fetchTimerState, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
+import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
+import { useGame } from '@/context/GameContext';
 import type { TimerState, Action } from '@/types/timer';
 
 type TimerContextValue = {
@@ -16,6 +17,7 @@ const TimerContext = createContext<TimerContextValue | null>(null);
 
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
+  const { activeSession, loading: gameLoading } = useGame();
   const suppressUntilRef = useRef<number>(0);
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
 
@@ -59,10 +61,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   // --- Restore timer state from DB on mount ---
   useEffect(() => {
+    if (gameLoading) return;
+    let cancelled = false;
+
     fetchTimerState().then(saved => {
-      if (saved) dispatch({ type: 'RESTORE_STATE', payload: saved });
+      if (cancelled || !saved) return;
+      if (isPersistedTimerStateStaleForSession(saved.updatedAt, activeSession?.createdAt)) {
+        dispatch({ type: 'RESTART' });
+        return;
+      }
+      dispatch({ type: 'RESTORE_STATE', payload: saved });
     });
-  }, []);
+
+    return () => { cancelled = true; };
+  }, [activeSession?.createdAt, gameLoading]);
 
   // --- Realtime: subscribe + receive anchor state from other devices ---
   useEffect(() => {
