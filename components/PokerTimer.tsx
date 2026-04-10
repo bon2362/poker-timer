@@ -10,7 +10,6 @@ import { SettingsScreen } from './SettingsScreen';
 import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import { SlideshowOverlay } from './SlideshowOverlay';
-import { BrandMark } from './BrandMark';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import type { Config } from '@/types/timer';
 
@@ -255,8 +254,8 @@ export function PokerTimer() {
       {/* Session overlay — shown when loading done and no active session */}
       {!loading && !activeSession && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#1e1e1e] border border-[#333] rounded-lg p-8 text-center max-w-[420px]">
-            <BrandMark variant="hero" className="mb-6" />
+          <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl p-8 text-center max-w-[320px]">
+            <div className="text-4xl mb-4">🃏</div>
             <h2 className="text-[18px] font-semibold text-[#ccc] mb-2">Игра не настроена</h2>
             <p className="text-[14px] text-[#666] mb-6">Настройте игроков и параметры сессии перед стартом таймера</p>
             <button

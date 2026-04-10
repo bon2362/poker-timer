@@ -1,6 +1,5 @@
 import { formatTime } from '@/lib/timer';
 import type { Stage } from '@/types/timer';
-import { BrandMark } from './BrandMark';
 
 type Props = {
   timeLeft: number;
@@ -34,17 +33,12 @@ export function TimerDisplay({ timeLeft, stage, isPaused }: Props) {
     <>
       <div className="flex-1 flex items-center justify-center relative">
         {isPaused && (
-          <>
-            <div
-              className="absolute pointer-events-none select-none font-black text-white/[0.12]"
-              style={{ fontSize: 'clamp(184px, 36vw, 357px)' }}
-            >
-              PAUSE
-            </div>
-            <div className="absolute top-10 inset-x-0 pointer-events-none select-none">
-              <BrandMark variant="pause" />
-            </div>
-          </>
+          <div
+            className="absolute pointer-events-none select-none font-black text-white/[0.18]"
+            style={{ fontSize: 'clamp(184px, 36vw, 357px)', letterSpacing: '0.15em' }}
+          >
+            PAUSE
+          </div>
         )}
         <div
           className={`font-black leading-none tabular-nums tracking-[-4px] transition-opacity ${timerColor} ${isPaused ? 'opacity-25' : 'opacity-100'}`}

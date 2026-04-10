@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTimer } from '@/context/TimerContext';
 import { MobileAdminPanel } from './MobileAdminPanel';
-import { BrandMark } from './BrandMark';
 import { formatTime } from '@/lib/timer';
 import type { Stage } from '@/types/timer';
 
@@ -111,17 +110,12 @@ export function MobileView() {
       {/* Center: timer */}
       <div className="flex-1 flex items-center justify-center relative">
         {state.isPaused && (
-          <>
-            <div className="absolute top-0 inset-x-0 pointer-events-none select-none">
-              <BrandMark variant="compact" className="scale-90" />
-            </div>
-            <div
-              className="absolute pointer-events-none font-black text-white/[0.10]"
-              style={{ fontSize: 'clamp(80px, 28vw, 180px)' }}
-            >
-              PAUSE
-            </div>
-          </>
+          <div
+            className="absolute pointer-events-none font-black text-white/[0.10]"
+            style={{ fontSize: 'clamp(80px, 28vw, 180px)', letterSpacing: '0.1em' }}
+          >
+            PAUSE
+          </div>
         )}
         <div
           className={`font-black tabular-nums tracking-[-2px] transition-opacity ${timerColor} ${state.isPaused ? 'opacity-30' : 'opacity-100'}`}

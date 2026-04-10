@@ -4,8 +4,8 @@ import { GameProvider } from '@/context/GameContext';
 import { TimerProvider } from '@/context/TimerContext';
 
 export const metadata: Metadata = {
-  title: 'BSP Timer | Барнаульская Школа Покера',
-  description: 'Barnaul School of Poker timer',
+  title: 'Poker Timer',
+  description: 'Poker tournament timer',
 };
 
 export const viewport: Viewport = {
