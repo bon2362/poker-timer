@@ -36,6 +36,7 @@ type GameAction =
   | { type: 'UPDATE_PLAYER'; player: Player }
   | { type: 'REMOVE_PLAYER'; id: string }
   | { type: 'SET_SESSION'; session: Session | null; sessionPlayers: SessionPlayer[] }
+  | { type: 'ADD_SESSION_PLAYER'; sessionPlayer: SessionPlayer }
   | { type: 'UPDATE_SESSION_PLAYER'; sessionPlayer: SessionPlayer }
   | { type: 'SHOW_WINNER' }
   | { type: 'HIDE_WINNER' };
@@ -54,6 +55,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, players: state.players.filter(p => p.id !== action.id) };
     case 'SET_SESSION':
       return { ...state, activeSession: action.session, sessionPlayers: action.sessionPlayers };
+    case 'ADD_SESSION_PLAYER': {
+      const exists = state.sessionPlayers.some(sp => sp.id === action.sessionPlayer.id);
+      if (exists) {
+        return { ...state, sessionPlayers: state.sessionPlayers.map(sp => sp.id === action.sessionPlayer.id ? action.sessionPlayer : sp) };
+      }
+      return { ...state, sessionPlayers: [...state.sessionPlayers, action.sessionPlayer] };
+    }
     case 'UPDATE_SESSION_PLAYER':
       return {
         ...state,
@@ -141,13 +149,29 @@ export function GameProvider({ children }: { children: ReactNode }) {
       .channel('game-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'session_players' },
+        { event: 'INSERT', schema: 'public', table: 'session_players' },
         (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
-            dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: sp });
-            // Show winner screen when winner is declared remotely
-            if (sp.status === 'winner') dispatch({ type: 'SHOW_WINNER' });
+          const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
+          dispatch({ type: 'ADD_SESSION_PLAYER', sessionPlayer: sp });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'session_players' },
+        (payload) => {
+          const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
+          dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: sp });
+          if (sp.status === 'winner') dispatch({ type: 'SHOW_WINNER' });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'sessions' },
+        async () => {
+          // New session started on another device — fetch as source of truth
+          const sessionData = await fetchActiveSession();
+          if (sessionData) {
+            dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
           }
         }
       )
@@ -202,9 +226,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const doRebuy = useCallback(async (sessionPlayerId: string) => {
     const sp = state.sessionPlayers.find(p => p.id === sessionPlayerId);
     if (!sp) return;
+    const { maxRebuys } = state.activeSession ?? { maxRebuys: 0 };
+    if (maxRebuys > 0 && sp.rebuys >= maxRebuys) return;
     const updated = await updateSessionPlayer(sessionPlayerId, { rebuys: sp.rebuys + 1 });
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
-  }, [state.sessionPlayers]);
+  }, [state.sessionPlayers, state.activeSession]);
 
   const doAddon = useCallback(async (sessionPlayerId: string) => {
     const updated = await updateSessionPlayer(sessionPlayerId, { hasAddon: true });

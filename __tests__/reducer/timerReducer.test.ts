@@ -3,8 +3,16 @@ import { buildStages } from '@/lib/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import type { TimerState } from '@/types/timer';
 
+const FIXED_NOW = 1_700_000_000_000;
+
 beforeEach(() => {
   localStorage.clear();
+  jest.useFakeTimers();
+  jest.setSystemTime(FIXED_NOW);
+});
+
+afterEach(() => {
+  jest.useRealTimers();
 });
 
 function makeState(overrides: Partial<TimerState> = {}): TimerState {
@@ -14,6 +22,8 @@ function makeState(overrides: Partial<TimerState> = {}): TimerState {
     stages,
     currentStage: 0,
     timeLeft: stages[0].duration,
+    anchorTs: FIXED_NOW,
+    elapsedBeforePause: 0,
     isPaused: true,
     isOver: false,
     warnedOneMin: false,
@@ -24,34 +34,57 @@ function makeState(overrides: Partial<TimerState> = {}): TimerState {
   };
 }
 
+/**
+ * Build a running state where computeTimeLeft() returns exactly `timeLeft`
+ * when Date.now() === FIXED_NOW (sinceResume = 0).
+ */
+function makeRunningState(timeLeft: number, overrides: Partial<TimerState> = {}): TimerState {
+  const config = DEFAULT_CONFIG;
+  const stages = buildStages(config);
+  const stageIdx = (overrides.currentStage as number) ?? 0;
+  const dur = stages[stageIdx].duration;
+  return makeState({
+    isPaused: false,
+    anchorTs: FIXED_NOW,
+    elapsedBeforePause: dur - timeLeft,
+    timeLeft,
+    ...overrides,
+  });
+}
+
 describe('TICK', () => {
   test('does not decrement timeLeft when paused', () => {
     const state = makeState({ isPaused: true, timeLeft: 1200 });
+    jest.setSystemTime(FIXED_NOW + 5000); // time passes but timer is paused
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.timeLeft).toBe(1200);
   });
 
-  test('decrements timeLeft when running', () => {
-    const state = makeState({ isPaused: false, timeLeft: 100 });
+  test('decrements timeLeft when 1 second elapses while running', () => {
+    const state = makeRunningState(100);
+    jest.setSystemTime(FIXED_NOW + 1000);
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.timeLeft).toBe(99);
   });
 
-  test('sets pendingSound and warnedOneMin at 61 seconds on level stage', () => {
-    const state = makeState({ isPaused: false, timeLeft: 61, warnedOneMin: false });
+  test('sets pendingSound and warnedOneMin when timeLeft crosses 60s boundary', () => {
+    const state = makeRunningState(61);
+    jest.setSystemTime(FIXED_NOW + 1000); // advances to 60s — crosses the warning boundary
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.warnedOneMin).toBe(true);
     expect(next.pendingSound).not.toBeNull();
   });
 
   test('does not set pendingSound again if warnedOneMin already true', () => {
-    const state = makeState({ isPaused: false, timeLeft: 61, warnedOneMin: true });
+    const state = makeRunningState(61, { warnedOneMin: true });
+    jest.setSystemTime(FIXED_NOW + 1000);
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.pendingSound).toBeNull();
   });
 
   test('advances to next stage when timeLeft reaches 0 (non-last stage)', () => {
-    const state = makeState({ isPaused: false, timeLeft: 1, currentStage: 0 });
+    const state = makeRunningState(1, { currentStage: 0 });
+    jest.setSystemTime(FIXED_NOW + 1000); // elapses to 0
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.currentStage).toBe(1);
     expect(next.timeLeft).toBe(next.stages[1].duration);
@@ -60,7 +93,8 @@ describe('TICK', () => {
   test('goes into overtime on last stage (timeLeft continues negative)', () => {
     const stages = buildStages(DEFAULT_CONFIG);
     const lastIdx = stages.length - 1;
-    const state = makeState({ isPaused: false, timeLeft: 0, currentStage: lastIdx });
+    const state = makeRunningState(0, { currentStage: lastIdx });
+    jest.setSystemTime(FIXED_NOW + 1000); // elapses to -1
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.timeLeft).toBe(-1);
     expect(next.isOver).toBe(false);

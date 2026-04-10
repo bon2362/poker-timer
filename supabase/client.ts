@@ -14,11 +14,14 @@ export function getClient(): SupabaseClient | null {
 export function getTimerChannel(sessionId: string): RealtimeChannel {
   const client = getClient();
   if (!client) {
-    return {
-      subscribe: () => ({}) as unknown as RealtimeChannel,
+    const noop = {} as RealtimeChannel;
+    Object.assign(noop, {
+      on: () => noop,
+      subscribe: () => noop,
       unsubscribe: () => Promise.resolve('ok' as const),
       send: () => Promise.resolve('ok' as const),
-    } as unknown as RealtimeChannel;
+    });
+    return noop;
   }
   return client.channel(`timer:${sessionId}`, {
     config: { broadcast: { self: false } },

@@ -147,7 +147,19 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     }
 
     case 'OPEN_SETTINGS': {
-      return { ...state, screen: 'settings' };
+      if (state.isPaused) {
+        return { ...state, screen: 'settings' };
+      }
+      const elapsed = Math.floor((Date.now() - state.anchorTs) / 1000);
+      const newElapsed = state.elapsedBeforePause + elapsed;
+      const dur = state.stages[state.currentStage].duration;
+      return {
+        ...state,
+        screen: 'settings',
+        isPaused: true,
+        elapsedBeforePause: newElapsed,
+        timeLeft: dur - newElapsed,
+      };
     }
 
     case 'CLOSE_SETTINGS': {

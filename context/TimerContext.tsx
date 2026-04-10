@@ -3,7 +3,7 @@ import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } f
 import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
-import { getTimerChannel } from '@/supabase/client';
+import { getClient, getTimerChannel } from '@/supabase/client';
 import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
 import { subscribeToTimerCommands } from '@/lib/supabase/timerCommands';
 import type { TimerState, Action } from '@/types/timer';
@@ -20,9 +20,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const suppressUntilRef = useRef<number>(0);
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
 
-  // Echo suppression: skip sync effect when state came from a broadcast
+  // Echo suppression: skip sync effect when state came from a broadcast or DB change
   const fromBroadcastRef = useRef(false);
   const fromDisplayBroadcastRef = useRef(false);
+  const fromDatabaseRef = useRef(false);
 
   // Track previous sync-relevant values to detect changes
   const prevSyncRef = useRef({
@@ -81,9 +82,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   // --- Event-driven sync: persist + broadcast only when significant state changes ---
   useEffect(() => {
-    // Skip if this change came from a broadcast (avoid echo loop)
-    if (fromBroadcastRef.current) {
+    // Skip if this change came from a broadcast or DB update (avoid echo loop)
+    if (fromBroadcastRef.current || fromDatabaseRef.current) {
       fromBroadcastRef.current = false;
+      fromDatabaseRef.current = false;
       prevSyncRef.current = {
         currentStage: state.currentStage,
         anchorTs: state.anchorTs,
@@ -123,6 +125,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       sb: stage.type === 'level' ? stage.sb : 0,
       bb: stage.type === 'level' ? stage.bb : 0,
       stageDurationSecs: stage.duration,
+      // Full stage list for backend RPC navigation (apply_timer_command)
+      stages: state.stages,
     };
 
     // Save to DB + broadcast to other devices (only when WebSocket is connected)
@@ -132,12 +136,48 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
 
-  // --- iOS remote control: process commands from the timer_commands table ---
+  // --- iOS remote control: two paths ---
+  // Path A (legacy): timer_commands INSERT → dispatch action (web processes it)
   useEffect(() => {
     const unsubscribe = subscribeToTimerCommands((action) => {
       dispatch({ type: action });
     });
     return unsubscribe;
+  }, [dispatch]);
+
+  // Path B (RPC): timer_state UPDATE with source='ios' → restore state directly.
+  // When iOS calls apply_timer_command RPC, it updates timer_state with source='ios'.
+  // The web picks that up here and syncs without re-saving to DB (echo suppression).
+  useEffect(() => {
+    const client = getClient();
+    if (!client) return;
+
+    const channel = client
+      .channel('timer-state-ios-sync')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'timer_state', filter: 'id=eq.main' },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          // Ignore our own saves (source='web'); only process RPC writes (source='ios')
+          if (row.source !== 'ios') return;
+          fromDatabaseRef.current = true;
+          dispatch({
+            type: 'RESTORE_STATE',
+            payload: {
+              currentStage: row.current_stage as number,
+              anchorTs: row.anchor_ts as number,
+              elapsedBeforePause: row.elapsed_before_pause as number,
+              isPaused: row.is_paused as boolean,
+              isOver: row.is_over as boolean,
+              warnedOneMin: row.warned_one_min as boolean,
+            },
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { client.removeChannel(channel); };
   }, [dispatch]);
 
   // --- Broadcast display config changes (showCombos / showPlayers) ---

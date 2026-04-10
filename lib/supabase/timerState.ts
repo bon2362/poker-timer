@@ -1,5 +1,6 @@
 // lib/supabase/timerState.ts
 import { getClient } from '@/supabase/client';
+import type { Stage } from '@/types/timer';
 
 export type PersistedTimerState = {
   currentStage: number;
@@ -14,6 +15,8 @@ export type PersistedTimerState = {
   sb: number;
   bb: number;
   stageDurationSecs: number;
+  // Full stage list for backend RPC navigation (added v4.15)
+  stages?: Stage[];
 };
 
 export async function fetchTimerState(): Promise<PersistedTimerState | null> {
@@ -56,6 +59,8 @@ export async function saveTimerState(state: PersistedTimerState): Promise<void> 
     sb: state.sb,
     bb: state.bb,
     stage_duration_secs: state.stageDurationSecs,
+    stages_json: state.stages ?? null,
+    source: 'web',
     updated_at: new Date().toISOString(),
   });
 }

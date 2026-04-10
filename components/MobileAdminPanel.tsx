@@ -36,10 +36,14 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
           </button>
           <div className="flex-1 text-center text-[14px] text-violet-300 font-medium">
             Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
+            {activeSession.maxRebuys > 0 && (
+              <span className="text-[#555]">/{activeSession.maxRebuys}</span>
+            )}
           </div>
           <button
             onClick={() => doRebuy(sp.id)}
-            className={`${btnBase} w-11 h-11 text-[20px] bg-[#2a2040] border-[#443366] text-violet-400 hover:bg-[#3a2060]`}
+            disabled={activeSession.maxRebuys > 0 && sp.rebuys >= activeSession.maxRebuys}
+            className={`${btnBase} w-11 h-11 text-[20px] bg-[#2a2040] border-[#443366] text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3a2060]`}
           >
             +
           </button>
