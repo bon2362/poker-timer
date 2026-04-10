@@ -74,4 +74,6 @@ export type Action =
   | { type: 'RESTORE_STATE'; payload: {
       currentStage: number; anchorTs: number; elapsedBeforePause: number;
       isPaused: boolean; isOver: boolean; warnedOneMin: boolean;
+      stageType?: Stage['type']; levelNum?: number; sb?: number; bb?: number; stageDurationSecs?: number;
+      stages?: Stage[];
     } };

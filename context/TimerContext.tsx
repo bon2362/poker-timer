@@ -4,7 +4,7 @@ import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
-import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
+import { fetchTimerState, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import type { TimerState, Action } from '@/types/timer';
 
 type TimerContextValue = {
@@ -162,6 +162,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
               isPaused: row.is_paused as boolean,
               isOver: row.is_over as boolean,
               warnedOneMin: row.warned_one_min as boolean,
+              stageType: row.stage_type === 'break' ? 'break' : 'level',
+              levelNum: (row.level_num as number) ?? 0,
+              sb: (row.sb as number) ?? 0,
+              bb: (row.bb as number) ?? 0,
+              stageDurationSecs: (row.stage_duration_secs as number) ?? undefined,
+              stages: parsePersistedStages(row.stages_json),
             },
           });
         }

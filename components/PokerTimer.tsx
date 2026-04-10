@@ -138,7 +138,7 @@ export function PokerTimer() {
   if (!nextStage) {
     nextText = '';
   } else if (nextStage.type === 'break') {
-    nextText = `☕ Перерыв ${state.config.breakDuration} мин`;
+    nextText = `☕ Перерыв ${nextStage.duration / 60} мин`;
   } else {
     nextText = `${nextStage.sb} / ${nextStage.bb}`;
   }
@@ -163,7 +163,7 @@ export function PokerTimer() {
     <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
       {/* Top bar */}
       <div className="relative w-full px-7 pt-5">
-        <BlindInfo stage={stage} breakDuration={state.config.breakDuration} />
+        <BlindInfo stage={stage} />
         <div className="absolute top-5 right-10 flex gap-1 items-center">
           <button
             className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"

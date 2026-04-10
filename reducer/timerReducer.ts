@@ -1,6 +1,6 @@
 import { buildStages } from '@/lib/timer';
 import { saveConfig } from '@/lib/storage';
-import type { TimerState, Action, SoundEvent } from '@/types/timer';
+import type { TimerState, Action, SoundEvent, Stage } from '@/types/timer';
 
 /** Compute timeLeft from anchor timestamp (wall-clock based). */
 function computeTimeLeft(state: TimerState): number {
@@ -10,6 +10,27 @@ function computeTimeLeft(state: TimerState): number {
   }
   const sinceResume = Math.floor((Date.now() - state.anchorTs) / 1000);
   return dur - state.elapsedBeforePause - sinceResume;
+}
+
+type RestoredStageInfo = Extract<Action, { type: 'RESTORE_STATE' }>['payload'];
+
+function stageMatchesRestoredInfo(stage: Stage, restored: RestoredStageInfo): boolean {
+  if (!restored.stageType) return true;
+  if (stage.type !== restored.stageType) return false;
+  if (typeof restored.stageDurationSecs === 'number' && stage.duration !== restored.stageDurationSecs) return false;
+
+  if (stage.type === 'level') {
+    if (typeof restored.levelNum === 'number' && stage.levelNum !== restored.levelNum) return false;
+    if (typeof restored.sb === 'number' && stage.sb !== restored.sb) return false;
+    if (typeof restored.bb === 'number' && stage.bb !== restored.bb) return false;
+  }
+
+  return true;
+}
+
+function findRestoredStageIndex(stages: Stage[], restored: RestoredStageInfo): number {
+  if (!restored.stageType) return -1;
+  return stages.findIndex(stage => stageMatchesRestoredInfo(stage, restored));
 }
 
 export function timerReducer(state: TimerState, action: Action): TimerState {
@@ -224,12 +245,26 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     }
 
     case 'RESTORE_STATE': {
-      const { currentStage, anchorTs, elapsedBeforePause, isPaused, isOver, warnedOneMin } = action.payload;
-      // Guard: ignore if stage index out of range (stale DB from different config)
-      if (currentStage >= state.stages.length) return state;
+      const { currentStage, anchorTs, elapsedBeforePause, isPaused, isOver, warnedOneMin, stages } = action.payload;
+      const hasPersistedStages = !!stages?.length;
+      const restoredStages = hasPersistedStages ? stages : state.stages;
+
+      let restoredStage = currentStage;
+      if (currentStage < 0 || currentStage >= restoredStages.length) {
+        if (hasPersistedStages) return state;
+        const matchingStage = findRestoredStageIndex(restoredStages, action.payload);
+        if (matchingStage === -1) return state;
+        restoredStage = matchingStage;
+      } else if (!hasPersistedStages && !stageMatchesRestoredInfo(restoredStages[currentStage], action.payload)) {
+        const matchingStage = findRestoredStageIndex(restoredStages, action.payload);
+        if (matchingStage === -1) return state;
+        restoredStage = matchingStage;
+      }
+
       const restored: TimerState = {
         ...state,
-        currentStage,
+        stages: restoredStages,
+        currentStage: restoredStage,
         anchorTs,
         elapsedBeforePause,
         isPaused,

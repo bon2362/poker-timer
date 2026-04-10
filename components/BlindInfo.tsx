@@ -2,10 +2,9 @@ import type { Stage } from '@/types/timer';
 
 type Props = {
   stage: Stage;
-  breakDuration: number;
 };
 
-export function BlindInfo({ stage, breakDuration }: Props) {
+export function BlindInfo({ stage }: Props) {
   if (stage.type === 'level') {
     return (
       <div className="flex-1 text-center">
@@ -25,7 +24,7 @@ export function BlindInfo({ stage, breakDuration }: Props) {
         ☕ Break
       </div>
       <div className="font-bold leading-tight text-blue-400" style={{ fontSize: 'clamp(72px, 10vw, 120px)' }}>
-        {breakDuration} min
+        {stage.duration / 60} min
       </div>
     </div>
   );

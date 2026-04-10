@@ -209,6 +209,61 @@ describe('SAVE_SETTINGS', () => {
   });
 });
 
+describe('RESTORE_STATE', () => {
+  test('uses persisted stages so a saved level index is not restored as a local break', () => {
+    const localState = makeState();
+    const persistedConfig = { ...DEFAULT_CONFIG, breakEvery: 4 };
+    const persistedStages = buildStages(persistedConfig);
+
+    const next = timerReducer(localState, {
+      type: 'RESTORE_STATE',
+      payload: {
+        currentStage: 2,
+        anchorTs: FIXED_NOW,
+        elapsedBeforePause: 0,
+        isPaused: true,
+        isOver: false,
+        warnedOneMin: false,
+        stageType: 'level',
+        levelNum: 3,
+        sb: 30,
+        bb: 60,
+        stageDurationSecs: persistedStages[2].duration,
+        stages: persistedStages,
+      },
+    });
+
+    expect(next.stages).toBe(persistedStages);
+    expect(next.currentStage).toBe(2);
+    expect(next.stages[next.currentStage]).toMatchObject({ type: 'level', levelNum: 3, sb: 30, bb: 60 });
+  });
+
+  test('falls back to stage metadata when persisted stages are unavailable', () => {
+    const localState = makeState();
+    expect(localState.stages[2].type).toBe('break');
+
+    const next = timerReducer(localState, {
+      type: 'RESTORE_STATE',
+      payload: {
+        currentStage: 2,
+        anchorTs: FIXED_NOW,
+        elapsedBeforePause: 0,
+        isPaused: true,
+        isOver: false,
+        warnedOneMin: false,
+        stageType: 'level',
+        levelNum: 3,
+        sb: 30,
+        bb: 60,
+        stageDurationSecs: 1200,
+      },
+    });
+
+    expect(next.currentStage).toBe(3);
+    expect(next.stages[next.currentStage]).toMatchObject({ type: 'level', levelNum: 3, sb: 30, bb: 60 });
+  });
+});
+
 describe('CLEAR_SOUND', () => {
   test('clears pendingSound', () => {
     const state = makeState({ pendingSound: 'blindsUp' });

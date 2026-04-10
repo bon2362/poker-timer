@@ -6,12 +6,12 @@ import { formatTime } from '@/lib/timer';
 import type { Stage } from '@/types/timer';
 
 /* ── Blind info (inline, portrait-optimised) ── */
-function MobileBlindInfo({ stage, breakDuration }: { stage: Stage; breakDuration: number }) {
+function MobileBlindInfo({ stage }: { stage: Stage }) {
   if (stage.type === 'break') {
     return (
       <div className="text-center">
         <div className="text-[12px] text-[#666] tracking-[3px] uppercase mb-1">☕ Перерыв</div>
-        <div className="text-[48px] font-bold text-blue-400 leading-tight">{breakDuration} мин</div>
+        <div className="text-[48px] font-bold text-blue-400 leading-tight">{stage.duration / 60} мин</div>
       </div>
     );
   }
@@ -91,7 +91,7 @@ export function MobileView() {
   else if (nextStage.type === 'break') {
     const afterBreak = state.stages[state.currentStage + 2];
     const after = afterBreak?.type === 'level' ? ` → ${afterBreak.sb}/${afterBreak.bb}` : '';
-    nextText = `☕ Перерыв ${state.config.breakDuration} мин${after}`;
+    nextText = `☕ Перерыв ${nextStage.duration / 60} мин${after}`;
   } else {
     nextText = `${nextStage.sb} / ${nextStage.bb}`;
   }
@@ -104,7 +104,7 @@ export function MobileView() {
         className="flex items-center justify-center pt-10 pb-2 px-6 cursor-default"
         onClick={handleBlindDoubleTap}
       >
-        <MobileBlindInfo stage={stage} breakDuration={state.config.breakDuration} />
+        <MobileBlindInfo stage={stage} />
       </div>
 
       {/* Center: timer */}

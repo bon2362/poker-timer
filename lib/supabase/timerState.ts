@@ -10,7 +10,7 @@ export type PersistedTimerState = {
   isOver: boolean;
   warnedOneMin: boolean;
   // iOS Live Activity fields (added v4.14)
-  stageType: string;        // "level" | "break"
+  stageType: Stage['type']; // "level" | "break"
   levelNum: number;         // 1-based; 0 for breaks
   sb: number;
   bb: number;
@@ -19,12 +19,42 @@ export type PersistedTimerState = {
   stages?: Stage[];
 };
 
+export function parsePersistedStages(value: unknown): Stage[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const stages: Stage[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') return undefined;
+    const stage = item as Record<string, unknown>;
+    const duration = Number(stage.duration);
+    if (!Number.isFinite(duration) || duration <= 0) return undefined;
+
+    if (stage.type === 'break') {
+      stages.push({ type: 'break', duration });
+      continue;
+    }
+
+    if (stage.type === 'level') {
+      const levelNum = Number(stage.levelNum);
+      const sb = Number(stage.sb);
+      const bb = Number(stage.bb);
+      if (!Number.isFinite(levelNum) || !Number.isFinite(sb) || !Number.isFinite(bb)) return undefined;
+      stages.push({ type: 'level', levelNum, sb, bb, duration });
+      continue;
+    }
+
+    return undefined;
+  }
+
+  return stages.length > 0 ? stages : undefined;
+}
+
 export async function fetchTimerState(): Promise<PersistedTimerState | null> {
   const client = getClient();
   if (!client) return null;
   const { data, error } = await client
     .from('timer_state')
-    .select('current_stage, anchor_ts, elapsed_before_pause, is_paused, is_over, warned_one_min, stage_type, level_num, sb, bb, stage_duration_secs')
+    .select('current_stage, anchor_ts, elapsed_before_pause, is_paused, is_over, warned_one_min, stage_type, level_num, sb, bb, stage_duration_secs, stages_json')
     .eq('id', 'main')
     .maybeSingle();
   if (error || !data) return null;
@@ -35,11 +65,12 @@ export async function fetchTimerState(): Promise<PersistedTimerState | null> {
     isPaused: data.is_paused as boolean,
     isOver: data.is_over as boolean,
     warnedOneMin: data.warned_one_min as boolean,
-    stageType: (data.stage_type as string) ?? 'level',
+    stageType: data.stage_type === 'break' ? 'break' : 'level',
     levelNum: (data.level_num as number) ?? 1,
     sb: (data.sb as number) ?? 0,
     bb: (data.bb as number) ?? 0,
     stageDurationSecs: (data.stage_duration_secs as number) ?? 1200,
+    stages: parsePersistedStages(data.stages_json),
   };
 }
 
