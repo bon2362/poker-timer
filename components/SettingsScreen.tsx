@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.19',
+    date: "11 April '26",
+    notes: 'Добавлена презентационная страница /vibe: обзор возможностей, клиентских контуров desktop/mobile/iOS и архитектуры Supabase для менеджерского чтения.',
+  },
+  {
     version: '4.18',
     date: "11 April '26",
     notes: 'Фикс записи состояния таймера в Supabase после усиления RLS: web-клиент сохраняет timer_state через RPC, чтобы reload и мобильные устройства не поднимали старый перерыв.',
@@ -211,7 +216,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.18</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.19</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"

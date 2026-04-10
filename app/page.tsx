@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { GameProvider } from '@/context/GameContext';
+import { TimerProvider } from '@/context/TimerContext';
 
 const PokerTimer = dynamic(
   () => import('@/components/PokerTimer').then(m => ({ default: m.PokerTimer })),
@@ -23,5 +25,11 @@ export default function Home() {
   // Avoid rendering until client-side check completes (prevent flash)
   if (isMobile === null) return null;
 
-  return isMobile ? <MobileView /> : <PokerTimer />;
+  return (
+    <GameProvider>
+      <TimerProvider>
+        {isMobile ? <MobileView /> : <PokerTimer />}
+      </TimerProvider>
+    </GameProvider>
+  );
 }
