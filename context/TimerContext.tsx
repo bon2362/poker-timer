@@ -5,7 +5,6 @@ import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
 import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
-import { subscribeToTimerCommands } from '@/lib/supabase/timerCommands';
 import type { TimerState, Action } from '@/types/timer';
 
 type TimerContextValue = {
@@ -136,16 +135,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
 
-  // --- iOS remote control: two paths ---
-  // Path A (legacy): timer_commands INSERT → dispatch action (web processes it)
-  useEffect(() => {
-    const unsubscribe = subscribeToTimerCommands((action) => {
-      dispatch({ type: action });
-    });
-    return unsubscribe;
-  }, [dispatch]);
-
-  // Path B (RPC): timer_state UPDATE with source='ios' → restore state directly.
+  // --- iOS remote control via RPC ---
+  // iOS calls apply_timer_command RPC → timer_state UPDATE with source='ios'.
   // When iOS calls apply_timer_command RPC, it updates timer_state with source='ios'.
   // The web picks that up here and syncs without re-saving to DB (echo suppression).
   useEffect(() => {

@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.16',
+    date: "10 April '26",
+    notes: 'Безопасность: удалён избыточный anon-доступ к push_tokens, webhook secret для Edge Function, удалён legacy timer_commands fallback (заменён RPC), supabase/.temp/ в .gitignore.',
+  },
+  {
     version: '4.15',
     date: "10 April '26",
     notes: 'Рефакторинг качества: anchor-based тесты таймера (45/45), OPEN_SETTINGS паузит таймер, защита от ребая сверх лимита, iOS RPC-команды (apply_timer_command), echo-suppression source=ios/web, Supabase Edge Function для APNs.',
@@ -196,7 +201,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.15</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.16</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"

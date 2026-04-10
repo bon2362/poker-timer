@@ -59,6 +59,18 @@ Deno.serve(async (req) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // Verify webhook secret to reject requests not originating from Supabase Database Webhooks.
+  // Set WEBHOOK_SECRET in Edge Function secrets (Dashboard → Settings → Edge Functions → Secrets).
+  // Add the same value as a custom header in the Database Webhook config:
+  //   Header: x-webhook-secret: <your-secret>
+  const webhookSecret = Deno.env.get("WEBHOOK_SECRET");
+  if (webhookSecret) {
+    const incoming = req.headers.get("x-webhook-secret");
+    if (incoming !== webhookSecret) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+  }
+
   const payload: WebhookPayload = await req.json();
   const row = payload.record;
 
