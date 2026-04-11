@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.25',
+    date: "12 April '26",
+    notes: 'Изображение проигравшего: отдельная загрузка для каждого игрока, полноэкранный показ на 30 секунд при вылете, таймер поверх фото и кнопка «Пропустить» при движении мыши.',
+  },
+  {
     version: '4.24',
     date: "11 April '26",
     notes: 'Фикс: таймер теперь надёжно останавливается при завершении игры — устранена гонка между паузой и восстановлением состояния из БД.',
@@ -241,7 +246,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.24</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.25</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
