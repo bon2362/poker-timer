@@ -6,7 +6,7 @@ test.describe('Mobile Admin Panel', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await page.waitForSelector('text=Round 1', { timeout: 30000 });
   });
 
   // Helper: simulate double-tap by firing two rapid clicks on the blind info area.

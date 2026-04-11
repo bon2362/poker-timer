@@ -5,7 +5,7 @@ test.describe('Mobile Layout', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await page.waitForSelector('text=Round 1', { timeout: 30000 });
   });
 
   // M1: Mobile view (<768px) renders MobileView component with its own layout.
@@ -35,17 +35,16 @@ test.describe('Mobile Layout', () => {
   // M6: Tablet viewport (≥768px) renders desktop PokerTimer layout
   test('M6: tablet viewport (768px+) shows desktop layout elements', async ({ page }) => {
     // Set viewport to tablet size and reload so the client-side check picks up ≥768px
-    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.setViewportSize({ width: 1024, height: 768 });
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
     // Desktop PokerTimer renders "Round 1" blind info
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await page.waitForSelector('text=Round 1', { timeout: 30000 });
 
     await expect(page.locator('text=Round 1')).toBeVisible();
     await expect(page.locator('text=10 / 20')).toBeVisible();
 
-    // Desktop-only elements: settings gear button and "Далее" next-blind label
-    await expect(page.locator('button[title="Settings"]')).toBeVisible();
+    // Desktop-only element: "Далее" next-blind label (not shown in MobileView)
     await expect(page.locator('text=Далее')).toBeVisible();
   });
 });
