@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { TimerDisplay } from './TimerDisplay';
+import { formatTime } from '@/lib/timer';
 import type { Stage } from '@/types/timer';
 
 type Props = {
@@ -15,6 +15,17 @@ type Props = {
 export function LoserImageOverlay({ imageUrl, playerName, timeLeft, stage, isPaused, onClose }: Props) {
   const [skipVisible, setSkipVisible] = useState(false);
   const hideSkipRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isBreak = stage.type === 'break';
+  const isOvertime = timeLeft < 0;
+  const isWarning = timeLeft <= 60 && timeLeft >= 0 && !isBreak;
+
+  const timerColor = isOvertime
+    ? 'text-red-500'
+    : isWarning
+    ? 'text-orange-400'
+    : isBreak
+    ? 'text-blue-400'
+    : 'text-white';
 
   useEffect(() => {
     const closeTimer = setTimeout(onClose, 30000);
@@ -44,18 +55,22 @@ export function LoserImageOverlay({ imageUrl, playerName, timeLeft, stage, isPau
       />
       <div className="absolute inset-0 bg-black/20" />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <TimerDisplay timeLeft={timeLeft} stage={stage} isPaused={isPaused} />
+      <div className="fixed right-6 top-5 z-20 flex items-center gap-5 sm:right-8">
+        <div
+          className={`font-black tabular-nums leading-none ${timerColor} ${isPaused ? 'opacity-60' : 'opacity-95'}`}
+          style={{ fontSize: '42px', textShadow: '0 2px 18px rgba(0,0,0,0.75)' }}
+        >
+          {formatTime(timeLeft)}
+        </div>
+        <button
+          onClick={onClose}
+          className={`bg-transparent border-none text-[#777] text-[15px] font-semibold cursor-pointer p-2 transition-opacity duration-500 hover:text-[#aaa] leading-none ${
+            skipVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+        >
+          Пропустить
+        </button>
       </div>
-
-      <button
-        onClick={onClose}
-        className={`fixed right-8 top-8 z-20 rounded-lg border border-white/30 bg-black/45 px-5 py-2 text-[14px] font-semibold text-white backdrop-blur-sm transition-opacity hover:border-white/60 hover:bg-black/60 ${
-          skipVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-      >
-        Пропустить
-      </button>
     </div>
   );
 }
