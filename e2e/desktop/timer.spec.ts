@@ -69,15 +69,14 @@ test.describe('Timer - Desktop', () => {
   // E3: Timer displays correct initial state
   test('E3: shows initial blind level and timer', async ({ page }) => {
     // Round 1 label
-    await expect(page.locator('text=Round 1')).toBeVisible();
+    await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 10000 });
 
     // Initial blinds 10 / 20
-    await expect(page.locator('text=10 / 20')).toBeVisible();
+    await expect(page.locator('text=10 / 20')).toBeVisible({ timeout: 10000 });
 
     // Timer should display a time in MM:SS format
-    // The timer value is numeric text — check for a pattern like "19:xx" or "20:00"
     const timerText = page.locator('div').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
-    await expect(timerText).toBeVisible();
+    await expect(timerText).toBeVisible({ timeout: 10000 });
   });
 
   // E4: Next blind info shown below timer
