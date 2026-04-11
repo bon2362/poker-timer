@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 45000,
   retries: 2,
   use: {
-    baseURL: 'https://poker-timer-black.vercel.app',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'https://poker-timer-black.vercel.app',
     trace: 'on-first-retry',
   },
   projects: [

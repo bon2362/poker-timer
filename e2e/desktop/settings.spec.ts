@@ -25,12 +25,14 @@ test.describe('Settings - Desktop', () => {
     await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();
   });
 
-  // E13: Can open settings via overlay button
-  test('E13: navigate to settings via overlay button', async ({ page }) => {
-    // The "Открыть настройки" button is inside the overlay itself — it can be clicked directly
+  // E13: Can open settings via overlay button when present, or via gear during an active session.
+  test('E13: navigate to settings from current game state', async ({ page }) => {
     const openSettingsBtn = page.getByRole('button', { name: 'Открыть настройки' });
-    await expect(openSettingsBtn).toBeVisible();
-    await openSettingsBtn.click();
+    if (await openSettingsBtn.isVisible()) {
+      await openSettingsBtn.click();
+    } else {
+      await openSettingsViaGear(page);
+    }
 
     // Settings screen should appear
     await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();

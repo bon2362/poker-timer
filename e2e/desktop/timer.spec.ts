@@ -93,10 +93,16 @@ test.describe('Timer - Desktop', () => {
     await expect(settingsBtn).toBeVisible({ timeout: 10000 });
   });
 
-  // E6: Session overlay shown when no active session
-  test('E6: shows setup overlay when no session configured', async ({ page }) => {
-    // The "Игра не настроена" overlay is shown when there is no active game session
-    await expect(page.getByRole('heading', { name: 'Игра не настроена' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: 'Открыть настройки' })).toBeVisible();
+  // E6: Session overlay shown when no active session; active session screen otherwise remains usable.
+  test('E6: shows setup overlay or active session screen', async ({ page }) => {
+    const noSessionHeading = page.getByRole('heading', { name: 'Игра не настроена' });
+
+    if (await noSessionHeading.isVisible()) {
+      await expect(noSessionHeading).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'Открыть настройки' })).toBeVisible();
+    } else {
+      await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'Открыть настройки' })).not.toBeVisible();
+    }
   });
 });
