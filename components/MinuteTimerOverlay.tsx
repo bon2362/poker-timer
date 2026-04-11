@@ -1,5 +1,7 @@
 'use client';
 import { useMinuteTimer } from '@/context/MinuteTimerContext';
+import { useGame } from '@/context/GameContext';
+import { Avatar } from './PlayerManager/PlayerManager';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -7,7 +9,10 @@ function pad(n: number) {
 
 export function MinuteTimerOverlay({ mobile }: { mobile?: boolean }) {
   const { state, stopMinute } = useMinuteTimer();
+  const { players } = useGame();
   if (!state.active) return null;
+
+  const player = players.find(p => p.id === state.playerId);
 
   const mins = Math.floor(state.timeLeft / 60);
   const secs = state.timeLeft % 60;
@@ -27,6 +32,7 @@ export function MinuteTimerOverlay({ mobile }: { mobile?: boolean }) {
           <div className="text-[13px] text-violet-400 tracking-[4px] uppercase font-semibold">
             Минуту!
           </div>
+          {player && <Avatar player={player} size={80} />}
           <div className="text-[22px] font-bold text-white">
             {state.playerName}
           </div>
@@ -60,6 +66,7 @@ export function MinuteTimerOverlay({ mobile }: { mobile?: boolean }) {
         <div className="text-[14px] text-violet-400 tracking-[5px] uppercase font-semibold">
           Минуту!
         </div>
+        {player && <Avatar player={player} size={120} />}
         <div className="text-[28px] font-bold text-white">
           {state.playerName}
         </div>

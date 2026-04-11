@@ -4,12 +4,13 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, ty
 type MinuteTimerState = {
   active: boolean;
   playerName: string;
+  playerId: string;
   timeLeft: number;
 };
 
 type MinuteTimerContextValue = {
   state: MinuteTimerState;
-  startMinute: (playerName: string) => void;
+  startMinute: (playerName: string, playerId: string) => void;
   stopMinute: () => void;
 };
 
@@ -20,11 +21,13 @@ const MINUTE_DURATION = 60;
 export function MinuteTimerProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState(false);
   const [playerName, setPlayerName] = useState('');
+  const [playerId, setPlayerId] = useState('');
   const [timeLeft, setTimeLeft] = useState(MINUTE_DURATION);
   const endTsRef = useRef<number>(0);
 
-  const startMinute = useCallback((name: string) => {
+  const startMinute = useCallback((name: string, id: string) => {
     setPlayerName(name);
+    setPlayerId(id);
     setTimeLeft(MINUTE_DURATION);
     endTsRef.current = Date.now() + MINUTE_DURATION * 1000;
     setActive(true);
@@ -33,6 +36,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
   const stopMinute = useCallback(() => {
     setActive(false);
     setPlayerName('');
+    setPlayerId('');
     setTimeLeft(MINUTE_DURATION);
     endTsRef.current = 0;
   }, []);
@@ -48,6 +52,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
         setTimeout(() => {
           setActive(false);
           setPlayerName('');
+          setPlayerId('');
           setTimeLeft(MINUTE_DURATION);
           endTsRef.current = 0;
         }, 2000);
@@ -60,7 +65,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
   }, [active]);
 
   return (
-    <MinuteTimerContext.Provider value={{ state: { active, playerName, timeLeft }, startMinute, stopMinute }}>
+    <MinuteTimerContext.Provider value={{ state: { active, playerName, playerId, timeLeft }, startMinute, stopMinute }}>
       {children}
     </MinuteTimerContext.Provider>
   );

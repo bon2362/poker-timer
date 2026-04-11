@@ -102,7 +102,7 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
               </button>
             )}
             <button
-              onClick={() => { startMinute(player.name); setExpanded(false); }}
+              onClick={() => { startMinute(player.name, player.id); setExpanded(false); }}
               className={`${btnBase} py-3 px-4 text-[15px] bg-[#1a2030] border-[#334466] text-blue-300 hover:bg-[#2a3050]`}
             >
               ⏱ Минуту!

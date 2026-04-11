@@ -166,7 +166,7 @@ export function PlayerRow({ sp }: Props) {
             Вылетел:а
           </button>
           <button
-            onClick={() => { startMinute(player.name); setExpanded(false); }}
+            onClick={() => { startMinute(player.name, player.id); setExpanded(false); }}
             className="text-[12px] bg-[#1a2030] border border-[#334466] text-blue-300 rounded px-3 py-1 cursor-pointer hover:bg-[#2a3050]"
           >
             ⏱ Минуту!
