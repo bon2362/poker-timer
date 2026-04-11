@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useGame } from '@/context/GameContext';
+import { useTimer } from '@/context/TimerContext';
 import { calcGameStats } from '@/lib/game';
 import { Avatar } from '../PlayerManager/PlayerManager';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
@@ -9,8 +10,16 @@ import { playWinnerFanfare } from '@/lib/audio';
 
 export function WinnerScreen() {
   const { activeSession, sessionPlayers, players, finishGame } = useGame();
+  const { state: timerState, dispatch: timerDispatch } = useTimer();
   const [winnerImageUrl, setWinnerImageUrl] = useState<string | null>(null);
   const [imageReady, setImageReady] = useState(false);
+
+  const handleFinishGame = () => {
+    if (!timerState.isPaused) {
+      timerDispatch({ type: 'TOGGLE_PAUSE' });
+    }
+    finishGame();
+  };
 
   const winner = sessionPlayers.find(sp => sp.status === 'winner');
   const winnerPlayer = winner ? players.find(p => p.id === winner.playerId) : null;
@@ -88,7 +97,7 @@ export function WinnerScreen() {
           )}
 
           <button
-            onClick={finishGame}
+            onClick={handleFinishGame}
             className="mt-2 bg-black/40 border border-white/20 text-white/60 rounded-xl px-8 py-3 text-[14px] cursor-pointer hover:border-white/40 hover:text-white/90 transition-colors backdrop-blur-sm"
           >
             Завершить игру
@@ -141,7 +150,7 @@ export function WinnerScreen() {
         )}
 
         <button
-          onClick={finishGame}
+          onClick={handleFinishGame}
           className="mt-2 bg-[#1e1e1e] border border-[#333] text-[#888] rounded-xl px-8 py-3 text-[15px] cursor-pointer hover:border-[#555] hover:text-[#ccc] transition-colors"
         >
           Завершить игру
