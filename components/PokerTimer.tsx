@@ -10,6 +10,7 @@ import { SettingsScreen } from './SettingsScreen';
 import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import { SlideshowOverlay } from './SlideshowOverlay';
+import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import type { Config } from '@/types/timer';
 
@@ -272,6 +273,9 @@ export function PokerTimer() {
       {activeSession && (
         <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
       )}
+
+      {/* Minute timer overlay */}
+      <MinuteTimerOverlay />
 
       {/* Winner screen */}
       {showWinner && <WinnerScreen />}

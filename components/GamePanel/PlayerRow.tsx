@@ -2,6 +2,7 @@
 'use client';
 import { useState } from 'react';
 import { useGame } from '@/context/GameContext';
+import { useMinuteTimer } from '@/context/MinuteTimerContext';
 import { Avatar } from '../PlayerManager/PlayerManager';
 import type { SessionPlayer } from '@/types/game';
 
@@ -14,6 +15,7 @@ export function PlayerRow({ sp }: Props) {
     eliminatePlayer, undoEliminate, declareWinner,
     sessionPlayers,
   } = useGame();
+  const { startMinute } = useMinuteTimer();
   const [expanded, setExpanded] = useState(false);
   const [undoHover, setUndoHover] = useState(false);
   const player = players.find(p => p.id === sp.playerId);
@@ -154,14 +156,20 @@ export function PlayerRow({ sp }: Props) {
         )}
       </div>
 
-      {/* Expanded menu — elimination (#53: no question, rename, no cancel) */}
+      {/* Expanded menu — elimination + minute timer */}
       {expanded && !isLastPlayer && (
-        <div className="pl-[48px]">
+        <div className="pl-[48px] flex gap-2">
           <button
             onClick={async () => { await eliminatePlayer(sp.id); setExpanded(false); }}
             className="text-[12px] bg-red-900 border border-red-700 text-red-300 rounded px-3 py-1 cursor-pointer hover:bg-red-800"
           >
             Вылетел:а
+          </button>
+          <button
+            onClick={() => { startMinute(player.name); setExpanded(false); }}
+            className="text-[12px] bg-[#1a2030] border border-[#334466] text-blue-300 rounded px-3 py-1 cursor-pointer hover:bg-[#2a3050]"
+          >
+            ⏱ Минуту!
           </button>
         </div>
       )}

@@ -1,14 +1,18 @@
 'use client';
+import { useState } from 'react';
 import { useGame } from '@/context/GameContext';
 import { useTimer } from '@/context/TimerContext';
+import { useMinuteTimer } from '@/context/MinuteTimerContext';
 import { Avatar } from './PlayerManager/PlayerManager';
 import type { SessionPlayer, Player } from '@/types/game';
 
 type Props = { onClose: () => void };
 
-/* ── Active player row ── */
+/* ── Active player row (collapsible) ── */
 function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
   const { activeSession, doRebuy, undoRebuy, doAddon, undoAddon, eliminatePlayer, declareWinner, sessionPlayers } = useGame();
+  const { startMinute } = useMinuteTimer();
+  const [expanded, setExpanded] = useState(false);
   if (!activeSession) return null;
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
@@ -17,80 +21,95 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
   const btnBase = 'flex items-center justify-center rounded-xl border font-semibold cursor-pointer active:scale-95 transition-transform';
 
   return (
-    <div className="bg-[#242424] rounded-2xl p-4 flex flex-col gap-3">
-      {/* Player identity */}
-      <div className="flex items-center gap-3">
+    <div className="bg-[#242424] rounded-2xl overflow-hidden">
+      {/* Collapsed header — tap to expand */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center gap-3 p-4 cursor-pointer bg-transparent border-none text-left active:bg-[#2a2a2a] transition-colors"
+      >
         <Avatar player={player} size={44} />
-        <span className="text-[17px] font-semibold text-white">{player.name}</span>
-      </div>
+        <span className="flex-1 text-[17px] font-semibold text-white">{player.name}</span>
+        <span className={`text-[16px] transition-transform ${expanded ? 'rotate-180' : ''} text-[#555]`}>▾</span>
+      </button>
 
-      {/* Rebuy controls */}
-      {activeSession.rebuyCost > 0 && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => undoRebuy(sp.id)}
-            disabled={sp.rebuys === 0}
-            className={`${btnBase} w-11 h-11 text-[20px] bg-[#1a1a1a] border-[#333] text-[#888] disabled:opacity-30 disabled:cursor-not-allowed hover:border-violet-500 hover:text-violet-300`}
-          >
-            −
-          </button>
-          <div className="flex-1 text-center text-[14px] text-violet-300 font-medium">
-            Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
-            {activeSession.maxRebuys > 0 && (
-              <span className="text-[#555]">/{activeSession.maxRebuys}</span>
+      {/* Expanded actions */}
+      {expanded && (
+        <div className="px-4 pb-4 flex flex-col gap-3">
+          {/* Rebuy controls */}
+          {activeSession.rebuyCost > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => undoRebuy(sp.id)}
+                disabled={sp.rebuys === 0}
+                className={`${btnBase} w-11 h-11 text-[20px] bg-[#1a1a1a] border-[#333] text-[#888] disabled:opacity-30 disabled:cursor-not-allowed hover:border-violet-500 hover:text-violet-300`}
+              >
+                −
+              </button>
+              <div className="flex-1 text-center text-[14px] text-violet-300 font-medium">
+                Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
+                {activeSession.maxRebuys > 0 && (
+                  <span className="text-[#555]">/{activeSession.maxRebuys}</span>
+                )}
+              </div>
+              <button
+                onClick={() => doRebuy(sp.id)}
+                disabled={activeSession.maxRebuys > 0 && sp.rebuys >= activeSession.maxRebuys}
+                className={`${btnBase} w-11 h-11 text-[20px] bg-[#2a2040] border-[#443366] text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3a2060]`}
+              >
+                +
+              </button>
+            </div>
+          )}
+
+          {/* Addon controls */}
+          {activeSession.addonCost > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => undoAddon(sp.id)}
+                disabled={!sp.hasAddon}
+                className={`${btnBase} w-11 h-11 text-[20px] bg-[#1a1a1a] border-[#333] text-[#888] disabled:opacity-30 disabled:cursor-not-allowed hover:border-green-500 hover:text-green-300`}
+              >
+                −
+              </button>
+              <div className={`flex-1 text-center text-[14px] font-medium ${sp.hasAddon ? 'text-green-400' : 'text-[#555]'}`}>
+                {sp.hasAddon ? 'Аддон ✓' : 'Аддон'}
+              </div>
+              <button
+                onClick={() => !sp.hasAddon && doAddon(sp.id)}
+                disabled={sp.hasAddon}
+                className={`${btnBase} w-11 h-11 text-[20px] bg-[#1a2a1a] border-[#336633] text-green-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#2a3a2a]`}
+              >
+                +
+              </button>
+            </div>
+          )}
+
+          {/* Eliminate / Winner + Minute */}
+          <div className="flex gap-2">
+            {isLastPlayer ? (
+              <button
+                onClick={() => declareWinner(sp.id)}
+                className={`${btnBase} flex-1 py-3 text-[15px] bg-yellow-900 border-yellow-700 text-yellow-300 hover:bg-yellow-800`}
+              >
+                🏆 Победитель
+              </button>
+            ) : (
+              <button
+                onClick={() => eliminatePlayer(sp.id)}
+                className={`${btnBase} flex-1 py-3 text-[15px] bg-red-900 border-red-700 text-red-300 hover:bg-red-800`}
+              >
+                Вылетел:а
+              </button>
             )}
+            <button
+              onClick={() => { startMinute(player.name); setExpanded(false); }}
+              className={`${btnBase} py-3 px-4 text-[15px] bg-[#1a2030] border-[#334466] text-blue-300 hover:bg-[#2a3050]`}
+            >
+              ⏱ Минуту!
+            </button>
           </div>
-          <button
-            onClick={() => doRebuy(sp.id)}
-            disabled={activeSession.maxRebuys > 0 && sp.rebuys >= activeSession.maxRebuys}
-            className={`${btnBase} w-11 h-11 text-[20px] bg-[#2a2040] border-[#443366] text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3a2060]`}
-          >
-            +
-          </button>
         </div>
       )}
-
-      {/* Addon controls */}
-      {activeSession.addonCost > 0 && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => undoAddon(sp.id)}
-            disabled={!sp.hasAddon}
-            className={`${btnBase} w-11 h-11 text-[20px] bg-[#1a1a1a] border-[#333] text-[#888] disabled:opacity-30 disabled:cursor-not-allowed hover:border-green-500 hover:text-green-300`}
-          >
-            −
-          </button>
-          <div className={`flex-1 text-center text-[14px] font-medium ${sp.hasAddon ? 'text-green-400' : 'text-[#555]'}`}>
-            {sp.hasAddon ? 'Аддон ✓' : 'Аддон'}
-          </div>
-          <button
-            onClick={() => !sp.hasAddon && doAddon(sp.id)}
-            disabled={sp.hasAddon}
-            className={`${btnBase} w-11 h-11 text-[20px] bg-[#1a2a1a] border-[#336633] text-green-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#2a3a2a]`}
-          >
-            +
-          </button>
-        </div>
-      )}
-
-      {/* Eliminate / Winner */}
-      <div className="flex gap-2">
-        {isLastPlayer ? (
-          <button
-            onClick={() => declareWinner(sp.id)}
-            className={`${btnBase} flex-1 py-3 text-[15px] bg-yellow-900 border-yellow-700 text-yellow-300 hover:bg-yellow-800`}
-          >
-            🏆 Победитель
-          </button>
-        ) : (
-          <button
-            onClick={() => eliminatePlayer(sp.id)}
-            className={`${btnBase} flex-1 py-3 text-[15px] bg-red-900 border-red-700 text-red-300 hover:bg-red-800`}
-          >
-            Вылетел:а
-          </button>
-        )}
-      </div>
     </div>
   );
 }

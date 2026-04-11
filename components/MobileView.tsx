@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTimer } from '@/context/TimerContext';
 import { MobileAdminPanel } from './MobileAdminPanel';
+import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { formatTime } from '@/lib/timer';
 import type { Stage } from '@/types/timer';
 
@@ -152,6 +153,9 @@ export function MobileView() {
         {/* Clock */}
         <Clock />
       </div>
+
+      {/* Minute timer overlay */}
+      <MinuteTimerOverlay mobile />
 
       {/* Progress bar */}
       <div className="fixed bottom-0 left-0 right-0">

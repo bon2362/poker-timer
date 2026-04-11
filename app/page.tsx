@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { GameProvider } from '@/context/GameContext';
 import { TimerProvider } from '@/context/TimerContext';
+import { MinuteTimerProvider } from '@/context/MinuteTimerContext';
 
 const PokerTimer = dynamic(
   () => import('@/components/PokerTimer').then(m => ({ default: m.PokerTimer })),
@@ -28,7 +29,9 @@ export default function Home() {
   return (
     <GameProvider>
       <TimerProvider>
-        {isMobile ? <MobileView /> : <PokerTimer />}
+        <MinuteTimerProvider>
+          {isMobile ? <MobileView /> : <PokerTimer />}
+        </MinuteTimerProvider>
       </TimerProvider>
     </GameProvider>
   );
