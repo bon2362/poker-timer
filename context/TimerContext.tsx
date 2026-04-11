@@ -26,6 +26,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const fromDisplayBroadcastRef = useRef(false);
   const fromDatabaseRef = useRef(false);
 
+  // Track session createdAt to detect session end vs start
+  const prevSessionCreatedAtRef = useRef(activeSession?.createdAt);
+
   // Track previous sync-relevant values to detect changes
   const prevSyncRef = useRef({
     currentStage: state.currentStage,
@@ -59,9 +62,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR_SOUND' });
   }, [state.pendingSound]);
 
-  // --- Restore timer state from DB on mount ---
+  // --- Restore timer state from DB on mount / session change ---
   useEffect(() => {
     if (gameLoading) return;
+
+    const prevCreatedAt = prevSessionCreatedAtRef.current;
+    prevSessionCreatedAtRef.current = activeSession?.createdAt;
+
+    // Session just ended (was active, now null) — keep current timer state
+    // (already paused by handleFinishGame), don't overwrite from DB
+    if (prevCreatedAt && !activeSession?.createdAt) return;
+
     let cancelled = false;
 
     fetchTimerState().then(saved => {
