@@ -1,9 +1,10 @@
 // components/PlayerManager/PlayerManager.tsx
 'use client';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGame } from '@/context/GameContext';
 import { PlayerForm } from './PlayerForm';
 import { getWinnerImageUrl, uploadWinnerImage, deleteWinnerImage } from '@/lib/supabase/winnerImage';
+import { getLoserImageUrl, uploadLoserImage, deleteLoserImage } from '@/lib/supabase/loserImage';
 import type { Player } from '@/types/game';
 
 function Avatar({ player, size = 40 }: { player: Player; size?: number }) {
@@ -29,22 +30,43 @@ function Avatar({ player, size = 40 }: { player: Player; size?: number }) {
 
 export { Avatar };
 
-/* ── Per-player winner image cell ── */
-function WinnerImageCell({ player }: { player: Player }) {
+type PlayerImageCellProps = {
+  player: Player;
+  icon: string;
+  kindLabel: string;
+  getImageUrl: (playerId: string) => Promise<string | null>;
+  uploadImage: (playerId: string, file: File) => Promise<string | null>;
+  deleteImage: (playerId: string) => Promise<void>;
+};
+
+/* ── Per-player special image cell ── */
+function PlayerImageCell({
+  player,
+  icon,
+  kindLabel,
+  getImageUrl,
+  uploadImage,
+  deleteImage,
+}: PlayerImageCellProps) {
   const [imageUrl, setImageUrl] = useState<string | null | 'loading'>('loading');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lazy-load on first render
-  useState(() => {
-    getWinnerImageUrl(player.id).then(url => setImageUrl(url));
-  });
+  useEffect(() => {
+    let cancelled = false;
+    setImageUrl('loading');
+    getImageUrl(player.id).then(url => {
+      if (!cancelled) setImageUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [getImageUrl, player.id]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const url = await uploadWinnerImage(player.id, file);
+    const url = await uploadImage(player.id, file);
     setImageUrl(url);
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -52,8 +74,8 @@ function WinnerImageCell({ player }: { player: Player }) {
 
   async function handleDelete(ev: React.MouseEvent) {
     ev.stopPropagation();
-    if (!confirm(`Удалить изображение победителя для ${player.name}?`)) return;
-    await deleteWinnerImage(player.id);
+    if (!confirm(`Удалить изображение ${kindLabel} для ${player.name}?`)) return;
+    await deleteImage(player.id);
     setImageUrl(null);
   }
 
@@ -67,7 +89,7 @@ function WinnerImageCell({ player }: { player: Player }) {
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
-        title={imageUrl ? 'Заменить изображение победителя' : 'Загрузить изображение победителя'}
+        title={imageUrl ? `Заменить изображение ${kindLabel}` : `Загрузить изображение ${kindLabel}`}
         className="relative overflow-hidden rounded border border-[#333] cursor-pointer hover:border-violet-500 transition-colors disabled:opacity-50 shrink-0"
         style={{ width: 56, height: 32 }}
       >
@@ -75,7 +97,7 @@ function WinnerImageCell({ player }: { player: Player }) {
           <img src={imageUrl} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-[#1e1e1e] text-[#555] text-[16px]">
-            {uploading ? '…' : '🏆'}
+            {uploading ? '…' : icon}
           </div>
         )}
       </button>
@@ -91,6 +113,32 @@ function WinnerImageCell({ player }: { player: Player }) {
         </button>
       )}
     </div>
+  );
+}
+
+function WinnerImageCell({ player }: { player: Player }) {
+  return (
+    <PlayerImageCell
+      player={player}
+      icon="🏆"
+      kindLabel="победителя"
+      getImageUrl={getWinnerImageUrl}
+      uploadImage={uploadWinnerImage}
+      deleteImage={deleteWinnerImage}
+    />
+  );
+}
+
+function LoserImageCell({ player }: { player: Player }) {
+  return (
+    <PlayerImageCell
+      player={player}
+      icon="💀"
+      kindLabel="проигравшего"
+      getImageUrl={getLoserImageUrl}
+      uploadImage={uploadLoserImage}
+      deleteImage={deleteLoserImage}
+    />
   );
 }
 
@@ -140,6 +188,7 @@ export function PlayerManager() {
               </span>
               {/* Winner image thumbnail + controls */}
               <WinnerImageCell player={player} />
+              <LoserImageCell player={player} />
               <button
                 onClick={() => handleDelete(player)}
                 className="bg-transparent border-none text-[#444] text-[16px] cursor-pointer hover:text-red-500 px-1 shrink-0"

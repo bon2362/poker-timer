@@ -11,16 +11,28 @@ import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import { SlideshowOverlay } from './SlideshowOverlay';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
+import { LoserImageOverlay } from './LoserImageOverlay';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
+import { getLoserImageUrl } from '@/lib/supabase/loserImage';
 import type { Config } from '@/types/timer';
+import type { PlayerStatus } from '@/types/game';
+
+type LoserOverlayState = {
+  sessionPlayerId: string;
+  playerName: string;
+  imageUrl: string;
+};
 
 export function PokerTimer() {
   const { state, dispatch } = useTimer();
-  const { activeSession, showWinner, loading } = useGame();
+  const { activeSession, showWinner, loading, sessionPlayers, players } = useGame();
 
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [loserOverlay, setLoserOverlay] = useState<LoserOverlayState | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gamePanelAutoOpenedRef = useRef(false);
+  const sessionPlayerStatusRef = useRef<Map<string, PlayerStatus>>(new Map());
+  const eliminatedSessionPlayerIdsRef = useRef<Set<string>>(new Set());
 
   // Slideshow state
   const [slideshowUrls, setSlideshowUrls] = useState<string[]>([]);
@@ -56,6 +68,54 @@ export function PokerTimer() {
     };
   }, []);
 
+  useEffect(() => {
+    eliminatedSessionPlayerIdsRef.current = new Set(
+      sessionPlayers.filter(sp => sp.status === 'eliminated').map(sp => sp.id)
+    );
+  }, [sessionPlayers]);
+
+  // Show the prepared fullscreen image when a player newly becomes eliminated.
+  useEffect(() => {
+    if (!activeSession) {
+      sessionPlayerStatusRef.current = new Map();
+      setLoserOverlay(null);
+      return;
+    }
+
+    const previousStatuses = sessionPlayerStatusRef.current;
+    const newlyEliminated = sessionPlayers.find(sp => {
+      const previous = previousStatuses.get(sp.id);
+      return previous !== undefined && previous !== 'eliminated' && sp.status === 'eliminated';
+    });
+
+    sessionPlayerStatusRef.current = new Map(sessionPlayers.map(sp => [sp.id, sp.status]));
+
+    if (!newlyEliminated) return;
+
+    const player = players.find(p => p.id === newlyEliminated.playerId);
+    if (!player) return;
+
+    getLoserImageUrl(player.id).then(imageUrl => {
+      if (!imageUrl) return;
+      if (!eliminatedSessionPlayerIdsRef.current.has(newlyEliminated.id)) return;
+
+      setLoserOverlay({
+        sessionPlayerId: newlyEliminated.id,
+        playerName: player.name,
+        imageUrl,
+      });
+    });
+  }, [activeSession, players, sessionPlayers]);
+
+  // If the player is returned to active play, close the loser image immediately.
+  useEffect(() => {
+    if (!loserOverlay) return;
+    const isStillEliminated = sessionPlayers.some(
+      sp => sp.id === loserOverlay.sessionPlayerId && sp.status === 'eliminated'
+    );
+    if (!isStillEliminated) setLoserOverlay(null);
+  }, [loserOverlay, sessionPlayers]);
+
   // Keyboard: Space → toggle pause (only when session active)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -88,6 +148,10 @@ export function PokerTimer() {
     } else {
       document.exitFullscreen().catch(() => {});
     }
+  }, []);
+
+  const handleCloseLoserOverlay = useCallback(() => {
+    setLoserOverlay(null);
   }, []);
 
   const handleSaveSettings = useCallback((config: Config) => {
@@ -276,6 +340,18 @@ export function PokerTimer() {
 
       {/* Minute timer overlay */}
       <MinuteTimerOverlay />
+
+      {/* Loser image overlay */}
+      {loserOverlay && !state.isOver && (
+        <LoserImageOverlay
+          imageUrl={loserOverlay.imageUrl}
+          playerName={loserOverlay.playerName}
+          timeLeft={state.timeLeft}
+          stage={stage}
+          isPaused={state.isPaused}
+          onClose={handleCloseLoserOverlay}
+        />
+      )}
 
       {/* Winner screen */}
       {showWinner && <WinnerScreen />}
