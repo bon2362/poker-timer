@@ -42,7 +42,7 @@ export function GamePanel({ isOpen, onToggle }: Props) {
     .sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0));
 
   return (
-    <div className="fixed top-0 left-0 bottom-0 w-[320px] z-40 bg-[#1a1a1a] border-r border-[#2a2a2a] flex flex-col overflow-hidden">
+    <div className="fixed top-0 left-0 bottom-0 w-[360px] max-w-[calc(100vw-32px)] z-40 bg-[#1a1a1a] border-r border-[#2a2a2a] flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] shrink-0">
         <div>
@@ -68,7 +68,7 @@ export function GamePanel({ isOpen, onToggle }: Props) {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 flex flex-col gap-4">
         {/* Active players */}
         <div>
           <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-2">

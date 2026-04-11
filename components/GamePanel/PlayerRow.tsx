@@ -52,10 +52,10 @@ export function PlayerRow({ sp }: Props) {
   /* ── Active player row ── */
   return (
     <div className="flex flex-col gap-2 py-2 border-b border-[#242424] last:border-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Avatar player={player} size={36} />
         <span
-          className="flex-1 text-[14px] text-[#ccc] cursor-pointer hover:text-white"
+          className="flex-1 min-w-0 truncate text-[14px] text-[#ccc] cursor-pointer hover:text-white"
           onClick={() => !isLastPlayer && setExpanded(e => !e)}
         >
           {player.name}
@@ -69,7 +69,7 @@ export function PlayerRow({ sp }: Props) {
 
           if (expanded) {
             return (
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   onClick={() => undoRebuy(sp.id)}
                   disabled={sp.rebuys === 0}
@@ -96,7 +96,7 @@ export function PlayerRow({ sp }: Props) {
             return (
               <button
                 onClick={() => sp.rebuys > 0 ? undoRebuy(sp.id) : doRebuy(sp.id)}
-                className={`text-[11px] rounded px-2 py-1 cursor-pointer border transition-colors ${
+                className={`shrink-0 text-[11px] rounded px-2 py-1 cursor-pointer border transition-colors ${
                   sp.rebuys > 0
                     ? 'bg-[#2a2040] border-[#443366] text-violet-400 hover:bg-[#2a1a1a] hover:border-[#664444] hover:text-red-400'
                     : 'bg-[#2a2040] border-[#443366] text-violet-400 hover:bg-[#3a2060]'
@@ -112,7 +112,7 @@ export function PlayerRow({ sp }: Props) {
             <button
               onClick={() => !atMax && doRebuy(sp.id)}
               disabled={atMax}
-              className="text-[11px] bg-[#2a2040] border border-[#443366] text-violet-400 rounded px-2 py-1 cursor-pointer hover:bg-[#3a2060] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="shrink-0 text-[11px] bg-[#2a2040] border border-[#443366] text-violet-400 rounded px-2 py-1 cursor-pointer hover:bg-[#3a2060] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Ребай{sp.rebuys > 0 ? ` ×${sp.rebuys}` : ''}
             </button>
@@ -122,7 +122,7 @@ export function PlayerRow({ sp }: Props) {
         {/* Addon button — shows ±controls when expanded */}
         {activeSession.addonCost > 0 && (
           expanded ? (
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 onClick={() => sp.hasAddon && undoAddon(sp.id)}
                 disabled={!sp.hasAddon}
@@ -144,7 +144,7 @@ export function PlayerRow({ sp }: Props) {
           ) : (
             <button
               onClick={() => sp.hasAddon ? undoAddon(sp.id) : doAddon(sp.id)}
-              className={`text-[11px] rounded px-2 py-1 cursor-pointer border transition-colors ${
+              className={`shrink-0 text-[11px] rounded px-2 py-1 cursor-pointer border transition-colors ${
                 sp.hasAddon
                   ? 'bg-[#1a2a1a] border-[#336633] text-green-400 hover:bg-[#2a1a1a] hover:border-[#664444] hover:text-red-400'
                   : 'bg-[#1a2a1a] border-[#336633] text-green-400 hover:bg-[#2a3a2a]'
