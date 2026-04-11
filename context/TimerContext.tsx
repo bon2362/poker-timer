@@ -20,6 +20,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const { activeSession, loading: gameLoading } = useGame();
   const suppressUntilRef = useRef<number>(0);
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Echo suppression: skip sync effect when state came from a broadcast or DB change
   const fromBroadcastRef = useRef(false);
@@ -81,6 +82,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'RESTART' });
         return;
       }
+      fromDatabaseRef.current = true;
       dispatch({ type: 'RESTORE_STATE', payload: saved });
     });
 
@@ -151,17 +153,21 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       stages: state.stages,
     };
 
-    // Save to DB + broadcast to other devices (only when WebSocket is connected)
-    saveTimerState(payload);
+    // Save local changes to DB in order; out-of-order RPC completion can otherwise
+    // make a stale play/pause state look newer than the user's last action.
+    saveQueueRef.current = saveQueueRef.current
+      .catch(() => {})
+      .then(() => saveTimerState(payload));
+
+    // Broadcast to other devices (only when WebSocket is connected)
     if (channelRef.current.state === 'joined') {
       channelRef.current.send({ type: 'broadcast', event: 'state', payload });
     }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
 
-  // --- iOS remote control via RPC ---
-  // iOS calls apply_timer_command RPC → timer_state UPDATE with source='ios'.
-  // When iOS calls apply_timer_command RPC, it updates timer_state with source='ios'.
-  // The web picks that up here and syncs without re-saving to DB (echo suppression).
+  // --- Realtime DB sync ---
+  // Broadcast is fast, but it can be missed by a temporarily disconnected device.
+  // Treat timer_state as the durable fallback for both web and iOS writes.
   useEffect(() => {
     const client = getClient();
     if (!client) return;
@@ -173,8 +179,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         { event: 'UPDATE', schema: 'public', table: 'timer_state', filter: 'id=eq.main' },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
-          // Ignore our own saves (source='web'); only process RPC writes (source='ios')
-          if (row.source !== 'ios') return;
           fromDatabaseRef.current = true;
           dispatch({
             type: 'RESTORE_STATE',

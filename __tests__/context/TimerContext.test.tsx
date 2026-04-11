@@ -45,6 +45,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // --- Component under test ---
 import { TimerProvider, useTimer } from '@/context/TimerContext';
+import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
 
 function TestConsumer() {
   const { state, dispatch } = useTimer();
@@ -187,5 +188,31 @@ describe('TimerContext', () => {
     expect(screen.getByTestId('stage')).toHaveTextContent('0');
     expect(screen.getByTestId('paused')).toHaveTextContent('true');
     expect(screen.getByTestId('screen')).toHaveTextContent('timer');
+  });
+
+  test('9. restoring from DB does not echo stale state back to Supabase', async () => {
+    (fetchTimerState as jest.Mock).mockResolvedValueOnce({
+      currentStage: 1,
+      anchorTs: Date.now(),
+      elapsedBeforePause: 120,
+      isPaused: true,
+      isOver: false,
+      warnedOneMin: false,
+      stageType: 'level',
+      levelNum: 2,
+      sb: 20,
+      bb: 40,
+      stageDurationSecs: 1200,
+      stages: [
+        { type: 'level', levelNum: 1, sb: 10, bb: 20, duration: 1200 },
+        { type: 'level', levelNum: 2, sb: 20, bb: 40, duration: 1200 },
+      ],
+      updatedAt: '2026-04-12T00:00:00.000Z',
+    });
+
+    renderWithProvider();
+
+    await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('1'));
+    await waitFor(() => expect(saveTimerState).not.toHaveBeenCalled());
   });
 });
