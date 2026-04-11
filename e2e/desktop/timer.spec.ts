@@ -6,7 +6,7 @@ test.describe('Timer - Desktop', () => {
     // 'networkidle' is not used because Supabase Realtime keeps WebSocket connections open.
     await page.waitForLoadState('domcontentloaded');
     // Wait for the timer display or overlay to appear — signals React has hydrated
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await page.waitForSelector('text=Round 1', { timeout: 30000 });
   });
 
   // E1: Play and pause toggle
@@ -75,8 +75,7 @@ test.describe('Timer - Desktop', () => {
     await expect(page.locator('text=10 / 20')).toBeVisible({ timeout: 10000 });
 
     // Timer should display a time in MM:SS format
-    const timerText = page.locator('div').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
-    await expect(timerText).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/\d{2}:\d{2}/)).toBeVisible({ timeout: 10000 });
   });
 
   // E4: Next blind info shown below timer

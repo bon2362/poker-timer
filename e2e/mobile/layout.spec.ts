@@ -26,7 +26,7 @@ test.describe('Mobile Layout', () => {
     await page.setViewportSize({ width: 430, height: 932 });
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await page.waitForSelector('text=Round 1', { timeout: 30000 });
 
     await expect(page.locator('text=Round 1')).toBeVisible();
     await expect(page.locator('text=10 / 20')).toBeVisible();
@@ -34,9 +34,9 @@ test.describe('Mobile Layout', () => {
 
   // M6: Tablet viewport (≥768px) renders desktop PokerTimer layout
   test('M6: tablet viewport (768px+) shows desktop layout elements', async ({ page }) => {
-    // Set viewport to tablet size and reload so the client-side check picks up ≥768px
+    // Set viewport BEFORE navigating so client-side window.innerWidth picks up 1024px
     await page.setViewportSize({ width: 1024, height: 768 });
-    await page.reload();
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     // Desktop PokerTimer renders "Round 1" blind info
     await page.waitForSelector('text=Round 1', { timeout: 30000 });

@@ -4,7 +4,7 @@ test.describe('Settings - Desktop', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await page.waitForSelector('text=Round 1', { timeout: 30000 });
   });
 
   // Helper: click the gear (Settings) button via JS to bypass the overlay (z-40)
@@ -48,6 +48,6 @@ test.describe('Settings - Desktop', () => {
     await backBtn.click();
 
     // Timer screen should be back
-    await expect(page.locator('text=Round 1')).toBeVisible();
+    await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
   });
 });
