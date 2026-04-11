@@ -13,7 +13,31 @@ type TimerContextValue = {
   dispatch: React.Dispatch<Action>;
 };
 
+type SyncSnapshot = Pick<TimerState, 'currentStage' | 'anchorTs' | 'elapsedBeforePause' | 'isPaused' | 'isOver' | 'warnedOneMin'>;
+
 const TimerContext = createContext<TimerContextValue | null>(null);
+
+function toSyncSnapshot(payload: SyncSnapshot): SyncSnapshot {
+  return {
+    currentStage: payload.currentStage,
+    anchorTs: payload.anchorTs,
+    elapsedBeforePause: payload.elapsedBeforePause,
+    isPaused: payload.isPaused,
+    isOver: payload.isOver,
+    warnedOneMin: payload.warnedOneMin,
+  };
+}
+
+function syncSnapshotMatchesState(snapshot: SyncSnapshot, state: TimerState): boolean {
+  return (
+    snapshot.currentStage === state.currentStage &&
+    snapshot.anchorTs === state.anchorTs &&
+    snapshot.elapsedBeforePause === state.elapsedBeforePause &&
+    snapshot.isPaused === state.isPaused &&
+    snapshot.isOver === state.isOver &&
+    snapshot.warnedOneMin === state.warnedOneMin
+  );
+}
 
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
@@ -22,10 +46,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
-  // Echo suppression: skip sync effect when state came from a broadcast or DB change
-  const fromBroadcastRef = useRef(false);
+  // Echo suppression: skip sync effect only for the exact state received from another source.
+  const suppressSyncSnapshotRef = useRef<SyncSnapshot | null>(null);
   const fromDisplayBroadcastRef = useRef(false);
-  const fromDatabaseRef = useRef(false);
 
   // Track session createdAt to detect session end vs start
   const prevSessionCreatedAtRef = useRef(activeSession?.createdAt);
@@ -82,7 +105,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'RESTART' });
         return;
       }
-      fromDatabaseRef.current = true;
+      suppressSyncSnapshotRef.current = toSyncSnapshot(saved);
       dispatch({ type: 'RESTORE_STATE', payload: saved });
     });
 
@@ -93,7 +116,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const channel = channelRef.current;
     channel.on('broadcast', { event: 'state' }, ({ payload }) => {
-      fromBroadcastRef.current = true;
+      suppressSyncSnapshotRef.current = toSyncSnapshot(payload);
       dispatch({ type: 'RESTORE_STATE', payload });
     });
     channel.on('broadcast', { event: 'display' }, ({ payload }) => {
@@ -106,10 +129,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   // --- Event-driven sync: persist + broadcast only when significant state changes ---
   useEffect(() => {
-    // Skip if this change came from a broadcast or DB update (avoid echo loop)
-    if (fromBroadcastRef.current || fromDatabaseRef.current) {
-      fromBroadcastRef.current = false;
-      fromDatabaseRef.current = false;
+    // Skip only if this exact state came from a broadcast or DB update (avoid echo loop).
+    // If the incoming state was identical and did not trigger this effect, the next local
+    // user action will not match this snapshot and will still sync normally.
+    const suppressedSnapshot = suppressSyncSnapshotRef.current;
+    if (suppressedSnapshot && syncSnapshotMatchesState(suppressedSnapshot, state)) {
+      suppressSyncSnapshotRef.current = null;
       prevSyncRef.current = {
         currentStage: state.currentStage,
         anchorTs: state.anchorTs,
@@ -118,6 +143,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       };
       return;
     }
+    suppressSyncSnapshotRef.current = null;
 
     const prev = prevSyncRef.current;
     const changed =
@@ -179,24 +205,22 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         { event: 'UPDATE', schema: 'public', table: 'timer_state', filter: 'id=eq.main' },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
-          fromDatabaseRef.current = true;
-          dispatch({
-            type: 'RESTORE_STATE',
-            payload: {
-              currentStage: row.current_stage as number,
-              anchorTs: row.anchor_ts as number,
-              elapsedBeforePause: row.elapsed_before_pause as number,
-              isPaused: row.is_paused as boolean,
-              isOver: row.is_over as boolean,
-              warnedOneMin: row.warned_one_min as boolean,
-              stageType: row.stage_type === 'break' ? 'break' : 'level',
-              levelNum: (row.level_num as number) ?? 0,
-              sb: (row.sb as number) ?? 0,
-              bb: (row.bb as number) ?? 0,
-              stageDurationSecs: (row.stage_duration_secs as number) ?? undefined,
-              stages: parsePersistedStages(row.stages_json),
-            },
-          });
+          const restoredState: Extract<Action, { type: 'RESTORE_STATE' }>['payload'] = {
+            currentStage: row.current_stage as number,
+            anchorTs: row.anchor_ts as number,
+            elapsedBeforePause: row.elapsed_before_pause as number,
+            isPaused: row.is_paused as boolean,
+            isOver: row.is_over as boolean,
+            warnedOneMin: row.warned_one_min as boolean,
+            stageType: row.stage_type === 'break' ? 'break' : 'level',
+            levelNum: (row.level_num as number) ?? 0,
+            sb: (row.sb as number) ?? 0,
+            bb: (row.bb as number) ?? 0,
+            stageDurationSecs: (row.stage_duration_secs as number) ?? undefined,
+            stages: parsePersistedStages(row.stages_json),
+          };
+          suppressSyncSnapshotRef.current = toSyncSnapshot(restoredState);
+          dispatch({ type: 'RESTORE_STATE', payload: restoredState });
         }
       )
       .subscribe();

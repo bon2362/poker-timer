@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.28',
+    date: "12 April '26",
+    notes: 'Фикс фикса синхронизации: подавление эха теперь привязано к конкретному полученному состоянию и не блокирует следующий локальный play/pause.',
+  },
+  {
     version: '4.27',
     date: "12 April '26",
     notes: 'Фикс синхронизации таймера между устройствами: веб-клиенты теперь принимают durable timer_state updates из Supabase, сохранения идут по порядку, а перезагрузка не переотправляет stale-состояние обратно.',
@@ -256,7 +261,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.27</div>
+          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v4.28</div>
         </div>
         <button
           className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"

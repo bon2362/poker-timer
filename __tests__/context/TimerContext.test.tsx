@@ -215,4 +215,42 @@ describe('TimerContext', () => {
     await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('1'));
     await waitFor(() => expect(saveTimerState).not.toHaveBeenCalled());
   });
+
+  test('10. identical DB restore does not block the next local sync', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1700000000000);
+    (fetchTimerState as jest.Mock).mockResolvedValueOnce({
+      currentStage: 0,
+      anchorTs: 1700000000000,
+      elapsedBeforePause: 0,
+      isPaused: true,
+      isOver: false,
+      warnedOneMin: false,
+      stageType: 'level',
+      levelNum: 1,
+      sb: 10,
+      bb: 20,
+      stageDurationSecs: 1200,
+      stages: [
+        { type: 'level', levelNum: 1, sb: 10, bb: 20, duration: 1200 },
+        { type: 'level', levelNum: 2, sb: 20, bb: 40, duration: 1200 },
+      ],
+      updatedAt: '2026-04-12T00:00:00.000Z',
+    });
+
+    renderWithProvider();
+
+    await waitFor(() => expect(fetchTimerState).toHaveBeenCalled());
+    expect(saveTimerState).not.toHaveBeenCalled();
+
+    await act(async () => {
+      screen.getByText('toggle').click();
+    });
+
+    await waitFor(() => expect(saveTimerState).toHaveBeenCalledWith(expect.objectContaining({
+      isPaused: false,
+      anchorTs: 1700000000000,
+    })));
+
+    nowSpy.mockRestore();
+  });
 });
