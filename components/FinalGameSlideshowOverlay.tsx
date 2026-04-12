@@ -200,18 +200,7 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
 
       <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/80 pointer-events-none" />
 
-      <div className="absolute inset-x-0 top-8 flex justify-center px-5 pointer-events-none select-none">
-        <div className="text-[11px] sm:text-[12px] font-semibold uppercase text-white/55">
-          Финальная раздача
-        </div>
-      </div>
-
       <div className="absolute inset-x-0 bottom-[88px] sm:bottom-[96px] flex flex-col items-center px-5 text-center pointer-events-none select-none">
-        {lyric.section && (
-          <div className="mb-2 text-[11px] sm:text-[12px] font-bold uppercase text-yellow-300/80">
-            {lyric.section}
-          </div>
-        )}
         <div
           key={`${lyric.time}-${lyric.text}`}
           className="max-w-[980px] animate-[final-lyric-rise_500ms_ease-out] text-[26px] sm:text-[40px] lg:text-[56px] text-white font-black leading-[1.1] drop-shadow-[0_4px_28px_rgba(0,0,0,0.95)]"
