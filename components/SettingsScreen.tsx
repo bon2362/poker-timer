@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.53',
+    date: "05 May '26",
+    notes: 'Поддержка презентационного USB-кликера: Page Up / Page Down → пауза/возобновление таймера.',
+  },
+  {
     version: '4.52',
     date: "24 April '26",
     notes: 'Дата фотографии на экране перерыва перемещена в правый нижний угол.',
@@ -88,11 +93,6 @@ const CHANGELOG: ChangelogEntry[] = [
     version: '4.38',
     date: "12 April '26",
     notes: 'Оптимизация изображений: автоматическая генерация миниатюр для winner/loser картинок в списке игроков.',
-  },
-  {
-    version: '4.37',
-    date: "12 April '26",
-    notes: 'Поддержка презентационного USB-кликера: Page Up / Page Down → пауза/возобновление таймера.',
   },
   {
     version: '4.36',
