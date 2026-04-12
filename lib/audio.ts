@@ -46,7 +46,13 @@ export function playTick(): void {
 }
 
 /** Звук победителя — аплодисменты */
-export function playWinnerFanfare(): void {
+export function playWinnerFanfare(): { stop: () => void } {
   const audio = new Audio('/audio/applause.mp3');
   audio.play().catch(() => {});
+  return {
+    stop: () => {
+      audio.pause();
+      audio.currentTime = 0;
+    },
+  };
 }

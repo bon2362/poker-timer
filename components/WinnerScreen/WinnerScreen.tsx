@@ -35,10 +35,17 @@ export function WinnerScreen({ onFinishGame }: Props) {
   const winnerPlayer = winner ? players.find(p => p.id === winner.playerId) : null;
 
   useEffect(() => {
-    playWinnerFanfare();
+    const fanfare = playWinnerFanfare();
+    const stopFanfareTimer = setTimeout(() => fanfare.stop(), 15000);
+
     if (winnerPlayer) {
       getWinnerImageUrl(winnerPlayer.id).then(url => setWinnerImageUrl(url));
     }
+
+    return () => {
+      clearTimeout(stopFanfareTimer);
+      fanfare.stop();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winnerPlayer?.id]);
 
