@@ -38,10 +38,11 @@ export async function GET() {
     const latestProd = prodDeploys?.[0] ?? null;
     const latestPages = pagesDeploys?.[0] ?? null;
 
-    const [prodStatus, pagesStatus, allureData] = await Promise.all([
+    const [prodStatus, pagesStatus, allureData, codecovReport] = await Promise.all([
       latestProd ? getDeploymentStatus(latestProd.id) : Promise.resolve(null),
       latestPages ? getDeploymentStatus(latestPages.id) : Promise.resolve(null),
       fetch('https://bon2362.github.io/poker-timer/widgets/summary.json').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('https://api.codecov.io/api/v2/gh/bon2362/repos/poker-timer/report/?branch=main').then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
 
     // Find commit message for prod deployment SHA from runs data
@@ -89,6 +90,25 @@ export async function GET() {
             createdAt: latestPages.created_at as string,
             reportUrl: (pagesStatus?.environment_url as string) ?? 'https://bon2362.github.io/poker-timer/',
             sha: (latestPages.sha as string).slice(0, 7),
+          }
+        : null,
+      codecov: codecovReport
+        ? {
+            coverage: codecovReport.totals?.coverage as number ?? null,
+            lines:    codecovReport.totals?.lines    as number ?? 0,
+            hits:     codecovReport.totals?.hits     as number ?? 0,
+            misses:   codecovReport.totals?.misses   as number ?? 0,
+            partials: codecovReport.totals?.partials as number ?? 0,
+            files: ((codecovReport.files ?? []) as Record<string, unknown>[])
+              .map(f => ({
+                name:     f.name as string,
+                coverage: (f.totals as Record<string, number>)?.coverage ?? 0,
+                lines:    (f.totals as Record<string, number>)?.lines    ?? 0,
+                hits:     (f.totals as Record<string, number>)?.hits     ?? 0,
+                misses:   (f.totals as Record<string, number>)?.misses   ?? 0,
+              }))
+              .sort((a, b) => b.misses - a.misses)
+              .slice(0, 10),
           }
         : null,
       allure: allureData

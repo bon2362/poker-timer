@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.36',
+    date: "12 April '26",
+    notes: 'CI/CD: виджет Codecov — общий % покрытия, цветная полоска, таблица файлов по убыванию missed lines.',
+  },
+  {
     version: '4.35',
     date: "12 April '26",
     notes: 'Allure Report виджет: мини-диаграмма с результатами (passed/failed/broken/skipped), время последнего запуска и длительность.',
@@ -640,6 +645,14 @@ type CiStatusData = {
     reportUrl: string;
     sha: string;
   } | null;
+  codecov: {
+    coverage: number | null;
+    lines: number;
+    hits: number;
+    misses: number;
+    partials: number;
+    files: { name: string; coverage: number; lines: number; hits: number; misses: number }[];
+  } | null;
   allure: {
     passed: number;
     failed: number;
@@ -741,7 +754,7 @@ function CiCdTab() {
     fetch('/api/ci-status')
       .then(r => r.json())
       .then(setData)
-      .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, allure: null, error: 'Не удалось загрузить данные' }))
+      .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, allure: null, codecov: null, error: 'Не удалось загрузить данные' }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -912,6 +925,74 @@ function CiCdTab() {
                   className="text-[11px] text-violet-400 hover:text-violet-300"
                 >
                   Открыть отчёт →
+                </a>
+              </>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+
+          {/* Codecov */}
+          <CiCard title="Codecov">
+            {data.codecov ? (
+              <>
+                {/* Overall coverage bar */}
+                <div className="flex items-center gap-3">
+                  <span className={`text-[28px] font-bold tabular-nums ${
+                    data.codecov.coverage === null ? 'text-[#555]' :
+                    data.codecov.coverage >= 80 ? 'text-emerald-400' :
+                    data.codecov.coverage >= 60 ? 'text-amber-400' : 'text-red-400'
+                  }`}>
+                    {data.codecov.coverage !== null ? `${data.codecov.coverage.toFixed(1)}%` : '—'}
+                  </span>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="h-[6px] rounded-full bg-[#2a2a2a] overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          (data.codecov.coverage ?? 0) >= 80 ? 'bg-emerald-500' :
+                          (data.codecov.coverage ?? 0) >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${data.codecov.coverage ?? 0}%` }}
+                      />
+                    </div>
+                    <div className="flex gap-3 text-[11px] text-[#555]">
+                      <span><span className="text-emerald-500">{data.codecov.hits}</span> covered</span>
+                      <span><span className="text-red-500">{data.codecov.misses}</span> missed</span>
+                      {data.codecov.partials > 0 && <span><span className="text-amber-500">{data.codecov.partials}</span> partial</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-file table */}
+                {data.codecov.files.length > 0 && (
+                  <div className="flex flex-col gap-[6px] mt-1">
+                    <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10px] text-[#444] uppercase tracking-[1px] pb-1 border-b border-[#222]">
+                      <span>Файл</span>
+                      <span className="text-right">Missed</span>
+                      <span className="text-right w-[44px]">%</span>
+                    </div>
+                    {data.codecov.files.map(f => {
+                      const shortName = f.name.replace(/^(components|context|lib|reducer)\//, '').replace(/\.(tsx?|js)$/, '');
+                      const pct = f.coverage;
+                      const color = pct >= 80 ? 'text-emerald-400' : pct >= 60 ? 'text-amber-400' : 'text-red-400';
+                      return (
+                        <div key={f.name} className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center">
+                          <span className="text-[11px] text-[#666] truncate" title={f.name}>{shortName}</span>
+                          <span className="text-[11px] text-red-400 text-right tabular-nums">{f.misses}</span>
+                          <span className={`text-[11px] font-mono text-right w-[44px] tabular-nums ${color}`}>{pct.toFixed(1)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <a
+                  href="https://app.codecov.io/gh/bon2362/poker-timer"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-violet-400 hover:text-violet-300 self-start mt-1"
+                >
+                  Открыть Codecov →
                 </a>
               </>
             ) : (
