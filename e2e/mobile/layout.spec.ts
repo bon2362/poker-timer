@@ -14,8 +14,8 @@ test.describe('Mobile Layout', () => {
     await expect(page.locator('text=Round 1')).toBeVisible();
     await expect(page.locator('text=10 / 20')).toBeVisible();
 
-    // MobileView play button shows ▶ (no variant selector character, unlike desktop ▶︎)
-    const playBtn = page.locator('button', { hasText: '▶' });
+    // MobileView play/pause button — ▶ when paused, ⏸ when running (no title attr, unlike desktop)
+    const playBtn = page.locator('button').filter({ hasText: /^[▶⏸]$/ });
     await expect(playBtn).toBeVisible();
   });
 
