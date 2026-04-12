@@ -124,7 +124,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'RESTORE_DISPLAY', showCombos: payload.showCombos, showPlayers: payload.showPlayers });
     });
     channel.subscribe();
-    return () => { channel.unsubscribe(); };
+    return () => {
+      getClient()?.removeChannel(channel);
+      channelRef.current = getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main');
+    };
   }, []);
 
   // --- Event-driven sync: persist + broadcast only when significant state changes ---

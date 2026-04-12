@@ -98,7 +98,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
 
     ch.subscribe();
 
-    return () => { ch.unsubscribe(); };
+    return () => { getClient()?.removeChannel(ch); channelRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

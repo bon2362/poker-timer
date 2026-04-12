@@ -191,7 +191,7 @@ export function PokerTimer() {
     finalSlideshowDelayRef.current = setTimeout(() => {
       setFinalSlideshowVisible(true);
       finalSlideshowDelayRef.current = null;
-    }, 17000);
+    }, 31000);
 
     return () => {
       if (finalSlideshowDelayRef.current) {

@@ -36,7 +36,7 @@ export function WinnerScreen({ onFinishGame }: Props) {
 
   useEffect(() => {
     const fanfare = playWinnerFanfare();
-    const stopFanfareTimer = setTimeout(() => fanfare.stop(), 15000);
+    const stopFanfareTimer = setTimeout(() => fanfare.stop(), 30000);
 
     if (winnerPlayer) {
       getWinnerImageUrl(winnerPlayer.id).then(url => setWinnerImageUrl(url));

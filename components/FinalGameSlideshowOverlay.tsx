@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+
 const FINAL_TRACK_SRC = '/audio/sweaty-hand.mp3';
 
 type LyricCue = {
@@ -11,54 +12,54 @@ type LyricCue = {
 };
 
 export const FINAL_SONG_LYRICS: LyricCue[] = [
-  { time: 0, section: 'Verse 1', text: 'Тусклый свет кухни' },
-  { time: 4, text: 'Карты липнут к рукам' },
-  { time: 8, text: 'Саша шепчет "пас", мимо' },
-  { time: 12, text: 'Мима ловит свой шанс' },
-  { time: 16, text: 'Лёша вяло кидает' },
-  { time: 20, text: 'Фишки прямо в центр' },
-  { time: 24, text: 'Паша круто победный взгляд' },
-  { time: 28, text: 'Словно главный в этой сцене' },
-  { time: 34, section: 'Chorus', text: 'Потная раздача, бьётся в тишине' },
-  { time: 39, text: 'Кто-то улыбается, кто-то тонет в вине' },
-  { time: 44, text: 'Мы друзья за столом, но сейчас игра' },
-  { time: 49, text: 'И у каждого своя тайная рука' },
-  { time: 56, section: 'Verse 2', text: 'Катя тянет до ривера' },
-  { time: 60, text: 'Флеш-дро дышит в груди' },
-  { time: 64, text: 'Вова давит на все кнопки' },
-  { time: 68, text: 'Словно может судьбу обойти' },
-  { time: 72, text: 'Тома терпит, считает' },
-  { time: 76, text: 'Каждый жест, каждый вдох' },
-  { time: 80, text: 'Клочкова громко хохочет' },
-  { time: 84, text: 'Скидывает королей под вздох' },
-  { time: 90, section: 'Chorus', text: 'Потная раздача, бьётся в тишине' },
-  { time: 95, text: 'Кто-то улыбается, кто-то тонет в вине' },
-  { time: 100, text: 'Мы друзья за столом, но сейчас игра' },
-  { time: 105, text: 'И у каждого своя тайная рука' },
-  { time: 112, section: 'Verse 3', text: 'Варя ловит две пары' },
-  { time: 116, text: 'Алиса верит в стрит' },
-  { time: 120, text: 'Катя смотрит устало' },
-  { time: 124, text: 'Но не может уйти' },
-  { time: 128, text: 'Паша ставит полбанка' },
-  { time: 132, text: 'Лёша жмёт "кол" сквозь страх' },
-  { time: 136, text: 'Саша вылетел тихо' },
-  { time: 140, text: 'Только кружка дрожит в руках' },
-  { time: 147, section: 'Bridge', text: 'Мима удвоился с тузами (эй)' },
-  { time: 151, text: 'Тома вытащил фул-хаус в конце' },
-  { time: 155, text: 'Катя плачет над сброшенным флэшем' },
-  { time: 159, text: 'Вова шутит, но пусто в глазе' },
-  { time: 164, text: 'Кто-то встал, ушёл на балкон' },
-  { time: 168, text: 'Кто-то ждёт новый раунд как сон' },
-  { time: 172, text: 'И пока фишки падают в пот' },
-  { time: 176, text: 'Нас сближает этот вечный счёт' },
-  { time: 184, section: 'Chorus', text: 'Потная раздача, бьётся в тишине' },
-  { time: 189, text: 'Кто-то улыбается, кто-то тонет в вине' },
-  { time: 194, text: 'Мы друзья за столом, но сейчас игра' },
-  { time: 199, text: 'И у каждого своя тайная рука' },
-  { time: 205, section: 'Outro', text: 'Алый маркер на скатерти' },
-  { time: 209, text: 'Хохот, зевота, коньяк' },
-  { time: 213, text: 'Завтра снова забудем обиды' },
-  { time: 217, text: 'А сегодня решает только флаг в картах' },
+  { time: 16.1, section: 'Verse 1', text: 'Тусклый свет кухни' },
+  { time: 19.4, text: 'Карты липнут к рукам' },
+  { time: 22.8, text: 'Саша шепчет "пас", мимо' },
+  { time: 25, text: 'Мима ловит свой шанс' },
+  { time: 29.3, text: 'Лёша вяло кидает' },
+  { time: 32.3, text: 'Фишки прямо в центр' },
+  { time: 36.2, text: 'Паша круто победный взгляд' },
+  { time: 38.9, text: 'Словно главный в этой сцене' },
+  { time: 43.3, section: 'Chorus', text: 'Потная раздача, бьётся в тишине' },
+  { time: 50.0, text: 'Кто-то улыбается, кто-то тонет в вине' },
+  { time: 56.6, text: 'Мы друзья за столом, но сейчас игра' },
+  { time: 63.2, text: 'И у каждого своя тайная рука' },
+  { time: 70.8, section: 'Verse 2', text: 'Катя тянет до ривера' },
+  { time: 73.5, text: 'Флеш-дро дышит в груди' },
+  { time: 77.4, text: 'Вова давит на все кнопки' },
+  { time: 79.8, text: 'Словно может судьбу обойти' },
+  { time: 83.8, text: 'Тома терпит, считает' },
+  { time: 86.8, text: 'Каждый жест, каждый вдох' },
+  { time: 89.9, text: 'Клочкова громко хохочет' },
+  { time: 92.5, text: 'Скидывает королей под вздох' },
+  { time: 98.1, section: 'Chorus', text: 'Потная раздача, бьётся в тишине' },
+  { time: 104.7, text: 'Кто-то улыбается, кто-то тонет в вине' },
+  { time: 110.9, text: 'Мы друзья за столом, но сейчас игра' },
+  { time: 117.5, text: 'И у каждого своя тайная рука' },
+  { time: 124.4, section: 'Verse 3', text: 'Варя ловит две пары' },
+  { time: 127.6, text: 'Алиса верит в стрит' },
+  { time: 130.6, text: 'Катя смотрит устало' },
+  { time: 133.9, text: 'Но не может уйти' },
+  { time: 137.4, text: 'Паша ставит полбанка' },
+  { time: 140.6, text: 'Лёша жмёт "кол" сквозь страх' },
+  { time: 143.9, text: 'Саша вылетел тихо' },
+  { time: 146.4, text: 'Только кружка дрожит в руках' },
+  { time: 151, section: 'Bridge', text: 'Мима удвоился с тузами (эй)' },
+  { time: 154.7, text: 'Тома вытащил фул-хаус в конце' },
+  { time: 157.1, text: 'Катя плачет над сброшенным флэшем' },
+  { time: 160.3, text: 'Вова шутит, но пусто в глазе' },
+  { time: 163.7, text: 'Кто-то встал, ушёл на балкон' },
+  { time: 166.7, text: 'Кто-то ждёт новый раунд как сон' },
+  { time: 169.9, text: 'И пока фишки падают в пот' },
+  { time: 173.4, text: 'Нас сближает этот вечный счёт' },
+  { time: 178.9, section: 'Chorus', text: 'Потная раздача, бьётся в тишине' },
+  { time: 185.4, text: 'Кто-то улыбается, кто-то тонет в вине' },
+  { time: 191.7, text: 'Мы друзья за столом, но сейчас игра' },
+  { time: 198, text: 'И у каждого своя тайная рука' },
+  { time: 206, section: 'Outro', text: 'Алый маркер на скатерти' },
+  { time: 209.1, text: 'Хохот, зевота, коньяк' },
+  { time: 212.3, text: 'Завтра снова забудем обиды' },
+  { time: 215.4, text: 'А сегодня решает только флаг в картах' },
 ];
 
 export function getCurrentFinalSongLyric(currentTime: number): LyricCue {
@@ -68,6 +69,15 @@ export function getCurrentFinalSongLyric(currentTime: number): LyricCue {
     active = cue;
   }
   return active;
+}
+
+export function getNextFinalSongLyric(currentTime: number): LyricCue | null {
+  for (let i = 0; i < FINAL_SONG_LYRICS.length - 1; i++) {
+    if (FINAL_SONG_LYRICS[i].time <= currentTime && FINAL_SONG_LYRICS[i + 1].time > currentTime) {
+      return FINAL_SONG_LYRICS[i + 1];
+    }
+  }
+  return null;
 }
 
 type Props = {
@@ -147,6 +157,7 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
   }, [shuffledIndexes, urls]);
 
   useEffect(() => {
+    let cancelled = false;
     const audio = new Audio(FINAL_TRACK_SRC);
     audio.loop = true;
     audioRef.current = audio;
@@ -155,11 +166,15 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
       setSongTime(audio.currentTime || 0);
     }, 250);
 
-    audio.play().then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true));
+    audio.play()
+      .then(() => { if (cancelled) { audio.pause(); return; } setAudioBlocked(false); })
+      .catch(() => { if (!cancelled) setAudioBlocked(true); });
 
     return () => {
+      cancelled = true;
       clearInterval(timeInterval);
       audio.pause();
+      audio.src = '';
       audioRef.current = null;
     };
   }, []);
@@ -169,6 +184,7 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
   };
 
   const lyric = getCurrentFinalSongLyric(songTime);
+  const nextLyric = getNextFinalSongLyric(songTime);
   const hasImages = urls.length > 0;
 
   return (
@@ -192,16 +208,24 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
 
       <div className="absolute inset-x-0 bottom-[88px] sm:bottom-[96px] flex flex-col items-center px-5 text-center pointer-events-none select-none">
         {lyric.section && (
-          <div className="mb-3 text-[12px] sm:text-[13px] font-bold uppercase text-yellow-300/80">
+          <div className="mb-2 text-[11px] sm:text-[12px] font-bold uppercase text-yellow-300/80">
             {lyric.section}
           </div>
         )}
         <div
           key={`${lyric.time}-${lyric.text}`}
-          className="max-w-[980px] animate-[final-lyric-rise_500ms_ease-out] text-[34px] sm:text-[56px] lg:text-[82px] text-white font-black leading-[1.08] drop-shadow-[0_4px_28px_rgba(0,0,0,0.95)]"
+          className="max-w-[980px] animate-[final-lyric-rise_500ms_ease-out] text-[26px] sm:text-[40px] lg:text-[56px] text-white font-black leading-[1.1] drop-shadow-[0_4px_28px_rgba(0,0,0,0.95)]"
         >
           {lyric.text}
         </div>
+        {nextLyric && (
+          <div
+            key={`next-${nextLyric.time}`}
+            className="mt-3 max-w-[980px] text-[18px] sm:text-[26px] lg:text-[36px] text-white/35 font-black leading-[1.1] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
+          >
+            {nextLyric.text}
+          </div>
+        )}
         {audioBlocked && (
           <div className="mt-5 text-[14px] text-white/70">
             Нажмите на экран, чтобы включить музыку
@@ -216,7 +240,8 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
         Завершить
       </button>
 
-      <style>{`
+
+<style>{`
         @keyframes final-lyric-rise {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
