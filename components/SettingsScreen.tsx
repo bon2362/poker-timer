@@ -14,6 +14,16 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.38',
+    date: "12 April '26",
+    notes: 'Оптимизация изображений: автоматическая генерация миниатюр для winner/loser картинок в списке игроков.',
+  },
+  {
+    version: '4.37',
+    date: "12 April '26",
+    notes: 'Поддержка презентационного USB-кликера: Page Up / Page Down → пауза/возобновление таймера.',
+  },
+  {
     version: '4.36',
     date: "12 April '26",
     notes: 'CI/CD: виджет Codecov — общий % покрытия, цветная полоска, таблица файлов по убыванию missed lines.',

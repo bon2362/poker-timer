@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useGame } from '@/context/GameContext';
 import { PlayerForm } from './PlayerForm';
-import { getWinnerImageUrl, uploadWinnerImage, deleteWinnerImage } from '@/lib/supabase/winnerImage';
-import { getLoserImageUrl, uploadLoserImage, deleteLoserImage } from '@/lib/supabase/loserImage';
+import { getWinnerThumbUrl, uploadWinnerImage, deleteWinnerImage } from '@/lib/supabase/winnerImage';
+import { getLoserThumbUrl, uploadLoserImage, deleteLoserImage } from '@/lib/supabase/loserImage';
 import type { Player } from '@/types/game';
 
 function Avatar({ player, size = 40 }: { player: Player; size?: number }) {
@@ -122,7 +122,7 @@ function WinnerImageCell({ player }: { player: Player }) {
       player={player}
       icon="🏆"
       kindLabel="победителя"
-      getImageUrl={getWinnerImageUrl}
+      getImageUrl={getWinnerThumbUrl}
       uploadImage={uploadWinnerImage}
       deleteImage={deleteWinnerImage}
     />
@@ -135,7 +135,7 @@ function LoserImageCell({ player }: { player: Player }) {
       player={player}
       icon="💀"
       kindLabel="проигравшего"
-      getImageUrl={getLoserImageUrl}
+      getImageUrl={getLoserThumbUrl}
       uploadImage={uploadLoserImage}
       deleteImage={deleteLoserImage}
     />
