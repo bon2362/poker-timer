@@ -10,6 +10,7 @@ import { SettingsScreen } from './SettingsScreen';
 import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import { SlideshowOverlay } from './SlideshowOverlay';
+import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
@@ -25,11 +26,13 @@ type LoserOverlayState = {
 
 export function PokerTimer() {
   const { state, dispatch } = useTimer();
-  const { activeSession, showWinner, loading, sessionPlayers, players } = useGame();
+  const { activeSession, showWinner, loading, sessionPlayers, players, finishGame } = useGame();
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const [loserOverlay, setLoserOverlay] = useState<LoserOverlayState | null>(null);
+  const [finalSlideshowVisible, setFinalSlideshowVisible] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalSlideshowDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gamePanelAutoOpenedRef = useRef(false);
   const sessionPlayerStatusRef = useRef<Map<string, PlayerStatus>>(new Map());
   const eliminatedSessionPlayerIdsRef = useRef<Set<string>>(new Set());
@@ -154,6 +157,15 @@ export function PokerTimer() {
     setLoserOverlay(null);
   }, []);
 
+  const handleFinishGame = useCallback(async () => {
+    if (!state.isPaused) {
+      dispatch({ type: 'TOGGLE_PAUSE' });
+    }
+    await finishGame();
+    setFinalSlideshowVisible(false);
+    dispatch({ type: 'OPEN_SETTINGS' });
+  }, [dispatch, finishGame, state.isPaused]);
+
   const handleSaveSettings = useCallback((config: Config) => {
     dispatch({ type: 'SAVE_SETTINGS', config });
   }, [dispatch]);
@@ -165,6 +177,29 @@ export function PokerTimer() {
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
+
+  useEffect(() => {
+    if (finalSlideshowDelayRef.current) {
+      clearTimeout(finalSlideshowDelayRef.current);
+      finalSlideshowDelayRef.current = null;
+    }
+
+    setFinalSlideshowVisible(false);
+
+    if (!showWinner || !activeSession) return;
+
+    finalSlideshowDelayRef.current = setTimeout(() => {
+      setFinalSlideshowVisible(true);
+      finalSlideshowDelayRef.current = null;
+    }, 30000);
+
+    return () => {
+      if (finalSlideshowDelayRef.current) {
+        clearTimeout(finalSlideshowDelayRef.current);
+        finalSlideshowDelayRef.current = null;
+      }
+    };
+  }, [activeSession, showWinner]);
 
   // Slideshow start/stop
   useEffect(() => {
@@ -354,7 +389,16 @@ export function PokerTimer() {
       )}
 
       {/* Winner screen */}
-      {showWinner && <WinnerScreen />}
+      {showWinner && <WinnerScreen onFinishGame={handleFinishGame} />}
+
+      {/* Final slideshow */}
+      {showWinner && finalSlideshowVisible && (
+        <FinalGameSlideshowOverlay
+          urls={slideshowUrls}
+          controlsVisible={controlsVisible}
+          onFinish={handleFinishGame}
+        />
+      )}
     </div>
   );
 }

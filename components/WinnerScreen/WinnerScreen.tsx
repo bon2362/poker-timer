@@ -8,17 +8,27 @@ import { Avatar } from '../PlayerManager/PlayerManager';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
 import { playWinnerFanfare } from '@/lib/audio';
 
-export function WinnerScreen() {
+type Props = {
+  onFinishGame?: () => void | Promise<void>;
+};
+
+export function WinnerScreen({ onFinishGame }: Props) {
   const { activeSession, sessionPlayers, players, finishGame } = useGame();
   const { state: timerState, dispatch: timerDispatch } = useTimer();
   const [winnerImageUrl, setWinnerImageUrl] = useState<string | null>(null);
   const [imageReady, setImageReady] = useState(false);
 
-  const handleFinishGame = () => {
+  const handleFinishGame = async () => {
+    if (onFinishGame) {
+      await onFinishGame();
+      return;
+    }
+
     if (!timerState.isPaused) {
       timerDispatch({ type: 'TOGGLE_PAUSE' });
     }
-    finishGame();
+    await finishGame();
+    timerDispatch({ type: 'OPEN_SETTINGS' });
   };
 
   const winner = sessionPlayers.find(sp => sp.status === 'winner');
