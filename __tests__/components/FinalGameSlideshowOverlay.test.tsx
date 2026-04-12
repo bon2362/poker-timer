@@ -33,9 +33,9 @@ describe('FinalGameSlideshowOverlay', () => {
   });
 
   test('uses the current lyric cue for song time', () => {
-    expect(getCurrentFinalSongLyric(0).text).toBe('Тусклый свет кухни');
-    expect(getCurrentFinalSongLyric(34).text).toBe('Потная раздача, бьётся в тишине');
-    expect(getCurrentFinalSongLyric(218).text).toBe('А сегодня решает только флаг в картах');
+    expect(getCurrentFinalSongLyric(0).text).toBe('Тусклый свет кухни');       // before first cue → returns first
+    expect(getCurrentFinalSongLyric(44).text).toBe('Потная раздача, бьётся в тишине'); // chorus 1 starts at 43.3
+    expect(getCurrentFinalSongLyric(218).text).toBe('А сегодня решает только флаг в картах'); // last cue at 215.4
   });
 
   test('starts the final song loop', () => {
