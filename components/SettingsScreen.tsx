@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.35',
+    date: "12 April '26",
+    notes: 'Allure Report виджет: мини-диаграмма с результатами (passed/failed/broken/skipped), время последнего запуска и длительность.',
+  },
+  {
     version: '4.34',
     date: "12 April '26",
     notes: 'CI/CD вкладка: переупорядочены и переименованы виджеты — «Последний коммит», «GitHub CI», «Vercel deploy», «Allure Report».',
@@ -635,8 +640,61 @@ type CiStatusData = {
     reportUrl: string;
     sha: string;
   } | null;
+  allure: {
+    passed: number;
+    failed: number;
+    broken: number;
+    skipped: number;
+    total: number;
+    startMs: number | null;
+    durationMs: number | null;
+  } | null;
   error?: string;
 };
+
+type AllureStats = { passed: number; failed: number; broken: number; skipped: number; total: number };
+
+function AllureDonut({ stats }: { stats: AllureStats }) {
+  const R = 28;
+  const C = 2 * Math.PI * R;
+  const { passed, failed, broken, skipped, total } = stats;
+
+  const segments = [
+    { value: passed,  color: '#34d399' }, // emerald
+    { value: failed,  color: '#f87171' }, // red
+    { value: broken,  color: '#fb923c' }, // orange
+    { value: skipped, color: '#6b7280' }, // gray
+  ];
+
+  let offset = 0;
+  const arcs = segments.map(seg => {
+    const dash = total > 0 ? (seg.value / total) * C : 0;
+    const arc = { dash, offset, color: seg.color };
+    offset += dash;
+    return arc;
+  });
+
+  return (
+    <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0">
+      <circle cx="36" cy="36" r={R} fill="none" stroke="#2a2a2a" strokeWidth="10" />
+      {arcs.map((arc, i) =>
+        arc.dash > 0 ? (
+          <circle
+            key={i}
+            cx="36" cy="36" r={R}
+            fill="none"
+            stroke={arc.color}
+            strokeWidth="10"
+            strokeDasharray={`${arc.dash} ${C - arc.dash}`}
+            strokeDashoffset={C / 4 - arc.offset}
+            style={{ transform: 'rotate(-90deg)', transformOrigin: '36px 36px' }}
+          />
+        ) : null
+      )}
+      <text x="36" y="40" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#ccc">{total}</text>
+    </svg>
+  );
+}
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -683,7 +741,7 @@ function CiCdTab() {
     fetch('/api/ci-status')
       .then(r => r.json())
       .then(setData)
-      .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, error: 'Не удалось загрузить данные' }))
+      .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, allure: null, error: 'Не удалось загрузить данные' }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -791,23 +849,70 @@ function CiCdTab() {
 
           {/* Test report */}
           <CiCard title="Allure Report">
-            {data.testReport ? (
+            {data.allure ? (
+              <>
+                <div className="flex items-center gap-4">
+                  <AllureDonut stats={data.allure} />
+                  <div className="flex flex-col gap-[6px] flex-1">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-emerald-400">✓ passed</span>
+                      <span className="font-mono text-[#ccc]">{data.allure.passed}</span>
+                    </div>
+                    {data.allure.failed > 0 && (
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-red-400">✕ failed</span>
+                        <span className="font-mono text-[#ccc]">{data.allure.failed}</span>
+                      </div>
+                    )}
+                    {data.allure.broken > 0 && (
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-orange-400">⚠ broken</span>
+                        <span className="font-mono text-[#ccc]">{data.allure.broken}</span>
+                      </div>
+                    )}
+                    {data.allure.skipped > 0 && (
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-[#666]">– skipped</span>
+                        <span className="font-mono text-[#ccc]">{data.allure.skipped}</span>
+                      </div>
+                    )}
+                    {data.allure.durationMs !== null && (
+                      <div className="text-[11px] text-[#444] mt-1">
+                        {(data.allure.durationMs / 1000).toFixed(1)}s
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {data.allure.startMs && (
+                  <div className="text-[11px] text-[#555]">
+                    {relativeTime(new Date(data.allure.startMs).toISOString())}
+                  </div>
+                )}
+                {data.testReport && (
+                  <a
+                    href={data.testReport.reportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-violet-400 hover:text-violet-300 self-start"
+                  >
+                    Открыть отчёт →
+                  </a>
+                )}
+              </>
+            ) : data.testReport ? (
               <>
                 <div className="flex items-center justify-between gap-2">
                   <DeployBadge state={data.testReport.state} />
                   <span className="text-[11px] text-[#555]">{relativeTime(data.testReport.createdAt)}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] text-[#444]">{data.testReport.sha}</span>
-                  <a
-                    href={data.testReport.reportUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-violet-400 hover:text-violet-300"
-                  >
-                    Открыть отчёт →
-                  </a>
-                </div>
+                <a
+                  href={data.testReport.reportUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-violet-400 hover:text-violet-300"
+                >
+                  Открыть отчёт →
+                </a>
               </>
             ) : (
               <div className="text-[#555] text-[12px]">Нет данных</div>

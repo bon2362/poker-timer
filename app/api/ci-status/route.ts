@@ -38,9 +38,10 @@ export async function GET() {
     const latestProd = prodDeploys?.[0] ?? null;
     const latestPages = pagesDeploys?.[0] ?? null;
 
-    const [prodStatus, pagesStatus] = await Promise.all([
+    const [prodStatus, pagesStatus, allureData] = await Promise.all([
       latestProd ? getDeploymentStatus(latestProd.id) : Promise.resolve(null),
       latestPages ? getDeploymentStatus(latestPages.id) : Promise.resolve(null),
+      fetch('https://bon2362.github.io/poker-timer/widgets/summary.json').then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
 
     // Find commit message for prod deployment SHA from runs data
@@ -88,6 +89,17 @@ export async function GET() {
             createdAt: latestPages.created_at as string,
             reportUrl: (pagesStatus?.environment_url as string) ?? 'https://bon2362.github.io/poker-timer/',
             sha: (latestPages.sha as string).slice(0, 7),
+          }
+        : null,
+      allure: allureData
+        ? {
+            passed:  (allureData.statistic?.passed  as number) ?? 0,
+            failed:  (allureData.statistic?.failed  as number) ?? 0,
+            broken:  (allureData.statistic?.broken  as number) ?? 0,
+            skipped: (allureData.statistic?.skipped as number) ?? 0,
+            total:   (allureData.statistic?.total   as number) ?? 0,
+            startMs: (allureData.time?.start as number) ?? null,
+            durationMs: (allureData.time?.duration as number) ?? null,
           }
         : null,
     });
