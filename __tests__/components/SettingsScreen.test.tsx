@@ -56,9 +56,9 @@ describe('SettingsScreen — Header and navigation', () => {
     expect(screen.getByText('НАСТРОЙКИ')).toBeInTheDocument();
   });
 
-  test('renders version "v4.29"', () => {
+  test('renders version "v4.31"', () => {
     renderSettings();
-    expect(screen.getByText('v4.29')).toBeInTheDocument();
+    expect(screen.getByText('v4.31')).toBeInTheDocument();
   });
 
   test('clicking "← Назад" calls onClose', async () => {
@@ -115,24 +115,24 @@ describe('SettingsScreen — Tabs', () => {
 });
 
 describe('SettingsScreen — Changelog', () => {
-  test('clicking version "v4.29" opens changelog modal', async () => {
+  test('clicking version "v4.31" opens changelog modal', async () => {
     const user = userEvent.setup();
     renderSettings();
-    await user.click(screen.getByText('v4.29'));
+    await user.click(screen.getByText('v4.31'));
     expect(screen.getByText('История версий')).toBeInTheDocument();
   });
 
   test('changelog modal shows "История версий" title', async () => {
     const user = userEvent.setup();
     renderSettings();
-    await user.click(screen.getByText('v4.29'));
+    await user.click(screen.getByText('v4.31'));
     expect(screen.getByRole('heading', { name: 'История версий' })).toBeInTheDocument();
   });
 
   test('clicking "✕" in changelog closes it', async () => {
     const user = userEvent.setup();
     renderSettings();
-    await user.click(screen.getByText('v4.29'));
+    await user.click(screen.getByText('v4.31'));
     // Changelog is open
     const modal = screen.getByRole('heading', { name: 'История версий' }).closest('div')!;
     // Close button is sibling of the heading inside the modal header row
