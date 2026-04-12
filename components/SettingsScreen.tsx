@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.33',
+    date: "12 April '26",
+    notes: 'Вкладка CI/CD в настройках: виджеты статуса тестов (GitHub Actions), деплоя Vercel, последнего коммита на сайте и отчёта о тестах (GitHub Pages).',
+  },
+  {
     version: '4.32',
     date: "12 April '26",
     notes: 'Финальное слайдшоу: синхронизированы субтитры "Потной Раздачи" с реальным таймингом песни.',
@@ -231,7 +236,7 @@ function ChangelogModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-type Tab = 'tournament' | 'players' | 'display';
+type Tab = 'tournament' | 'players' | 'display' | 'cicd';
 
 type Props = {
   config: Config;
@@ -257,6 +262,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
     { id: 'tournament', label: 'Турнир' },
     { id: 'players',    label: 'Игроки' },
     { id: 'display',    label: 'Оформление' },
+    { id: 'cicd',       label: 'CI/CD' },
   ];
 
   return (
@@ -315,6 +321,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         )}
         {activeTab === 'players' && <PlayerManager />}
         {activeTab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} onSlideshowChanged={onSlideshowChanged} />}
+        {activeTab === 'cicd' && <CiCdTab />}
       </div>
     </div>
   );
@@ -594,6 +601,215 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── CI/CD Tab ─────────────────────────────────────────────────────────────
+
+type CiStatusData = {
+  testRun: {
+    status: string;
+    conclusion: string | null;
+    createdAt: string;
+    updatedAt: string;
+    url: string;
+    commit: { sha: string; message: string; author: string; timestamp: string };
+  } | null;
+  prodDeploy: {
+    state: string;
+    description: string;
+    createdAt: string;
+    deployUrl: string;
+    sha: string;
+    commitMessage: string;
+  } | null;
+  testReport: {
+    state: string;
+    createdAt: string;
+    reportUrl: string;
+    sha: string;
+  } | null;
+  error?: string;
+};
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'только что';
+  if (min < 60) return `${min} мин назад`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs} ч назад`;
+  return `${Math.floor(hrs / 24)} д назад`;
+}
+
+function StatusBadge({ status, conclusion }: { status: string; conclusion: string | null }) {
+  if (status === 'completed') {
+    if (conclusion === 'success') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-2 py-[2px]">✓ success</span>;
+    if (conclusion === 'failure') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-400 bg-red-400/10 border border-red-400/20 rounded px-2 py-[2px]">✕ failure</span>;
+    return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#888] bg-[#222] border border-[#333] rounded px-2 py-[2px]">{conclusion ?? 'unknown'}</span>;
+  }
+  if (status === 'in_progress') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded px-2 py-[2px]">⟳ running</span>;
+  if (status === 'queued') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 bg-sky-400/10 border border-sky-400/20 rounded px-2 py-[2px]">· queued</span>;
+  return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#888] bg-[#222] border border-[#333] rounded px-2 py-[2px]">{status}</span>;
+}
+
+function DeployBadge({ state }: { state: string }) {
+  if (state === 'success') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-2 py-[2px]">✓ deployed</span>;
+  if (state === 'failure' || state === 'error') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-400 bg-red-400/10 border border-red-400/20 rounded px-2 py-[2px]">✕ failed</span>;
+  if (state === 'pending' || state === 'in_progress') return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded px-2 py-[2px]">⟳ deploying</span>;
+  return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#888] bg-[#222] border border-[#333] rounded px-2 py-[2px]">{state}</span>;
+}
+
+function CiCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl p-4 flex flex-col gap-3">
+      <div className="text-[11px] font-semibold text-[#444] tracking-[1.5px] uppercase">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function CiCdTab() {
+  const [data, setData] = useState<CiStatusData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/ci-status')
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, error: 'Не удалось загрузить данные' }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="p-5 flex flex-col gap-4">
+      {loading && (
+        <div className="flex justify-center items-center py-10 text-[#444] text-[13px]">Загружаем…</div>
+      )}
+
+      {!loading && data?.error && (
+        <div className="text-red-400 text-[13px] bg-red-400/10 border border-red-400/20 rounded-xl p-4">{data.error}</div>
+      )}
+
+      {!loading && data && !data.error && (
+        <>
+          {/* Tests */}
+          <CiCard title="Тесты — GitHub Actions">
+            {data.testRun ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <StatusBadge status={data.testRun.status} conclusion={data.testRun.conclusion} />
+                  <span className="text-[11px] text-[#555]">{relativeTime(data.testRun.createdAt)}</span>
+                </div>
+                <div className="text-[12px] text-[#777] leading-[1.5] line-clamp-2">{data.testRun.commit.message}</div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-[#444]">{data.testRun.commit.sha}</span>
+                  <a
+                    href={data.testRun.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-violet-400 hover:text-violet-300"
+                  >
+                    Открыть →
+                  </a>
+                </div>
+              </>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+
+          {/* Vercel deploy */}
+          <CiCard title="Деплой — Vercel Production">
+            {data.prodDeploy ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <DeployBadge state={data.prodDeploy.state} />
+                  <span className="text-[11px] text-[#555]">{relativeTime(data.prodDeploy.createdAt)}</span>
+                </div>
+                {data.prodDeploy.commitMessage && (
+                  <div className="text-[12px] text-[#777] leading-[1.5] line-clamp-2">{data.prodDeploy.commitMessage}</div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-[#444]">{data.prodDeploy.sha}</span>
+                  {data.prodDeploy.deployUrl ? (
+                    <a
+                      href={data.prodDeploy.deployUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-violet-400 hover:text-violet-300"
+                    >
+                      Открыть →
+                    </a>
+                  ) : (
+                    <a
+                      href="https://poker-timer-black.vercel.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-violet-400 hover:text-violet-300"
+                    >
+                      poker-timer-black.vercel.app →
+                    </a>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+
+          {/* Latest commit on site = prod deploy sha */}
+          <CiCard title="Последний коммит на сайте">
+            {data.prodDeploy ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[12px] text-violet-300 bg-violet-400/10 border border-violet-400/20 rounded px-2 py-[2px]">{data.prodDeploy.sha}</span>
+                  <span className="text-[11px] text-[#555]">{relativeTime(data.prodDeploy.createdAt)}</span>
+                </div>
+                {data.prodDeploy.commitMessage && (
+                  <div className="text-[12px] text-[#888] leading-[1.5]">{data.prodDeploy.commitMessage}</div>
+                )}
+                <a
+                  href={`https://github.com/bon2362/poker-timer/commit/${data.prodDeploy.sha}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-[#555] hover:text-violet-400 self-start"
+                >
+                  github.com/.../commit/{data.prodDeploy.sha} →
+                </a>
+              </>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+
+          {/* Test report */}
+          <CiCard title="Отчёт о тестах — GitHub Pages">
+            {data.testReport ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <DeployBadge state={data.testReport.state} />
+                  <span className="text-[11px] text-[#555]">{relativeTime(data.testReport.createdAt)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-[#444]">{data.testReport.sha}</span>
+                  <a
+                    href={data.testReport.reportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-violet-400 hover:text-violet-300"
+                  >
+                    Открыть отчёт →
+                  </a>
+                </div>
+              </>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+        </>
+      )}
     </div>
   );
 }
