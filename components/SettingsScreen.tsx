@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.34',
+    date: "12 April '26",
+    notes: 'CI/CD вкладка: переупорядочены и переименованы виджеты — «Последний коммит», «GitHub CI», «Vercel deploy», «Allure Report».',
+  },
+  {
     version: '4.33',
     date: "12 April '26",
     notes: 'Вкладка CI/CD в настройках: виджеты статуса тестов (GitHub Actions), деплоя Vercel, последнего коммита на сайте и отчёта о тестах (GitHub Pages).',
@@ -694,8 +699,33 @@ function CiCdTab() {
 
       {!loading && data && !data.error && (
         <>
+          {/* Latest commit on site = prod deploy sha */}
+          <CiCard title="Последний коммит на сайте">
+            {data.prodDeploy ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[12px] text-violet-300 bg-violet-400/10 border border-violet-400/20 rounded px-2 py-[2px]">{data.prodDeploy.sha}</span>
+                  <span className="text-[11px] text-[#555]">{relativeTime(data.prodDeploy.createdAt)}</span>
+                </div>
+                {data.prodDeploy.commitMessage && (
+                  <div className="text-[12px] text-[#888] leading-[1.5]">{data.prodDeploy.commitMessage}</div>
+                )}
+                <a
+                  href={`https://github.com/bon2362/poker-timer/commit/${data.prodDeploy.sha}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-[#555] hover:text-violet-400 self-start"
+                >
+                  github.com/.../commit/{data.prodDeploy.sha} →
+                </a>
+              </>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+
           {/* Tests */}
-          <CiCard title="Тесты — GitHub Actions">
+          <CiCard title="GitHub CI">
             {data.testRun ? (
               <>
                 <div className="flex items-center justify-between gap-2">
@@ -721,7 +751,7 @@ function CiCdTab() {
           </CiCard>
 
           {/* Vercel deploy */}
-          <CiCard title="Деплой — Vercel Production">
+          <CiCard title="Vercel deploy">
             {data.prodDeploy ? (
               <>
                 <div className="flex items-center justify-between gap-2">
@@ -759,33 +789,8 @@ function CiCdTab() {
             )}
           </CiCard>
 
-          {/* Latest commit on site = prod deploy sha */}
-          <CiCard title="Последний коммит на сайте">
-            {data.prodDeploy ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[12px] text-violet-300 bg-violet-400/10 border border-violet-400/20 rounded px-2 py-[2px]">{data.prodDeploy.sha}</span>
-                  <span className="text-[11px] text-[#555]">{relativeTime(data.prodDeploy.createdAt)}</span>
-                </div>
-                {data.prodDeploy.commitMessage && (
-                  <div className="text-[12px] text-[#888] leading-[1.5]">{data.prodDeploy.commitMessage}</div>
-                )}
-                <a
-                  href={`https://github.com/bon2362/poker-timer/commit/${data.prodDeploy.sha}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-[#555] hover:text-violet-400 self-start"
-                >
-                  github.com/.../commit/{data.prodDeploy.sha} →
-                </a>
-              </>
-            ) : (
-              <div className="text-[#555] text-[12px]">Нет данных</div>
-            )}
-          </CiCard>
-
           {/* Test report */}
-          <CiCard title="Отчёт о тестах — GitHub Pages">
+          <CiCard title="Allure Report">
             {data.testReport ? (
               <>
                 <div className="flex items-center justify-between gap-2">
