@@ -23,7 +23,24 @@ export async function getLoserImageUrl(playerId: string): Promise<string | null>
   return `${urlData.publicUrl}?t=${Date.now()}`;
 }
 
-/** Возвращает URL миниатюры проигравшего (fallback на полный размер для старых изображений) */
+/** Тихо генерирует и загружает миниатюру из существующего полного изображения */
+async function lazyGenerateLoserThumb(playerId: string): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(path(playerId));
+  try {
+    const response = await fetch(urlData.publicUrl);
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const thumb = await generateThumbnail(blob);
+    await client.storage.from(BUCKET).upload(thumbPath(playerId), thumb, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    });
+  } catch { /* silent */ }
+}
+
+/** Возвращает URL миниатюры проигравшего (fallback + ленивая генерация для старых изображений) */
 export async function getLoserThumbUrl(playerId: string): Promise<string | null> {
   const client = getClient();
   if (!client) return null;
@@ -33,6 +50,8 @@ export async function getLoserThumbUrl(playerId: string): Promise<string | null>
     const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(tp);
     return `${urlData.publicUrl}?t=${Date.now()}`;
   }
+  // Миниатюры нет — запускаем генерацию в фоне, пока возвращаем оригинал
+  lazyGenerateLoserThumb(playerId);
   return getLoserImageUrl(playerId);
 }
 

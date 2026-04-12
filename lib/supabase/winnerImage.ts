@@ -23,7 +23,24 @@ export async function getWinnerImageUrl(playerId: string): Promise<string | null
   return `${urlData.publicUrl}?t=${Date.now()}`;
 }
 
-/** Возвращает URL миниатюры победителя (fallback на полный размер для старых изображений) */
+/** Тихо генерирует и загружает миниатюру из существующего полного изображения */
+async function lazyGenerateWinnerThumb(playerId: string): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(path(playerId));
+  try {
+    const response = await fetch(urlData.publicUrl);
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const thumb = await generateThumbnail(blob);
+    await client.storage.from(BUCKET).upload(thumbPath(playerId), thumb, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    });
+  } catch { /* silent */ }
+}
+
+/** Возвращает URL миниатюры победителя (fallback + ленивая генерация для старых изображений) */
 export async function getWinnerThumbUrl(playerId: string): Promise<string | null> {
   const client = getClient();
   if (!client) return null;
@@ -33,6 +50,8 @@ export async function getWinnerThumbUrl(playerId: string): Promise<string | null
     const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(tp);
     return `${urlData.publicUrl}?t=${Date.now()}`;
   }
+  // Миниатюры нет — запускаем генерацию в фоне, пока возвращаем оригинал
+  lazyGenerateWinnerThumb(playerId);
   return getWinnerImageUrl(playerId);
 }
 
