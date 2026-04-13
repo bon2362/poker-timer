@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.39',
+    date: "13 Apr '26",
+    notes: 'Тракторный момент: звук и видео за финальную минуту перед уровнем 150/300.',
+  },
+  {
     version: '4.38',
     date: "12 April '26",
     notes: 'Оптимизация изображений: автоматическая генерация миниатюр для winner/loser картинок в списке игроков.',
