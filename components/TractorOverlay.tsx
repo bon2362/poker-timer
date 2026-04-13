@@ -60,19 +60,19 @@ export default function TractorOverlay({ timeLeft, isPaused }: Props) {
   return (
     <>
       <audio ref={audioRef} src="/audio/tractor.mp3" loop />
-      {/* Video overlay — z-20, below timer (z-30) and controls (z-30) */}
-      <div className="fixed inset-0 z-20 bg-black">
-        <video
-          ref={videoRef}
-          src="/video/tractor.mp4"
-          loop
-          muted
-          playsInline
-          className={`w-full h-full object-cover transition-opacity duration-1000 ${
-            showVideo ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-      </div>
+      {/* Video overlay — appears only at 30s mark, z-20 below timer (z-30) and controls (z-30) */}
+      {showVideo && (
+        <div className="fixed inset-0 z-20 bg-black">
+          <video
+            ref={videoRef}
+            src="/video/tractor.mp4"
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
     </>
   );
 }
