@@ -339,23 +339,9 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Tractor moment overlay — shown during final minute before BB=300 level */}
+      {/* Tractor moment — audio only, no visual overlay */}
       {state.tractorMomentActive && !state.isOver && (
-        <TractorOverlay timeLeft={state.timeLeft} isPaused={state.isPaused} />
-      )}
-
-      {/* Controls on top of tractor overlay */}
-      {state.tractorMomentActive && !state.isOver && (
-        <div className="fixed inset-x-0 bottom-0 z-30">
-          <Controls
-            isPaused={state.isPaused}
-            isOver={state.isOver}
-            visible={controlsVisible}
-            onPrev={() => dispatch({ type: 'PREV_STAGE' })}
-            onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
-            onNext={() => dispatch({ type: 'NEXT_STAGE' })}
-          />
-        </div>
+        <TractorOverlay isPaused={state.isPaused} />
       )}
 
       {/* Next blind info */}
