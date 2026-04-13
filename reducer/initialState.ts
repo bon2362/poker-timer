@@ -14,6 +14,7 @@ export function createInitialState(): TimerState {
     isPaused: true,
     isOver: false,
     warnedOneMin: false,
+    tractorMomentActive: false,
     config,
     screen: 'timer',
     pendingSound: null,

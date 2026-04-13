@@ -49,6 +49,7 @@ export type TimerState = {
   isPaused: boolean;
   isOver: boolean;
   warnedOneMin: boolean;
+  tractorMomentActive: boolean;
   config: Config;
   screen: Screen;
   pendingSound: SoundEvent | null;

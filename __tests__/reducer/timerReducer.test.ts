@@ -27,6 +27,7 @@ function makeState(overrides: Partial<TimerState> = {}): TimerState {
     isPaused: true,
     isOver: false,
     warnedOneMin: false,
+    tractorMomentActive: false,
     config,
     screen: 'timer',
     pendingSound: null,
