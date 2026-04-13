@@ -344,6 +344,20 @@ export function PokerTimer() {
         <TractorOverlay timeLeft={state.timeLeft} isPaused={state.isPaused} />
       )}
 
+      {/* Controls on top of tractor overlay */}
+      {state.tractorMomentActive && !state.isOver && (
+        <div className="fixed inset-x-0 bottom-0 z-30">
+          <Controls
+            isPaused={state.isPaused}
+            isOver={state.isOver}
+            visible={controlsVisible}
+            onPrev={() => dispatch({ type: 'PREV_STAGE' })}
+            onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
+            onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+          />
+        </div>
+      )}
+
       {/* Next blind info */}
       {!state.isOver && nextText && (
         <div className="pb-[22px] text-center pointer-events-none">
