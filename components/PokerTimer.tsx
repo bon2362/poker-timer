@@ -283,11 +283,11 @@ export function PokerTimer() {
         </div>
       </div>
 
-      {/* Timer — elevated above tractor video overlay when active */}
+      {/* Timer — wrapped in z-30 only during tractor moment to appear above video overlay */}
       {!state.isOver && (
-        <div className={state.tractorMomentActive ? 'relative z-30' : ''}>
-          <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />
-        </div>
+        state.tractorMomentActive
+          ? <div className="relative z-30"><TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} /></div>
+          : <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />
       )}
 
       {/* Tournament over */}
