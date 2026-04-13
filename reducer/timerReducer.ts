@@ -43,37 +43,45 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
 
       // Overtime: last stage, timer continues negative (no sound — level is infinite)
       if (isLastStage && newTimeLeft <= 0) {
-        return { ...state, timeLeft: newTimeLeft, pendingSound: null };
+        return { ...state, timeLeft: newTimeLeft, pendingSound: null, tractorMomentActive: state.tractorMomentActive };
       }
 
       // 1-minute warning (robust: <= 60 transition, not exact === 61)
       let pendingSound: SoundEvent | null = null;
       let warnedOneMin = state.warnedOneMin;
+      let tractorMomentActive = state.tractorMomentActive;
       if (newTimeLeft <= 60 && state.timeLeft > 60 && !state.warnedOneMin) {
         warnedOneMin = true;
         const cur = state.stages[state.currentStage];
         const nxt = state.stages[state.currentStage + 1];
         if (cur.type === 'level' && !isLastStage) {
-          pendingSound = nxt?.type === 'break' ? 'warnBreak' : 'warnBlinds';
+          // Find the next level stage (may be separated by a break)
+          const nextLevelStage = state.stages.slice(state.currentStage + 1).find(s => s.type === 'level');
+          if (nextLevelStage?.type === 'level' && nextLevelStage.bb === 300) {
+            tractorMomentActive = true;
+            pendingSound = null;
+          } else {
+            pendingSound = nxt?.type === 'break' ? 'warnBreak' : 'warnBlinds';
+          }
         } else if (cur.type === 'break') {
           pendingSound = 'warnEndBreak';
         }
       }
 
       // Tick sound in last 5 seconds
-      if (newTimeLeft <= 5 && newTimeLeft > 0 && !pendingSound) {
+      if (newTimeLeft <= 5 && newTimeLeft > 0 && !pendingSound && !tractorMomentActive) {
         pendingSound = 'tick';
       }
 
       if (newTimeLeft <= 0) {
         if (isLastStage) {
-          return { ...state, timeLeft: newTimeLeft, warnedOneMin, pendingSound: 'blindsUp' };
+          return { ...state, timeLeft: newTimeLeft, warnedOneMin, pendingSound: 'blindsUp', tractorMomentActive };
         }
         // Advance to next stage
-        return advanceStage({ ...state, warnedOneMin, pendingSound });
+        return advanceStage({ ...state, warnedOneMin, pendingSound, tractorMomentActive });
       }
 
-      return { ...state, timeLeft: newTimeLeft, warnedOneMin, pendingSound };
+      return { ...state, timeLeft: newTimeLeft, warnedOneMin, pendingSound, tractorMomentActive };
     }
 
     case 'TOGGLE_PAUSE': {
@@ -111,6 +119,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         timeLeft: state.stages[next].duration,
         warnedOneMin: false,
         pendingSound: null,
+        tractorMomentActive: false,
       };
     }
 
@@ -125,6 +134,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         timeLeft: state.stages[prev].duration,
         warnedOneMin: false,
         pendingSound: null,
+        tractorMomentActive: false,
       };
     }
 
@@ -136,6 +146,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         timeLeft: state.stages[state.currentStage].duration,
         warnedOneMin: false,
         pendingSound: null,
+        tractorMomentActive: false,
       };
     }
 
@@ -149,6 +160,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         timeLeft: state.stages[last].duration,
         warnedOneMin: false,
         pendingSound: null,
+        tractorMomentActive: false,
       };
     }
 
@@ -164,6 +176,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         warnedOneMin: false,
         pendingSound: null,
         screen: 'timer',
+        tractorMomentActive: false,
       };
     }
 
@@ -202,6 +215,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         isOver: false,
         warnedOneMin: false,
         pendingSound: null,
+        tractorMomentActive: false,
       };
     }
 
@@ -271,6 +285,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
         isOver,
         warnedOneMin,
         pendingSound: null,
+        tractorMomentActive: false,
       };
       return { ...restored, timeLeft: computeTimeLeft(restored) };
     }
@@ -302,5 +317,6 @@ function advanceStage(state: TimerState): TimerState {
     timeLeft: nextStage.duration,
     warnedOneMin: false,
     pendingSound,
+    tractorMomentActive: false,
   };
 }

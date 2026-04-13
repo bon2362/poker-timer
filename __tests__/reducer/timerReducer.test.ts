@@ -537,6 +537,109 @@ describe('default case', () => {
   });
 });
 
+describe('tractorMomentActive', () => {
+  function makeBb300Config() {
+    return {
+      ...DEFAULT_CONFIG,
+      blindLevels: [
+        { sb: 25, bb: 50 },
+        { sb: 75, bb: 150 },
+        { sb: 150, bb: 300 },
+      ],
+    };
+  }
+
+  test('sets tractorMomentActive when timeLeft crosses 60s before BB=300 level', () => {
+    const config = makeBb300Config();
+    const stages = buildStages(config);
+    // stage 0 = level 25/50, stage 1 = break, stage 2 = level 75/150, etc.
+    // Find the level stage whose bb=150 (the one BEFORE the bb=300 level)
+    const levelStageIdx = stages.findIndex(
+      (s): s is import('@/types/timer').LevelStage => s.type === 'level' && s.bb === 150
+    );
+    const state = makeState({
+      config,
+      stages,
+      currentStage: levelStageIdx,
+      isPaused: false,
+      anchorTs: FIXED_NOW,
+      elapsedBeforePause: stages[levelStageIdx].duration - 61,
+      timeLeft: 61,
+      warnedOneMin: false,
+      tractorMomentActive: false,
+    });
+    jest.setSystemTime(FIXED_NOW + 1000); // timeLeft 61 → 60
+    const next = timerReducer(state, { type: 'TICK' });
+    expect(next.tractorMomentActive).toBe(true);
+    expect(next.pendingSound).toBeNull(); // standard warnBlinds suppressed
+    expect(next.warnedOneMin).toBe(true);
+  });
+
+  test('does NOT set tractorMomentActive when next level BB != 300', () => {
+    const stages = buildStages(DEFAULT_CONFIG);
+    const state = makeState({
+      stages,
+      currentStage: 0,
+      isPaused: false,
+      anchorTs: FIXED_NOW,
+      elapsedBeforePause: stages[0].duration - 61,
+      timeLeft: 61,
+      warnedOneMin: false,
+      tractorMomentActive: false,
+    });
+    jest.setSystemTime(FIXED_NOW + 1000);
+    const next = timerReducer(state, { type: 'TICK' });
+    expect(next.tractorMomentActive).toBe(false);
+    expect(next.pendingSound).not.toBeNull(); // standard sound plays
+  });
+
+  test('suppresses tick sound during tractorMomentActive', () => {
+    const config = makeBb300Config();
+    const stages = buildStages(config);
+    const levelStageIdx = stages.findIndex(
+      (s): s is import('@/types/timer').LevelStage => s.type === 'level' && s.bb === 150
+    );
+    const state = makeState({
+      config,
+      stages,
+      currentStage: levelStageIdx,
+      isPaused: false,
+      anchorTs: FIXED_NOW,
+      elapsedBeforePause: stages[levelStageIdx].duration - 4,
+      timeLeft: 4,
+      warnedOneMin: true,
+      tractorMomentActive: true,
+    });
+    jest.setSystemTime(FIXED_NOW + 1000); // timeLeft 4 → 3 (in tick zone)
+    const next = timerReducer(state, { type: 'TICK' });
+    expect(next.pendingSound).toBeNull(); // tick suppressed
+  });
+
+  test('resets tractorMomentActive on NEXT_STAGE', () => {
+    const state = makeState({ tractorMomentActive: true });
+    const next = timerReducer(state, { type: 'NEXT_STAGE' });
+    expect(next.tractorMomentActive).toBe(false);
+  });
+
+  test('resets tractorMomentActive on PREV_STAGE', () => {
+    const state = makeState({ currentStage: 1, tractorMomentActive: true });
+    const next = timerReducer(state, { type: 'PREV_STAGE' });
+    expect(next.tractorMomentActive).toBe(false);
+  });
+
+  test('resets tractorMomentActive on RESET_STAGE', () => {
+    const state = makeState({ tractorMomentActive: true });
+    const next = timerReducer(state, { type: 'RESET_STAGE' });
+    expect(next.tractorMomentActive).toBe(false);
+  });
+
+  test('resets tractorMomentActive on RESTART', () => {
+    const state = makeState({ tractorMomentActive: true });
+    const next = timerReducer(state, { type: 'RESTART' });
+    expect(next.tractorMomentActive).toBe(false);
+  });
+});
+
 describe('RESTORE_STATE — stageMatchesRestoredInfo branches', () => {
   test('no stageType in payload: stageMatchesRestoredInfo returns true (any stage matches)', () => {
     // Branch 1: !restored.stageType → return true (line 18 true branch)
