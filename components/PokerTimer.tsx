@@ -10,6 +10,7 @@ import { SettingsScreen } from './SettingsScreen';
 import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import { SlideshowOverlay } from './SlideshowOverlay';
+import TractorOverlay from './TractorOverlay';
 import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
@@ -336,6 +337,11 @@ export function PokerTimer() {
             onNext={() => dispatch({ type: 'NEXT_STAGE' })}
           />
         </div>
+      )}
+
+      {/* Tractor moment overlay — shown during final minute before BB=300 level */}
+      {state.tractorMomentActive && !state.isOver && (
+        <TractorOverlay timeLeft={state.timeLeft} isPaused={state.isPaused} />
       )}
 
       {/* Next blind info */}
