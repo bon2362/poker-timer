@@ -283,8 +283,12 @@ export function PokerTimer() {
         </div>
       </div>
 
-      {/* Timer */}
-      {!state.isOver && <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />}
+      {/* Timer — elevated above tractor video overlay when active */}
+      {!state.isOver && (
+        <div className={state.tractorMomentActive ? 'relative z-30' : ''}>
+          <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />
+        </div>
+      )}
 
       {/* Tournament over */}
       {state.isOver && (
@@ -339,9 +343,23 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Tractor moment — audio only, no visual overlay */}
+      {/* Tractor moment — audio + video overlay (z-20), timer and controls remain above */}
       {state.tractorMomentActive && !state.isOver && (
-        <TractorOverlay isPaused={state.isPaused} />
+        <TractorOverlay timeLeft={state.timeLeft} isPaused={state.isPaused} />
+      )}
+
+      {/* Controls on top of tractor video overlay */}
+      {state.tractorMomentActive && !state.isOver && (
+        <div className="fixed inset-x-0 bottom-0 z-30">
+          <Controls
+            isPaused={state.isPaused}
+            isOver={state.isOver}
+            visible={controlsVisible}
+            onPrev={() => dispatch({ type: 'PREV_STAGE' })}
+            onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
+            onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+          />
+        </div>
       )}
 
       {/* Next blind info */}
