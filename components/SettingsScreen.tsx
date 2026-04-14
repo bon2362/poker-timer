@@ -7,12 +7,18 @@ import { playSound } from '@/lib/audio';
 import { listSlideshowPhotos, uploadSlideshowPhoto, deleteAllSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { PlayerManager } from './PlayerManager/PlayerManager';
 import { SessionSetup } from './SessionSetup/SessionSetup';
+import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 
 type ChangelogEntry =
   | { version: string; date: string; notes: string; divider?: false }
   | { divider: true; label: string };
 
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '4.40',
+    date: "14 April '26",
+    notes: 'Оформление: кнопка "Потная Раздача" запускает финальное слайдшоу прямо из настроек.',
+  },
   {
     version: '4.39',
     date: "13 Apr '26",
@@ -530,10 +536,12 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
   const [slideshowSpeed, setSlideshowSpeed] = useState(String(config.slideshowSpeed ?? 5));
   const [photoCount, setPhotoCount] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    listSlideshowPhotos().then(urls => setPhotoCount(urls.length));
+    listSlideshowPhotos().then(urls => { setPhotoCount(urls.length); setPhotoUrls(urls); });
   }, []);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -543,6 +551,7 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
     await Promise.all(files.map(uploadSlideshowPhoto));
     const updated = await listSlideshowPhotos();
     setPhotoCount(updated.length);
+    setPhotoUrls(updated);
     onSlideshowChanged();
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -552,6 +561,7 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
     if (!confirm(`Удалить все фотографии (${photoCount})?`)) return;
     await deleteAllSlideshowPhotos();
     setPhotoCount(0);
+    setPhotoUrls([]);
     onSlideshowChanged();
   }
 
@@ -638,6 +648,26 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
           )}
         </div>
       </div>
+
+      {/* Финальное слайдшоу */}
+      <div>
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Финальное слайдшоу</div>
+        <button
+          onClick={() => setPreviewOpen(true)}
+          className="w-full bg-[#242424] border border-[#444] text-[#ccc] rounded-lg px-4 py-3 text-[14px] font-semibold cursor-pointer hover:border-violet-600 hover:text-white transition-colors"
+        >
+          Потная Раздача
+        </button>
+      </div>
+
+      {previewOpen && (
+        <FinalGameSlideshowOverlay
+          urls={photoUrls}
+          controlsVisible={true}
+          finishLabel="Хватит"
+          onFinish={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 }

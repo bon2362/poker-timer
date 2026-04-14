@@ -84,6 +84,7 @@ type Props = {
   urls: string[];
   controlsVisible: boolean;
   onFinish: () => void;
+  finishLabel?: string;
 };
 
 type SlotProps = { src: string; visible: boolean };
@@ -116,7 +117,7 @@ function shuffleIndexes(length: number): number[] {
   return idxs;
 }
 
-export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: Props) {
+export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish, finishLabel = 'Завершить' }: Props) {
   const [imgA, setImgA] = useState(urls[0] ?? '');
   const [imgB, setImgB] = useState('');
   const [showB, setShowB] = useState(false);
@@ -226,7 +227,7 @@ export function FinalGameSlideshowOverlay({ urls, controlsVisible, onFinish }: P
         onClick={onFinish}
         className={`absolute right-6 bottom-6 z-10 rounded-lg border border-white/25 bg-black/45 px-6 py-3 text-[15px] font-semibold text-white/75 backdrop-blur-sm cursor-pointer transition-opacity duration-300 hover:border-white/45 hover:text-white ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
-        Завершить
+        {finishLabel}
       </button>
 
 
