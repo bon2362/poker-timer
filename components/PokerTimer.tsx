@@ -283,10 +283,10 @@ export function PokerTimer() {
         </div>
       </div>
 
-      {/* Timer — wrapped in z-30 only during tractor moment to appear above video overlay */}
+      {/* Timer — flex-1 wrapper with z-30 during tractor moment so timer floats above video overlay */}
       {!state.isOver && (
         state.tractorMomentActive
-          ? <div className="relative z-30"><TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} /></div>
+          ? <div className="relative z-30 flex-1 flex flex-col"><TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} /></div>
           : <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />
       )}
 
@@ -304,8 +304,8 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Controls */}
-      {!state.isOver && (
+      {/* Controls — hidden during tractor moment (z-30 duplicate below handles it) */}
+      {!state.isOver && !state.tractorMomentActive && (
         <Controls
           isPaused={state.isPaused}
           isOver={state.isOver}
