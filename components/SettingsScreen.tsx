@@ -287,6 +287,7 @@ type FormErrors = {
 export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpToEnd, onSlideshowChanged }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('tournament');
   const [showChangelog, setShowChangelog] = useState(false);
+  const [cicdRefreshKey, setCicdRefreshKey] = useState(0);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'tournament', label: 'Турнир' },
@@ -332,7 +333,13 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              if (tab.id === 'cicd' && activeTab === 'cicd') {
+                setCicdRefreshKey(k => k + 1);
+              } else {
+                setActiveTab(tab.id);
+              }
+            }}
             className={`flex-1 py-3 text-[13px] font-medium border-none cursor-pointer transition-colors
               ${activeTab === tab.id
                 ? 'text-violet-400 border-b-2 border-violet-500 bg-transparent'
@@ -351,7 +358,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
         )}
         {activeTab === 'players' && <PlayerManager />}
         {activeTab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} onSlideshowChanged={onSlideshowChanged} />}
-        {activeTab === 'cicd' && <CiCdTab />}
+        {activeTab === 'cicd' && <CiCdTab refreshKey={cicdRefreshKey} />}
       </div>
     </div>
   );
@@ -761,17 +768,19 @@ function CiCard({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-function CiCdTab() {
+function CiCdTab({ refreshKey }: { refreshKey: number }) {
   const [data, setData] = useState<CiStatusData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
+    setData(null);
     fetch('/api/ci-status')
       .then(r => r.json())
       .then(setData)
       .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, allure: null, codecov: null, error: 'Не удалось загрузить данные' }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   return (
     <div className="p-5 flex flex-col gap-4">
