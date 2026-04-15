@@ -304,18 +304,6 @@ export function PokerTimer() {
         </div>
       )}
 
-      {/* Controls — hidden during tractor moment (z-30 duplicate below handles it) */}
-      {!state.isOver && !state.tractorMomentActive && (
-        <Controls
-          isPaused={state.isPaused}
-          isOver={state.isOver}
-          visible={controlsVisible}
-          onPrev={() => dispatch({ type: 'PREV_STAGE' })}
-          onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
-          onNext={() => dispatch({ type: 'NEXT_STAGE' })}
-        />
-      )}
-
       {/* Combos panel */}
       {!state.isOver && (
         <CombosPanel
@@ -364,12 +352,24 @@ export function PokerTimer() {
 
       {/* Next blind info */}
       {!state.isOver && nextText && (
-        <div className="pb-[22px] text-center pointer-events-none">
+        <div className="pb-2 text-center pointer-events-none">
           <div className="text-[11px] text-[#383838] tracking-[2px] uppercase mb-1">Далее</div>
           <div className="font-bold text-[#444] leading-tight" style={{ fontSize: 'clamp(58px, 8vw, 96px)' }}>
             {nextText}
           </div>
         </div>
+      )}
+
+      {/* Controls — below next blind info so they never overlap */}
+      {!state.isOver && !state.tractorMomentActive && (
+        <Controls
+          isPaused={state.isPaused}
+          isOver={state.isOver}
+          visible={controlsVisible}
+          onPrev={() => dispatch({ type: 'PREV_STAGE' })}
+          onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
+          onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+        />
       )}
 
       {/* Clock */}

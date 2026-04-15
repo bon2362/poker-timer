@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.42',
+    date: "16 April '26",
+    notes: 'Фикс: кнопки управления таймером перенесены ниже блока "Далее" — больше не перекрывают информацию о следующих блайндах.',
+  },
+  {
     version: '4.41',
     date: "16 April '26",
     notes: 'Рефакторинг: миниатюры winner/loser теперь генерирует Supabase Image Transformations на лету — двойная загрузка и клиентская генерация thumb-файлов удалены.',
