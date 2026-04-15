@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.45',
+    date: "16 April '26",
+    notes: 'Оптимизация: убран cache-buster ?t=Date.now() из URL loser-изображений + preload winner/loser фото при старте сессии — изображения загружаются мгновенно.',
+  },
+  {
     version: '4.44',
     date: "16 April '26",
     notes: 'CI/CD вкладка: виджет Supabase Usage — cached egress, egress, storage, database, realtime прямо в настройках без выхода в дашборд Supabase.',

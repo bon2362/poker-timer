@@ -16,6 +16,7 @@ import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
+import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
 import type { Config } from '@/types/timer';
 import type { PlayerStatus } from '@/types/game';
 
@@ -140,6 +141,19 @@ export function PokerTimer() {
       urls.forEach(url => { const img = new Image(); img.src = url; });
     });
   }, []);
+
+  // Preload loser/winner images for all players when session starts
+  useEffect(() => {
+    if (!activeSession || players.length === 0) return;
+    players.forEach(player => {
+      getLoserImageUrl(player.id).then(url => {
+        if (url) { const img = new Image(); img.src = url; }
+      });
+      getWinnerImageUrl(player.id).then(url => {
+        if (url) { const img = new Image(); img.src = url; }
+      });
+    });
+  }, [activeSession, players]);
 
   async function handleSlideshowChanged() {
     const urls = await listSlideshowPhotos();

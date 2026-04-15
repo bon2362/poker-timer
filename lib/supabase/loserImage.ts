@@ -15,7 +15,7 @@ export async function getLoserImageUrl(playerId: string): Promise<string | null>
   const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
   if (!data?.find(f => f.name === filePath)) return null;
   const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath);
-  return `${urlData.publicUrl}?t=${Date.now()}`;
+  return urlData.publicUrl;
 }
 
 /** Возвращает URL миниатюры проигравшего через Supabase Image Transformations */
@@ -28,9 +28,7 @@ export async function getLoserThumbUrl(playerId: string): Promise<string | null>
   const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath, {
     transform: { width: 200, height: 200, resize: 'cover' },
   });
-  const url = new URL(urlData.publicUrl);
-  url.searchParams.set('t', String(Date.now()));
-  return url.toString();
+  return urlData.publicUrl;
 }
 
 /** Загружает изображение проигравшего, возвращает URL оригинала или null */
@@ -46,7 +44,7 @@ export async function uploadLoserImage(playerId: string, file: File): Promise<st
   if (result.error) { console.error('uploadLoserImage:', result.error); return null; }
 
   const { data } = client.storage.from(BUCKET).getPublicUrl(path(playerId));
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return data.publicUrl;
 }
 
 /** Удаляет изображение проигравшего */

@@ -44,7 +44,7 @@ export async function uploadWinnerImage(playerId: string, file: File): Promise<s
   if (result.error) { console.error('uploadWinnerImage:', result.error); return null; }
 
   const { data } = client.storage.from(BUCKET).getPublicUrl(path(playerId));
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return data.publicUrl;
 }
 
 /** Удаляет изображение победителя */
