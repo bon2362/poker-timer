@@ -12,7 +12,7 @@
  *      Срок: 90 дней (или меньше), scope: минимально необходимый
  *
  * 2. Сохрани токен как Supabase Secret:
- *      supabase secrets set SUPABASE_PAT=sbp_xxxxxxxxxxxx
+ *      supabase secrets set ORG_PAT=sbp_xxxxxxxxxxxx
  *
  * 3. Задеплой функцию:
  *      supabase functions deploy org-usage --no-verify-jwt
@@ -35,10 +35,10 @@ const METRICS = [
 ];
 
 Deno.serve(async () => {
-  const pat = Deno.env.get('SUPABASE_PAT');
+  const pat = Deno.env.get('ORG_PAT');
   if (!pat) {
     return new Response(
-      JSON.stringify({ error: 'SUPABASE_PAT secret not set' }),
+      JSON.stringify({ error: 'ORG_PAT secret not set' }),
       { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
   }
