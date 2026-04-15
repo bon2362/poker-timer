@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.43',
+    date: "16 April '26",
+    notes: 'Фикс: убран ?t=Date.now() из URL чтения изображений победителей — CDN-кэш Supabase теперь работает и egress значительно снизится.',
+  },
+  {
     version: '4.42',
     date: "16 April '26",
     notes: 'Фикс: кнопки управления таймером перенесены ниже блока "Далее" — больше не перекрывают информацию о следующих блайндах.',

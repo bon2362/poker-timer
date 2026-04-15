@@ -15,7 +15,7 @@ export async function getWinnerImageUrl(playerId: string): Promise<string | null
   const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
   if (!data?.find(f => f.name === filePath)) return null;
   const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath);
-  return `${urlData.publicUrl}?t=${Date.now()}`;
+  return urlData.publicUrl;
 }
 
 /** Возвращает URL миниатюры победителя через Supabase Image Transformations */
@@ -28,9 +28,7 @@ export async function getWinnerThumbUrl(playerId: string): Promise<string | null
   const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath, {
     transform: { width: 200, height: 200, resize: 'cover' },
   });
-  const url = new URL(urlData.publicUrl);
-  url.searchParams.set('t', String(Date.now()));
-  return url.toString();
+  return urlData.publicUrl;
 }
 
 /** Загружает изображение победителя, возвращает URL оригинала или null */
