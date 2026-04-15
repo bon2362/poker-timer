@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.44',
+    date: "16 April '26",
+    notes: 'CI/CD вкладка: виджет Supabase Usage — cached egress, egress, storage, database, realtime прямо в настройках без выхода в дашборд Supabase.',
+  },
+  {
     version: '4.43',
     date: "16 April '26",
     notes: 'Фикс: убран ?t=Date.now() из URL чтения изображений победителей — CDN-кэш Supabase теперь работает и egress значительно снизится.',
@@ -689,6 +694,20 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
 
 // ── CI/CD Tab ─────────────────────────────────────────────────────────────
 
+type SupabaseUsageItem = {
+  metric: string;
+  usage: number;
+  pricing_free_units?: number;
+  available_in_plan: boolean;
+  unlimited: boolean;
+  capped: boolean;
+};
+
+type SupabaseUsageData = {
+  usages?: SupabaseUsageItem[];
+  error?: string;
+};
+
 type CiStatusData = {
   testRun: {
     status: string;
@@ -813,18 +832,40 @@ function CiCard({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
+const SUPABASE_METRIC_LABEL: Record<string, string> = {
+  CACHED_EGRESS: 'Cached Egress',
+  EGRESS: 'Egress',
+  STORAGE_SIZE: 'Storage',
+  DATABASE_SIZE: 'Database',
+  REALTIME_MESSAGE_COUNT: 'Realtime Messages',
+  REALTIME_PEAK_CONNECTIONS: 'Realtime Connections',
+};
+
+const SUPABASE_METRIC_UNIT: Record<string, string> = {
+  CACHED_EGRESS: 'GB',
+  EGRESS: 'GB',
+  STORAGE_SIZE: 'GB',
+  DATABASE_SIZE: 'GB',
+  REALTIME_MESSAGE_COUNT: '',
+  REALTIME_PEAK_CONNECTIONS: '',
+};
+
 function CiCdTab({ refreshKey }: { refreshKey: number }) {
   const [data, setData] = useState<CiStatusData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sbUsage, setSbUsage] = useState<SupabaseUsageData | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setData(null);
-    fetch('/api/ci-status')
-      .then(r => r.json())
-      .then(setData)
-      .catch(() => setData({ testRun: null, prodDeploy: null, testReport: null, allure: null, codecov: null, error: 'Не удалось загрузить данные' }))
-      .finally(() => setLoading(false));
+    setSbUsage(null);
+    Promise.all([
+      fetch('/api/ci-status').then(r => r.json()).catch(() => ({ testRun: null, prodDeploy: null, testReport: null, allure: null, codecov: null, error: 'Не удалось загрузить данные' })),
+      fetch('/api/supabase-usage').then(r => r.json()).catch(() => ({ error: 'Не удалось загрузить' })),
+    ]).then(([ci, sb]) => {
+      setData(ci);
+      setSbUsage(sb);
+    }).finally(() => setLoading(false));
   }, [refreshKey]);
 
   return (
@@ -998,6 +1039,54 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
               </>
             ) : (
               <div className="text-[#555] text-[12px]">Нет данных</div>
+            )}
+          </CiCard>
+
+          {/* Supabase Usage */}
+          <CiCard title="Supabase Usage">
+            {sbUsage?.error ? (
+              <div className="text-[#555] text-[12px]">{sbUsage.error}</div>
+            ) : sbUsage?.usages ? (
+              <div className="flex flex-col gap-[10px]">
+                {sbUsage.usages.map(item => {
+                  const label = SUPABASE_METRIC_LABEL[item.metric] ?? item.metric;
+                  const unit = SUPABASE_METRIC_UNIT[item.metric] ?? '';
+                  const limit = item.pricing_free_units;
+                  const pct = limit ? Math.min((item.usage / limit) * 100, 100) : 0;
+                  const overLimit = limit ? item.usage > limit : false;
+                  const barColor = overLimit ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : 'bg-emerald-500';
+                  const valueColor = overLimit ? 'text-red-400' : pct > 75 ? 'text-amber-400' : 'text-[#ccc]';
+                  const formatVal = (v: number) =>
+                    unit === 'GB' ? `${v.toFixed(3)} GB` : v.toLocaleString('ru-RU');
+                  if (!item.available_in_plan) return null;
+                  return (
+                    <div key={item.metric}>
+                      <div className="flex items-baseline justify-between mb-[4px]">
+                        <span className="text-[11px] text-[#666]">{label}</span>
+                        <span className={`text-[11px] font-mono tabular-nums ${valueColor}`}>
+                          {formatVal(item.usage)}{limit ? ` / ${formatVal(limit)}` : ''}
+                          {limit && <span className="text-[#444] ml-1">({overLimit ? `+${((item.usage / limit - 1) * 100).toFixed(0)}%` : `${pct.toFixed(0)}%`})</span>}
+                        </span>
+                      </div>
+                      {limit && (
+                        <div className="h-[4px] rounded-full bg-[#2a2a2a] overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <a
+                  href="https://supabase.com/dashboard/org/nkaxdmzhrfetvgymjqyp/usage"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-violet-400 hover:text-violet-300 self-start mt-1"
+                >
+                  Открыть Supabase →
+                </a>
+              </div>
+            ) : (
+              <div className="text-[#555] text-[12px]">Нет данных (нужен SUPABASE_ACCESS_TOKEN)</div>
             )}
           </CiCard>
 
