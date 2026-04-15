@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.41',
+    date: "16 April '26",
+    notes: 'Рефакторинг: миниатюры winner/loser теперь генерирует Supabase Image Transformations на лету — двойная загрузка и клиентская генерация thumb-файлов удалены.',
+  },
+  {
     version: '4.40',
     date: "14 April '26",
     notes: 'Оформление: кнопка "Потная Раздача" запускает финальное слайдшоу прямо из настроек.',
