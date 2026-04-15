@@ -28,7 +28,9 @@ export async function getLoserThumbUrl(playerId: string): Promise<string | null>
   const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath, {
     transform: { width: 200, height: 200, resize: 'cover' },
   });
-  return `${urlData.publicUrl}?t=${Date.now()}`;
+  const url = new URL(urlData.publicUrl);
+  url.searchParams.set('t', String(Date.now()));
+  return url.toString();
 }
 
 /** Загружает изображение проигравшего, возвращает URL оригинала или null */
