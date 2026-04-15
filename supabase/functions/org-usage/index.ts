@@ -44,7 +44,7 @@ Deno.serve(async () => {
   }
 
   const res = await fetch(
-    `https://api.supabase.com/v1/organizations/${ORG_SLUG}/billing/usage`,
+    `https://api.supabase.com/platform/organizations/${ORG_SLUG}/usage`,
     { headers: { Authorization: `Bearer ${pat}` } }
   );
 
