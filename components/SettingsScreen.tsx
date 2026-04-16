@@ -20,9 +20,14 @@ const CHANGELOG: ChangelogEntry[] = [
     notes: 'Оптимизация: убран cache-buster ?t=Date.now() из URL loser-изображений + preload winner/loser фото при старте сессии — изображения загружаются мгновенно.',
   },
   {
+    version: '4.45',
+    date: "16 April '26",
+    notes: 'CI/CD вкладка: виджет Supabase Usage — Storage size, DB size (прогресс-бары) + cached vs uncached запросы за сегодня. Ссылка на дашборд для egress.',
+  },
+  {
     version: '4.44',
     date: "16 April '26",
-    notes: 'CI/CD вкладка: виджет Supabase Usage — cached egress, egress, storage, database, realtime прямо в настройках без выхода в дашборд Supabase.',
+    notes: 'CI/CD вкладка: виджет Supabase Usage — первая версия (убрана, т.к. billing API недоступен без сессии).',
   },
   {
     version: '4.43',
@@ -699,17 +704,11 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
 
 // ── CI/CD Tab ─────────────────────────────────────────────────────────────
 
-type SupabaseUsageItem = {
-  metric: string;
-  usage: number;
-  pricing_free_units?: number;
-  available_in_plan: boolean;
-  unlimited: boolean;
-  capped: boolean;
-};
-
 type SupabaseUsageData = {
-  usages?: SupabaseUsageItem[];
+  storage_size_bytes?: number | null;
+  db_size_bytes?: number | null;
+  today_cached_requests?: number;
+  today_uncached_requests?: number;
   error?: string;
 };
 
@@ -837,23 +836,6 @@ function CiCard({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-const SUPABASE_METRIC_LABEL: Record<string, string> = {
-  CACHED_EGRESS: 'Cached Egress',
-  EGRESS: 'Egress',
-  STORAGE_SIZE: 'Storage',
-  DATABASE_SIZE: 'Database',
-  REALTIME_MESSAGE_COUNT: 'Realtime Messages',
-  REALTIME_PEAK_CONNECTIONS: 'Realtime Connections',
-};
-
-const SUPABASE_METRIC_UNIT: Record<string, string> = {
-  CACHED_EGRESS: 'GB',
-  EGRESS: 'GB',
-  STORAGE_SIZE: 'GB',
-  DATABASE_SIZE: 'GB',
-  REALTIME_MESSAGE_COUNT: '',
-  REALTIME_PEAK_CONNECTIONS: '',
-};
 
 function CiCdTab({ refreshKey }: { refreshKey: number }) {
   const [data, setData] = useState<CiStatusData | null>(null);
@@ -1051,47 +1033,75 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
           <CiCard title="Supabase Usage">
             {sbUsage?.error ? (
               <div className="text-[#555] text-[12px]">{sbUsage.error}</div>
-            ) : sbUsage?.usages ? (
+            ) : sbUsage ? (
               <div className="flex flex-col gap-[10px]">
-                {sbUsage.usages.map(item => {
-                  const label = SUPABASE_METRIC_LABEL[item.metric] ?? item.metric;
-                  const unit = SUPABASE_METRIC_UNIT[item.metric] ?? '';
-                  const limit = item.pricing_free_units;
-                  const pct = limit ? Math.min((item.usage / limit) * 100, 100) : 0;
-                  const overLimit = limit ? item.usage > limit : false;
-                  const barColor = overLimit ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : 'bg-emerald-500';
-                  const valueColor = overLimit ? 'text-red-400' : pct > 75 ? 'text-amber-400' : 'text-[#ccc]';
-                  const formatVal = (v: number) =>
-                    unit === 'GB' ? `${v.toFixed(3)} GB` : v.toLocaleString('ru-RU');
-                  if (!item.available_in_plan) return null;
+                {/* Storage bar */}
+                {sbUsage.storage_size_bytes != null && (() => {
+                  const limit = 1 * 1024 * 1024 * 1024;
+                  const pct = Math.min((sbUsage.storage_size_bytes / limit) * 100, 100);
+                  const mb = (sbUsage.storage_size_bytes / (1024 * 1024)).toFixed(1);
+                  const barColor = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : 'bg-emerald-500';
+                  const valColor = pct > 90 ? 'text-red-400' : pct > 75 ? 'text-amber-400' : 'text-[#ccc]';
                   return (
-                    <div key={item.metric}>
+                    <div>
                       <div className="flex items-baseline justify-between mb-[4px]">
-                        <span className="text-[11px] text-[#666]">{label}</span>
-                        <span className={`text-[11px] font-mono tabular-nums ${valueColor}`}>
-                          {formatVal(item.usage)}{limit ? ` / ${formatVal(limit)}` : ''}
-                          {limit && <span className="text-[#444] ml-1">({overLimit ? `+${((item.usage / limit - 1) * 100).toFixed(0)}%` : `${pct.toFixed(0)}%`})</span>}
+                        <span className="text-[11px] text-[#666]">Storage</span>
+                        <span className={`text-[11px] font-mono tabular-nums ${valColor}`}>
+                          {mb} MB / 1 GB <span className="text-[#444]">({pct.toFixed(0)}%)</span>
                         </span>
                       </div>
-                      {limit && (
-                        <div className="h-[4px] rounded-full bg-[#2a2a2a] overflow-hidden">
-                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                        </div>
-                      )}
+                      <div className="h-[4px] rounded-full bg-[#2a2a2a] overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
                   );
-                })}
+                })()}
+                {/* DB bar */}
+                {sbUsage.db_size_bytes != null && (() => {
+                  const limit = 500 * 1024 * 1024;
+                  const pct = Math.min((sbUsage.db_size_bytes / limit) * 100, 100);
+                  const mb = (sbUsage.db_size_bytes / (1024 * 1024)).toFixed(1);
+                  const barColor = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : 'bg-emerald-500';
+                  const valColor = pct > 90 ? 'text-red-400' : pct > 75 ? 'text-amber-400' : 'text-[#ccc]';
+                  return (
+                    <div>
+                      <div className="flex items-baseline justify-between mb-[4px]">
+                        <span className="text-[11px] text-[#666]">Database</span>
+                        <span className={`text-[11px] font-mono tabular-nums ${valColor}`}>
+                          {mb} MB / 500 MB <span className="text-[#444]">({pct.toFixed(0)}%)</span>
+                        </span>
+                      </div>
+                      <div className="h-[4px] rounded-full bg-[#2a2a2a] overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Today's requests */}
+                {((sbUsage.today_cached_requests ?? 0) + (sbUsage.today_uncached_requests ?? 0)) > 0 && (
+                  <div className="flex flex-col gap-[4px] pt-[2px]">
+                    <div className="text-[10px] text-[#444] uppercase tracking-[1px]">Storage requests today</div>
+                    <div className="flex gap-4">
+                      <span className="text-[12px] text-emerald-400 tabular-nums">
+                        ✓ cached: {(sbUsage.today_cached_requests ?? 0).toLocaleString('ru-RU')}
+                      </span>
+                      <span className={`text-[12px] tabular-nums ${(sbUsage.today_uncached_requests ?? 0) > 50 ? 'text-amber-400' : 'text-[#666]'}`}>
+                        ⚡ uncached: {(sbUsage.today_uncached_requests ?? 0).toLocaleString('ru-RU')}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <a
                   href="https://supabase.com/dashboard/org/nkaxdmzhrfetvgymjqyp/usage"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[11px] text-violet-400 hover:text-violet-300 self-start mt-1"
                 >
-                  Открыть Supabase →
+                  Egress → Supabase dashboard
                 </a>
               </div>
             ) : (
-              <div className="text-[#555] text-[12px]">Нет данных (нужен SUPABASE_ACCESS_TOKEN)</div>
+              <div className="text-[#555] text-[12px]">Нет данных</div>
             )}
           </CiCard>
 

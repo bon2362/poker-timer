@@ -1,66 +1,117 @@
 /**
  * org-usage — Supabase Edge Function
  *
- * Возвращает usage-метрики организации Supabase (egress, storage, realtime и т.д.)
- * через Supabase Management API, используя Personal Access Token,
- * хранящийся в Supabase Secrets — вне Vercel.
+ * Возвращает метрики проекта: размер storage, БД и трафик за сегодня.
  *
- * ── Setup ────────────────────────────────────────────────────────────────────
+ * ── Auth ─────────────────────────────────────────────────────────────────────
+ * - SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — авто-инжектируются
+ * - ORG_PAT — Personal Access Token (supabase.com/dashboard/account/tokens),
+ *   нужен для DB size и аналитики. Хранить как Supabase Secret:
+ *     supabase secrets set ORG_PAT=sbp_xxxx
  *
- * 1. Создай Personal Access Token (read-only):
- *      https://supabase.com/dashboard/account/tokens
- *      Срок: 90 дней (или меньше), scope: минимально необходимый
- *
- * 2. Сохрани токен как Supabase Secret:
- *      supabase secrets set ORG_PAT=sbp_xxxxxxxxxxxx
- *
- * 3. Задеплой функцию:
- *      supabase functions deploy org-usage --no-verify-jwt
- *
- * ── Notes ────────────────────────────────────────────────────────────────────
- * - --no-verify-jwt: функция вызывается с anon key из Next.js сервера,
- *   стандартная JWT-проверка Supabase для этого достаточна
- * - PAT нигде в Vercel не хранится
+ * ── Deploy ───────────────────────────────────────────────────────────────────
+ *   supabase functions deploy org-usage --no-verify-jwt
  */
 
-const ORG_SLUG = 'nkaxdmzhrfetvgymjqyp';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const METRICS = [
-  'CACHED_EGRESS',
-  'EGRESS',
-  'STORAGE_SIZE',
-  'DATABASE_SIZE',
-  'REALTIME_MESSAGE_COUNT',
-  'REALTIME_PEAK_CONNECTIONS',
-];
+const PROJECT_REF = 'dbayngkhribcllxdoozo';
+
+async function mgmtFetch(pat: string, path: string, init?: RequestInit) {
+  return fetch(`https://api.supabase.com${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
+}
 
 Deno.serve(async () => {
-  const pat = Deno.env.get('ORG_PAT');
-  if (!pat) {
-    return new Response(
-      JSON.stringify({ error: 'ORG_PAT secret not set' }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  const pat = Deno.env.get('ORG_PAT') ?? null;
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, serviceKey);
 
-  const res = await fetch(
-    `https://api.supabase.com/platform/organizations/${ORG_SLUG}/usage`,
-    { headers: { Authorization: `Bearer ${pat}` } }
-  );
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayIso = todayStart.toISOString();
 
-  if (!res.ok) {
-    const body = await res.text();
-    return new Response(
-      JSON.stringify({ error: `Management API ${res.status}: ${body}` }),
-      { status: res.status, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  // ── 1. Storage size via service role ──────────────────────────────────────
+  const storagePromise = supabase
+    .schema('storage')
+    .from('objects')
+    .select('metadata->size')
+    .then(({ data }) => {
+      const bytes = (data ?? []).reduce(
+        (sum, row) => sum + (Number((row as { size: unknown }).size) || 0),
+        0
+      );
+      return { storage_size_bytes: bytes };
+    });
 
-  const json = await res.json() as { usages?: { metric: string; [k: string]: unknown }[] };
-  const usages = (json.usages ?? []).filter((u) => METRICS.includes(u.metric));
+  // ── 2. DB size via Management API ─────────────────────────────────────────
+  const dbPromise = pat
+    ? mgmtFetch(pat, `/v1/projects/${PROJECT_REF}/database/query/read-only`, {
+        method: 'POST',
+        body: JSON.stringify({ query: 'SELECT pg_database_size(current_database()) AS size' }),
+      })
+        .then((r) => r.json())
+        .then((rows: unknown) => ({
+          db_size_bytes: Number((rows as { size: unknown }[])?.[0]?.size ?? 0),
+        }))
+    : Promise.resolve({ db_size_bytes: null as number | null });
+
+  // ── 3. Today's storage requests via Analytics API ─────────────────────────
+  const logsSql = `
+    SELECT
+      (responseHeaders.cf_cache_status = 'HIT') AS cached,
+      COUNT(*) AS requests
+    FROM edge_logs
+      CROSS JOIN UNNEST(metadata) AS metadata
+      CROSS JOIN UNNEST(metadata.request) AS request
+      CROSS JOIN UNNEST(metadata.response) AS response
+      CROSS JOIN UNNEST(response.headers) AS responseHeaders
+    WHERE
+      (request.path LIKE '%/storage/v1/object/%'
+       OR request.path LIKE '%/storage/v1/render/%')
+      AND timestamp > TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY)
+    GROUP BY 1
+  `.trim();
+
+  const logsPromise = pat
+    ? mgmtFetch(
+        pat,
+        `/v1/projects/${PROJECT_REF}/analytics/endpoints/logs.all` +
+          `?iso_timestamp_start=${encodeURIComponent(todayIso)}` +
+          `&sql=${encodeURIComponent(logsSql)}`
+      )
+        .then((r) => r.json())
+        .then((body: unknown) => ({ rows: (body as { result?: unknown[] })?.result ?? [] }))
+    : Promise.resolve({ rows: [] as unknown[] });
+
+  const [storageRes, dbRes, logsRes] = await Promise.allSettled([
+    storagePromise,
+    dbPromise,
+    logsPromise,
+  ]);
+
+  const storage = storageRes.status === 'fulfilled' ? storageRes.value : { storage_size_bytes: null };
+  const db = dbRes.status === 'fulfilled' ? dbRes.value : { db_size_bytes: null };
+  const logsRows = logsRes.status === 'fulfilled' ? logsRes.value.rows : [];
+
+  type LogRow = { cached: boolean | string; requests: number | string };
+  const cachedRow = (logsRows as LogRow[]).find((r) => r.cached === true || r.cached === 'true');
+  const uncachedRow = (logsRows as LogRow[]).find((r) => r.cached === false || r.cached === 'false');
 
   return new Response(
-    JSON.stringify({ usages }),
+    JSON.stringify({
+      storage_size_bytes: storage.storage_size_bytes,
+      db_size_bytes: db.db_size_bytes,
+      today_cached_requests: Number(cachedRow?.requests ?? 0),
+      today_uncached_requests: Number(uncachedRow?.requests ?? 0),
+    }),
     { headers: { 'Content-Type': 'application/json' } }
   );
 });
