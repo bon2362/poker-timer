@@ -305,4 +305,203 @@ describe('SettingsScreen — Display tab', () => {
     await openDisplayTab();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Потная Раздача' })).toBeInTheDocument());
   });
+
+  test('clicking "Удалить все" calls deleteAllSlideshowPhotos after confirm', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    (listSlideshowPhotos as jest.Mock).mockResolvedValue(['https://example.com/a.jpg']);
+
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(screen.getByRole('button', { name: 'Оформление' }));
+
+    const deleteBtn = await screen.findByRole('button', { name: 'Удалить все' });
+    await user.click(deleteBtn);
+
+    expect(deleteAllSlideshowPhotos).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SettingsScreen — Tournament tab reset', () => {
+  test('clicking "сбросить к умолчаниям" resets blinds to DEFAULT_CONFIG', async () => {
+    const user = userEvent.setup();
+    const modifiedConfig = {
+      ...DEFAULT_CONFIG,
+      levelDuration: 99,
+      blindLevels: [{ sb: 999, bb: 1998 }],
+    };
+    render(
+      <SettingsScreen
+        config={modifiedConfig}
+        onSave={jest.fn()}
+        onDisplaySave={jest.fn()}
+        onClose={jest.fn()}
+        onSlideshowChanged={jest.fn()}
+      />
+    );
+
+    // Modified config values are visible
+    expect(screen.getAllByDisplayValue('999').length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('button', { name: 'сбросить к умолчаниям' }));
+
+    // After reset, DEFAULT_CONFIG first blind sb=10 should appear
+    await waitFor(() => expect(screen.getAllByDisplayValue('10').length).toBeGreaterThan(0));
+  });
+});
+
+describe('SettingsScreen — CI/CD tab', () => {
+  const mockCiData = {
+    testRun: {
+      status: 'completed',
+      conclusion: 'success',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      url: 'https://github.com/test/run/1',
+      commit: {
+        sha: 'abc1234',
+        message: 'test commit message',
+        author: 'Test User',
+        timestamp: new Date().toISOString(),
+      },
+    },
+    prodDeploy: {
+      state: 'success',
+      description: 'Deployment succeeded',
+      createdAt: new Date().toISOString(),
+      deployUrl: 'https://poker-timer-black.vercel.app',
+      sha: 'abc1234',
+      commitMessage: 'test commit message',
+    },
+    testReport: {
+      state: 'success',
+      createdAt: new Date().toISOString(),
+      reportUrl: 'https://test.report.url/allure',
+      sha: 'abc1234',
+    },
+    allure: {
+      passed: 10,
+      failed: 1,
+      broken: 0,
+      skipped: 2,
+      total: 13,
+      startMs: Date.now() - 60000,
+      durationMs: 5000,
+    },
+    codecov: {
+      coverage: 75.5,
+      lines: 100,
+      hits: 75,
+      misses: 20,
+      partials: 5,
+      files: [
+        { name: 'components/SettingsScreen.tsx', coverage: 31.4, lines: 226, hits: 71, misses: 132 },
+      ],
+    },
+  };
+
+  const mockSbUsage = {
+    storage_size_bytes: 100 * 1024 * 1024,
+    db_size_bytes: 50 * 1024 * 1024,
+    today_cached_requests: 150,
+    today_uncached_requests: 20,
+  };
+
+  async function openCiCdTab() {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(screen.getByRole('button', { name: 'CI/CD' }));
+    return user;
+  }
+
+  let originalFetch: typeof global.fetch;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  function mockFetch(ciData: unknown, sbData: unknown = {}) {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      const data = String(url).includes('ci-status') ? ciData : sbData;
+      return Promise.resolve({ json: () => Promise.resolve(data) });
+    }) as typeof global.fetch;
+  }
+
+  test('loading state shows "Загружаем…"', async () => {
+    global.fetch = jest.fn().mockImplementation(() => new Promise(() => {})) as typeof global.fetch;
+    await openCiCdTab();
+    expect(screen.getByText('Загружаем…')).toBeInTheDocument();
+  });
+
+  test('error state from fetch shows error message', async () => {
+    mockFetch({ error: 'Не удалось загрузить данные', testRun: null, prodDeploy: null, testReport: null, allure: null, codecov: null });
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('Не удалось загрузить данные')).toBeInTheDocument());
+  });
+
+  test('renders CI/CD cards when fetch resolves with full data', async () => {
+    mockFetch(mockCiData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('GitHub CI')).toBeInTheDocument());
+    expect(screen.getByText('Vercel deploy')).toBeInTheDocument();
+    expect(screen.getByText('Allure Report')).toBeInTheDocument();
+    expect(screen.getByText('Supabase Usage')).toBeInTheDocument();
+    expect(screen.getByText('Codecov')).toBeInTheDocument();
+  });
+
+  test('renders "Нет данных" when prodDeploy and testRun are null', async () => {
+    mockFetch({ testRun: null, prodDeploy: null, testReport: null, allure: null, codecov: null });
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getAllByText('Нет данных').length).toBeGreaterThan(0));
+  });
+
+  test('clicking CI/CD tab twice triggers data refresh', async () => {
+    const fetchMock = jest.fn().mockImplementation(() => new Promise(() => {}));
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(screen.getByRole('button', { name: 'CI/CD' }));
+    await user.click(screen.getByRole('button', { name: 'CI/CD' }));
+
+    // Each tab activation fires 2 fetches (ci-status + supabase-usage) = 4 total
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('Supabase Usage renders storage and DB progress bars', async () => {
+    mockFetch(mockCiData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('Storage')).toBeInTheDocument());
+    expect(screen.getByText('Database')).toBeInTheDocument();
+  });
+
+  test('Allure stats with failed/skipped entries are shown', async () => {
+    mockFetch(mockCiData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText(/passed/)).toBeInTheDocument());
+    expect(screen.getByText(/failed/)).toBeInTheDocument();
+    expect(screen.getByText(/skipped/)).toBeInTheDocument();
+  });
+
+  test('Codecov widget shows coverage percentage and file table', async () => {
+    mockFetch(mockCiData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('75.5%')).toBeInTheDocument());
+    expect(screen.getByText('SettingsScreen')).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useGame } from '@/context/GameContext';
 import { PlayerForm } from '@/components/PlayerManager/PlayerForm';
@@ -6,7 +6,14 @@ import type { Player } from '@/types/game';
 
 jest.mock('@/context/GameContext', () => ({ useGame: jest.fn() }));
 jest.mock('@/lib/supabase/storage', () => ({ uploadAvatar: jest.fn() }));
-jest.mock('@/components/PlayerManager/AvatarCropper', () => ({ AvatarCropper: () => null }));
+jest.mock('@/components/PlayerManager/AvatarCropper', () => ({
+  AvatarCropper: ({ onSave, onCancel }: { onSave: (b: Blob) => void; onCancel: () => void }) => (
+    <div data-testid="avatar-cropper">
+      <button onClick={() => onSave(new Blob(['img']))}>Crop Save</button>
+      <button onClick={onCancel}>Crop Cancel</button>
+    </div>
+  ),
+}));
 
 const mockPlayer: Player = {
   id: 'player-1',
@@ -137,5 +144,60 @@ describe('PlayerForm', () => {
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeInTheDocument();
     expect(fileInput.accept).toBe('image/*');
+  });
+
+  test('selecting a file opens AvatarCropper', async () => {
+    setupMocks();
+    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['img'], 'avatar.jpg', { type: 'image/jpeg' });
+
+    await act(async () => {
+      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+      fireEvent.change(fileInput);
+    });
+
+    expect(screen.getByTestId('avatar-cropper')).toBeInTheDocument();
+  });
+
+  test('clicking Crop Save calls uploadAvatar and updatePlayer', async () => {
+    const { mockUpdatePlayer } = setupMocks();
+    const { uploadAvatar } = jest.requireMock('@/lib/supabase/storage');
+    (uploadAvatar as jest.Mock).mockResolvedValue('https://example.com/new-avatar.jpg');
+    const user = userEvent.setup();
+
+    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['img'], 'avatar.jpg', { type: 'image/jpeg' });
+
+    await act(async () => {
+      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+      fireEvent.change(fileInput);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Crop Save' }));
+
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith(mockPlayer.id, expect.any(Blob)));
+    await waitFor(() => expect(mockUpdatePlayer).toHaveBeenCalledWith(mockPlayer.id, { avatarUrl: 'https://example.com/new-avatar.jpg' }));
+  });
+
+  test('clicking Crop Cancel closes AvatarCropper', async () => {
+    setupMocks();
+    const user = userEvent.setup();
+    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['img'], 'avatar.jpg', { type: 'image/jpeg' });
+
+    await act(async () => {
+      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+      fireEvent.change(fileInput);
+    });
+
+    expect(screen.getByTestId('avatar-cropper')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Crop Cancel' }));
+    expect(screen.queryByTestId('avatar-cropper')).not.toBeInTheDocument();
   });
 });
