@@ -1078,9 +1078,11 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
                   );
                 })()}
                 {/* Today's requests */}
-                {((sbUsage.today_cached_requests ?? 0) + (sbUsage.today_uncached_requests ?? 0)) > 0 && (
-                  <div className="flex flex-col gap-[4px] pt-[2px]">
-                    <div className="text-[10px] text-[#444] uppercase tracking-[1px]">Storage requests today</div>
+                <div className="flex flex-col gap-[4px] pt-[2px]">
+                  <div className="text-[10px] text-[#444] uppercase tracking-[1px]">Storage requests today</div>
+                  {((sbUsage.today_cached_requests ?? 0) + (sbUsage.today_uncached_requests ?? 0)) === 0 ? (
+                    <div className="text-[11px] text-[#444]">нет данных / трафика сегодня нет</div>
+                  ) : (
                     <div className="flex gap-4">
                       <span className="text-[12px] text-emerald-400 tabular-nums">
                         ✓ cached: {(sbUsage.today_cached_requests ?? 0).toLocaleString('ru-RU')}
@@ -1089,8 +1091,8 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
                         ⚡ uncached: {(sbUsage.today_uncached_requests ?? 0).toLocaleString('ru-RU')}
                       </span>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
                 <a
                   href="https://supabase.com/dashboard/org/nkaxdmzhrfetvgymjqyp/usage"
                   target="_blank"

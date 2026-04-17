@@ -38,18 +38,18 @@ Deno.serve(async () => {
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayIso = todayStart.toISOString();
 
-  // ── 1. Storage size via service role ──────────────────────────────────────
-  const storagePromise = supabase
-    .schema('storage')
-    .from('objects')
-    .select('metadata->size')
-    .then(({ data }) => {
-      const bytes = (data ?? []).reduce(
-        (sum, row) => sum + (Number((row as { size: unknown }).size) || 0),
-        0
-      );
-      return { storage_size_bytes: bytes };
-    });
+  // ── 1. Storage size via Storage API ──────────────────────────────────────
+  const storagePromise = (async () => {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    let totalBytes = 0;
+    for (const bucket of buckets ?? []) {
+      const { data: files } = await supabase.storage.from(bucket.name).list('', { limit: 10000 });
+      for (const file of files ?? []) {
+        totalBytes += Number((file.metadata as Record<string, unknown> | null)?.size ?? 0);
+      }
+    }
+    return { storage_size_bytes: totalBytes };
+  })();
 
   // ── 2. DB size via Management API ─────────────────────────────────────────
   const dbPromise = pat
