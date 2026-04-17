@@ -182,3 +182,256 @@ describe('GameContext', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Extended tests: action creators and Realtime callbacks
+// ---------------------------------------------------------------------------
+
+const mockSession = {
+  id: 'session-1',
+  buyIn: 1000,
+  initialStack: 2000,
+  rebuyCost: 1000,
+  rebuyChips: 2000,
+  maxRebuys: 1,
+  addonCost: 1000,
+  addonChips: 3000,
+  prizeSpots: 3,
+  prizePcts: [50, 30, 20],
+  status: 'active' as const,
+  createdAt: '2024-01-01T00:00:00Z',
+};
+
+const mockSp = {
+  id: 'sp-1',
+  sessionId: 'session-1',
+  playerId: 'p-1',
+  rebuys: 0,
+  hasAddon: false,
+  status: 'playing' as const,
+  finishPosition: null,
+  eliminatedAt: null,
+};
+
+const mockSpRow = {
+  id: 'sp-1',
+  session_id: 'session-1',
+  player_id: 'p-1',
+  rebuys: 0,
+  has_addon: false,
+  status: 'playing',
+  finish_position: null,
+  eliminated_at: null,
+};
+
+let gameCtxRef: ReturnType<typeof import('@/context/GameContext').useGame> | null = null;
+
+function ExtendedTestConsumer() {
+  const ctx = useGame();
+  gameCtxRef = ctx;
+  const { players, activeSession, sessionPlayers, showWinner, loading } = ctx;
+  return (
+    <div>
+      <div data-testid="loading">{String(loading)}</div>
+      <div data-testid="players-count">{players.length}</div>
+      <div data-testid="session">{activeSession ? activeSession.id : 'none'}</div>
+      <div data-testid="session-players-count">{sessionPlayers.length}</div>
+      <div data-testid="show-winner">{String(showWinner)}</div>
+    </div>
+  );
+}
+
+function renderExtended() {
+  return render(
+    <GameProvider>
+      <ExtendedTestConsumer />
+    </GameProvider>
+  );
+}
+
+describe('GameContext — extended actions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorageMock.clear();
+    gameCtxRef = null;
+
+    const alice: Player = { id: 'p-1', name: 'Alice', avatarUrl: null, createdAt: '' };
+    mockFetchPlayers.mockResolvedValue([alice]);
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [mockSp] });
+    mockChannel.on.mockReturnThis();
+  });
+
+  async function waitReady() {
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
+  }
+
+  test('7. updatePlayer updates player in list', async () => {
+    const updated: Player = { id: 'p-1', name: 'Alice Renamed', avatarUrl: null, createdAt: '' };
+    mockUpdatePlayer.mockResolvedValue(updated);
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.updatePlayer('p-1', { name: 'Alice Renamed' });
+    });
+
+    expect(mockUpdatePlayer).toHaveBeenCalledWith('p-1', { name: 'Alice Renamed' });
+  });
+
+  test('8. removePlayer removes player when no active session involvement', async () => {
+    // Start with no session so the guard doesn't block
+    mockFetchActiveSession.mockResolvedValue({ session: null, sessionPlayers: [] });
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('players-count')).toHaveTextContent('1');
+
+    await act(async () => {
+      await gameCtxRef!.removePlayer('p-1');
+    });
+
+    expect(mockDeletePlayer).toHaveBeenCalledWith('p-1');
+    expect(screen.getByTestId('players-count')).toHaveTextContent('0');
+  });
+
+  test('9. removePlayer is blocked when player is in active session', async () => {
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.removePlayer('p-1');
+    });
+
+    expect(mockDeletePlayer).not.toHaveBeenCalled();
+  });
+
+  test('10. startSession calls createSession and sets active session', async () => {
+    mockFetchActiveSession.mockResolvedValue({ session: null, sessionPlayers: [] });
+    mockCreateSession.mockResolvedValue({ session: mockSession, sessionPlayers: [mockSp] });
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('session')).toHaveTextContent('none');
+
+    await act(async () => {
+      await gameCtxRef!.startSession(
+        { buyIn: 1000, initialStack: 2000, rebuyCost: 1000, rebuyChips: 2000, maxRebuys: 1, addonCost: 1000, addonChips: 3000, prizeSpots: 3, prizePcts: [50, 30, 20] },
+        ['p-1']
+      );
+    });
+
+    expect(mockCreateSession).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('session')).toHaveTextContent('session-1');
+  });
+
+  test('11. doRebuy calls updateSessionPlayer with incremented rebuys', async () => {
+    const updatedSp = { ...mockSp, rebuys: 1 };
+    mockUpdateSessionPlayer.mockResolvedValue(updatedSp);
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.doRebuy('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { rebuys: 1 });
+  });
+
+  test('12. doRebuy is blocked when sp.rebuys >= maxRebuys', async () => {
+    const atLimitSp = { ...mockSp, rebuys: 1 }; // maxRebuys = 1 in mockSession
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [atLimitSp] });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.doRebuy('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).not.toHaveBeenCalled();
+  });
+
+  test('13. eliminatePlayer calls updateSessionPlayer with status=eliminated', async () => {
+    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, status: 'eliminated', finishPosition: 1 });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.eliminatePlayer('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', expect.objectContaining({
+      status: 'eliminated',
+    }));
+  });
+
+  test('14. declareWinner calls updateSessionPlayer and sets showWinner=true', async () => {
+    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, status: 'winner', finishPosition: 1 });
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('show-winner')).toHaveTextContent('false');
+
+    await act(async () => {
+      await gameCtxRef!.declareWinner('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { status: 'winner', finishPosition: 1 });
+    expect(screen.getByTestId('show-winner')).toHaveTextContent('true');
+  });
+
+  test('15. finishGame calls finishSession and clears active session', async () => {
+    mockFinishSession.mockResolvedValue(undefined);
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('session')).toHaveTextContent('session-1');
+
+    await act(async () => {
+      await gameCtxRef!.finishGame();
+    });
+
+    expect(mockFinishSession).toHaveBeenCalledWith('session-1');
+    expect(screen.getByTestId('session')).toHaveTextContent('none');
+  });
+
+  test('16. Realtime INSERT session_players → session-player added to state', async () => {
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [] });
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('session-players-count')).toHaveTextContent('0');
+
+    // Find the INSERT session_players callback
+    const call = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'INSERT' && filter.table === 'session_players'
+    );
+    const callback = call![2];
+
+    await act(async () => {
+      callback({ new: mockSpRow });
+    });
+
+    expect(screen.getByTestId('session-players-count')).toHaveTextContent('1');
+  });
+
+  test('17. Realtime UPDATE sessions (status=finished) → clears active session', async () => {
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('session')).toHaveTextContent('session-1');
+
+    const call = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'sessions'
+    );
+    const callback = call![2];
+
+    await act(async () => {
+      callback({ new: { status: 'finished' } });
+    });
+
+    expect(screen.getByTestId('session')).toHaveTextContent('none');
+  });
+});

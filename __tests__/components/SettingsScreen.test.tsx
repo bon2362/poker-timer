@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsScreen } from '@/components/SettingsScreen';
 import { DEFAULT_CONFIG } from '@/lib/storage';
@@ -183,5 +183,126 @@ describe('SettingsScreen — Tournament tab content', () => {
     await user.type(levelInput, '15');
 
     await waitFor(() => expect(saveBtn).toBeEnabled());
+  });
+
+  test('clicking save after change calls onSave with updated config', async () => {
+    const onSave = jest.fn();
+    const user = userEvent.setup();
+    renderSettings({ onSave });
+
+    const label = screen.getByText('Длительность уровня');
+    const levelInput = label.closest('div')!.querySelector('input') as HTMLInputElement;
+    await user.clear(levelInput);
+    await user.type(levelInput, '15');
+
+    const saveBtn = screen.getByRole('button', { name: 'Применить время и блайнды' });
+    await waitFor(() => expect(saveBtn).toBeEnabled());
+    await user.click(saveBtn);
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ levelDuration: 15 }));
+  });
+
+  test('"+ добавить уровень" adds a new blind row', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const deleteButtons = screen.getAllByRole('button', { name: '✕' });
+    const initialCount = deleteButtons.length;
+
+    await user.click(screen.getByRole('button', { name: '+ добавить уровень' }));
+
+    expect(screen.getAllByRole('button', { name: '✕' })).toHaveLength(initialCount + 1);
+  });
+
+  test('"✕" removes a blind level row', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const initialCount = screen.getAllByRole('button', { name: '✕' }).length;
+    await user.click(screen.getAllByRole('button', { name: '✕' })[0]);
+
+    expect(screen.getAllByRole('button', { name: '✕' })).toHaveLength(initialCount - 1);
+  });
+
+  test('changing a blind SB value marks form as dirty and enables save', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const saveBtn = screen.getByRole('button', { name: 'Применить время и блайнды' });
+    expect(saveBtn).toBeDisabled();
+
+    // Find first SB input in the blind table
+    const sbInputs = screen.getAllByDisplayValue('10');
+    await user.clear(sbInputs[0]);
+    await user.type(sbInputs[0], '15');
+
+    await waitFor(() => expect(saveBtn).toBeEnabled());
+  });
+});
+
+describe('SettingsScreen — Display tab', () => {
+  const { listSlideshowPhotos, uploadSlideshowPhoto, deleteAllSlideshowPhotos } =
+    jest.requireMock('@/lib/supabase/slideshow');
+
+  async function openDisplayTab() {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(screen.getByRole('button', { name: 'Оформление' }));
+    return user;
+  }
+
+  test('opening display tab triggers listSlideshowPhotos', async () => {
+    await openDisplayTab();
+    await waitFor(() => expect(listSlideshowPhotos).toHaveBeenCalled());
+  });
+
+  test('toggling slideshow checkbox calls onDisplaySave', async () => {
+    const onDisplaySave = jest.fn();
+    const user = userEvent.setup();
+    renderSettings({ onDisplaySave });
+    await user.click(screen.getByRole('button', { name: 'Оформление' }));
+
+    const checkbox = await screen.findByRole('checkbox', { name: /Показывать фото/i });
+    await user.click(checkbox);
+
+    expect(onDisplaySave).toHaveBeenCalledWith(expect.objectContaining({ slideshowEnabled: expect.any(Boolean) }));
+  });
+
+  test('blurring speed field calls onDisplaySave', async () => {
+    const onDisplaySave = jest.fn();
+    const user = userEvent.setup();
+    renderSettings({ onDisplaySave });
+    await user.click(screen.getByRole('button', { name: 'Оформление' }));
+
+    const speedLabel = await screen.findByText('Смена фото (сек)');
+    const speedInput = speedLabel.closest('div')!.querySelector('input') as HTMLInputElement;
+    await user.clear(speedInput);
+    await user.type(speedInput, '10');
+    fireEvent.blur(speedInput);
+
+    expect(onDisplaySave).toHaveBeenCalledWith(expect.objectContaining({ slideshowSpeed: 10 }));
+  });
+
+  test('"+ Добавить фото" button and hidden file input rendered in display tab', async () => {
+    await openDisplayTab();
+    await waitFor(() => expect(listSlideshowPhotos).toHaveBeenCalled());
+
+    expect(screen.getByRole('button', { name: '+ Добавить фото' })).toBeInTheDocument();
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeInTheDocument();
+    expect(fileInput.accept).toBe('image/*');
+  });
+
+  test('"Удалить все" button appears when photos exist', async () => {
+    (listSlideshowPhotos as jest.Mock).mockResolvedValue(['https://example.com/a.jpg']);
+
+    await openDisplayTab();
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Удалить все' })).toBeInTheDocument());
+  });
+
+  test('"Потная Раздача" button is always visible in display tab', async () => {
+    await openDisplayTab();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Потная Раздача' })).toBeInTheDocument());
   });
 });

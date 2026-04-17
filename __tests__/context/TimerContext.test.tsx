@@ -46,6 +46,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 // --- Component under test ---
 import { TimerProvider, useTimer } from '@/context/TimerContext';
 import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
+import { getTimerChannel } from '@/supabase/client';
 
 function TestConsumer() {
   const { state, dispatch } = useTimer();
@@ -56,8 +57,12 @@ function TestConsumer() {
       <div data-testid="screen">{state.screen}</div>
       <div data-testid="timeLeft">{state.timeLeft}</div>
       <div data-testid="pendingSound">{state.pendingSound ?? 'null'}</div>
+      <div data-testid="showCombos">{String(state.config.showCombos)}</div>
       <button onClick={() => dispatch({ type: 'TOGGLE_PAUSE' })}>toggle</button>
       <button onClick={() => dispatch({ type: 'NEXT_STAGE' })}>next</button>
+      <button onClick={() => dispatch({ type: 'PREV_STAGE' })}>prev</button>
+      <button onClick={() => dispatch({ type: 'RESET_STAGE' })}>reset-stage</button>
+      <button onClick={() => dispatch({ type: 'TOGGLE_COMBOS' })}>toggle-combos</button>
       <button onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}>settings</button>
       <button onClick={() => dispatch({ type: 'RESTART' })}>restart</button>
     </div>
@@ -214,6 +219,88 @@ describe('TimerContext', () => {
 
     await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('1'));
     await waitFor(() => expect(saveTimerState).not.toHaveBeenCalled());
+  });
+
+  test('11. PREV_STAGE decrements currentStage', async () => {
+    renderWithProvider();
+    await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('0'));
+
+    await act(async () => { screen.getByText('next').click(); });
+    expect(screen.getByTestId('stage')).toHaveTextContent('1');
+
+    await act(async () => { screen.getByText('prev').click(); });
+    expect(screen.getByTestId('stage')).toHaveTextContent('0');
+  });
+
+  test('12. TOGGLE_COMBOS flips showCombos state', async () => {
+    renderWithProvider();
+    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
+
+    const initialCombos = screen.getByTestId('showCombos').textContent;
+
+    await act(async () => { screen.getByText('toggle-combos').click(); });
+
+    const flippedCombos = screen.getByTestId('showCombos').textContent;
+    expect(flippedCombos).not.toBe(initialCombos);
+  });
+
+  test('13. RESET_STAGE resets timeLeft to current stage duration', async () => {
+    jest.useFakeTimers();
+    renderWithProvider();
+    await act(async () => {});
+
+    const initialTimeLeft = parseInt(screen.getByTestId('timeLeft').textContent ?? '0', 10);
+
+    // Start timer, advance a few seconds, then reset
+    await act(async () => { screen.getByText('toggle').click(); });
+    await act(async () => { jest.advanceTimersByTime(5000); });
+
+    const afterTick = parseInt(screen.getByTestId('timeLeft').textContent ?? '0', 10);
+    expect(afterTick).toBeLessThan(initialTimeLeft);
+
+    await act(async () => { screen.getByText('reset-stage').click(); });
+
+    const afterReset = parseInt(screen.getByTestId('timeLeft').textContent ?? '0', 10);
+    // After reset, timeLeft should be close to full stage duration again
+    expect(afterReset).toBeGreaterThan(afterTick);
+
+    jest.useRealTimers();
+  });
+
+  test('14. broadcast "state" from another device triggers RESTORE_STATE without echoing back to DB', async () => {
+    renderWithProvider();
+    await waitFor(() => expect(fetchTimerState).toHaveBeenCalled());
+
+    const channel = (getTimerChannel as jest.Mock).mock.results[0].value;
+    const broadcastCb = channel.on.mock.calls.find(
+      ([type, opts]: [string, { event: string }]) => type === 'broadcast' && opts.event === 'state'
+    )?.[2];
+
+    expect(broadcastCb).toBeDefined();
+
+    const saveCallsBefore = (saveTimerState as jest.Mock).mock.calls.length;
+
+    // Send a broadcast that mirrors current state (stage 0, paused) — echo suppression fires
+    await act(async () => {
+      broadcastCb({
+        payload: {
+          currentStage: 0,
+          anchorTs: 0,
+          elapsedBeforePause: 0,
+          isPaused: true,
+          isOver: false,
+          warnedOneMin: false,
+          stageType: 'level',
+          levelNum: 1,
+          sb: 10,
+          bb: 20,
+          stageDurationSecs: 1200,
+        },
+      });
+    });
+
+    // Echo suppression: saveTimerState should NOT be called for received broadcast
+    expect((saveTimerState as jest.Mock).mock.calls.length).toBe(saveCallsBefore);
   });
 
   test('10. identical DB restore does not block the next local sync', async () => {

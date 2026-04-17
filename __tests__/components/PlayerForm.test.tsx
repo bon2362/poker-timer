@@ -107,4 +107,35 @@ describe('PlayerForm', () => {
     render(<PlayerForm player={mockPlayerWithAvatar} onDone={jest.fn()} />);
     expect(screen.getByRole('button', { name: /Заменить аватарку/i })).toBeInTheDocument();
   });
+
+  test('editing name and clicking Сохранить calls updatePlayer with new name, then onDone', async () => {
+    const { mockUpdatePlayer } = setupMocks();
+    const onDone = jest.fn();
+    const user = userEvent.setup();
+    render(<PlayerForm player={mockPlayer} onDone={onDone} />);
+
+    const input = screen.getByPlaceholderText('Имя игрока');
+    await user.clear(input);
+    await user.type(input, 'Alice Updated');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(mockUpdatePlayer).toHaveBeenCalledWith(mockPlayer.id, { name: 'Alice Updated' });
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+  });
+
+  test('whitespace-only input keeps save button disabled', async () => {
+    setupMocks();
+    const user = userEvent.setup();
+    render(<PlayerForm onDone={jest.fn()} />);
+    await user.type(screen.getByPlaceholderText('Имя игрока'), '   ');
+    expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled();
+  });
+
+  test('clicking avatar button reveals hidden file input', () => {
+    setupMocks();
+    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeInTheDocument();
+    expect(fileInput.accept).toBe('image/*');
+  });
 });

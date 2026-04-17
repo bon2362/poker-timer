@@ -154,4 +154,26 @@ describe('SessionSetup', () => {
 
     expect(screen.queryByText(/Макс\. ребаев/)).not.toBeInTheDocument();
   });
+
+  test('financial inputs are disabled when session is locked', () => {
+    setupMocks({ activeSession: mockActiveSession, sessionPlayers: [] });
+    render(<SessionSetup />);
+
+    const buyInLabel = screen.getByText('Взнос (RSD)');
+    const buyInInput = buyInLabel.closest('div')!.querySelector('input') as HTMLInputElement;
+    expect(buyInInput).toBeDisabled();
+  });
+
+  test('clicking a selected player checkbox deselects it', async () => {
+    setupMocks();
+    const user = userEvent.setup();
+    render(<SessionSetup />);
+
+    const alice = screen.getByRole('checkbox', { name: /Alice/i });
+    await user.click(alice); // select
+    expect(alice).toBeChecked();
+
+    await user.click(alice); // deselect
+    expect(alice).not.toBeChecked();
+  });
 });
