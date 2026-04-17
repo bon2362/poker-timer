@@ -340,4 +340,50 @@ describe('TimerContext', () => {
 
     nowSpy.mockRestore();
   });
+
+  test('15. stale persisted state triggers RESTART instead of RESTORE_STATE', async () => {
+    const { isPersistedTimerStateStaleForSession } = jest.requireMock('@/lib/supabase/timerState');
+    (isPersistedTimerStateStaleForSession as jest.Mock).mockReturnValue(true);
+    (fetchTimerState as jest.Mock).mockResolvedValueOnce({
+      currentStage: 3,
+      anchorTs: Date.now(),
+      elapsedBeforePause: 0,
+      isPaused: false,
+      isOver: false,
+      warnedOneMin: false,
+      stageType: 'level',
+      levelNum: 4,
+      sb: 100,
+      bb: 200,
+      stageDurationSecs: 1200,
+      stages: [],
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    });
+
+    renderWithProvider();
+
+    await waitFor(() => expect(fetchTimerState).toHaveBeenCalled());
+    // Stale state → RESTART dispatched → currentStage stays 0
+    await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('0'));
+  });
+
+  test('16. display broadcast received → RESTORE_DISPLAY updates showCombos', async () => {
+    renderWithProvider();
+    await waitFor(() => expect(fetchTimerState).toHaveBeenCalled());
+
+    const channel = (getTimerChannel as jest.Mock).mock.results[0].value;
+    const displayCb = channel.on.mock.calls.find(
+      ([type, opts]: [string, { event: string }]) => type === 'broadcast' && opts.event === 'display'
+    )?.[2];
+
+    expect(displayCb).toBeDefined();
+
+    const initialCombos = screen.getByTestId('showCombos').textContent;
+
+    await act(async () => {
+      displayCb({ payload: { showCombos: initialCombos !== 'true', showPlayers: true } });
+    });
+
+    expect(screen.getByTestId('showCombos').textContent).not.toBe(initialCombos);
+  });
 });

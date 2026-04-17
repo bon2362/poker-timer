@@ -434,4 +434,157 @@ describe('GameContext — extended actions', () => {
 
     expect(screen.getByTestId('session')).toHaveTextContent('none');
   });
+
+  test('18. doAddon calls updateSessionPlayer with hasAddon=true', async () => {
+    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, hasAddon: true });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.doAddon('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { hasAddon: true });
+  });
+
+  test('19. undoEliminate restores player to playing status', async () => {
+    const eliminatedSp = { ...mockSp, status: 'eliminated' as const, finishPosition: 2, eliminatedAt: '2024-01-01' };
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [eliminatedSp] });
+    mockUpdateSessionPlayer.mockResolvedValue({ ...eliminatedSp, status: 'playing', finishPosition: null, eliminatedAt: null });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.undoEliminate('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', {
+      status: 'playing',
+      finishPosition: null,
+      eliminatedAt: null,
+    });
+  });
+
+  test('20. undoRebuy decrements rebuys', async () => {
+    const spWithRebuy = { ...mockSp, rebuys: 2 };
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [spWithRebuy] });
+    mockUpdateSessionPlayer.mockResolvedValue({ ...spWithRebuy, rebuys: 1 });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.undoRebuy('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { rebuys: 1 });
+  });
+
+  test('21. undoRebuy is skipped when rebuys=0', async () => {
+    renderExtended(); // mockSp has rebuys=0
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.undoRebuy('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).not.toHaveBeenCalled();
+  });
+
+  test('22. undoAddon calls updateSessionPlayer with hasAddon=false', async () => {
+    const spWithAddon = { ...mockSp, hasAddon: true };
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [spWithAddon] });
+    mockUpdateSessionPlayer.mockResolvedValue({ ...spWithAddon, hasAddon: false });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.undoAddon('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { hasAddon: false });
+  });
+
+  test('23. Realtime UPDATE session_players with status=winner → showWinner=true', async () => {
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('show-winner')).toHaveTextContent('false');
+
+    const call = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'session_players'
+    );
+    const callback = call![2];
+
+    await act(async () => {
+      callback({ new: { ...mockSpRow, status: 'winner' } });
+    });
+
+    expect(screen.getByTestId('show-winner')).toHaveTextContent('true');
+  });
+
+  test('24. Realtime INSERT sessions → fetches and sets new session', async () => {
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: null, sessionPlayers: [] }) // initial load
+      .mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] }); // after INSERT
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('session')).toHaveTextContent('none');
+
+    const call = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'INSERT' && filter.table === 'sessions'
+    );
+    const callback = call![2];
+
+    await act(async () => {
+      await callback({});
+    });
+
+    expect(screen.getByTestId('session')).toHaveTextContent('session-1');
+  });
+
+  test('25. Realtime UPDATE sessions (status=active) → fetches and updates session', async () => {
+    const newSession = { ...mockSession, id: 'session-2' };
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] })
+      .mockResolvedValueOnce({ session: newSession, sessionPlayers: [] });
+
+    renderExtended();
+    await waitReady();
+
+    const call = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'sessions'
+    );
+    const callback = call![2];
+
+    await act(async () => {
+      await callback({ new: { status: 'active' } });
+    });
+
+    expect(screen.getByTestId('session')).toHaveTextContent('session-2');
+  });
+
+  test('26. ADD_SESSION_PLAYER dedup: duplicate INSERT updates existing sp instead of adding', async () => {
+    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [mockSp] });
+
+    renderExtended();
+    await waitReady();
+    expect(screen.getByTestId('session-players-count')).toHaveTextContent('1');
+
+    const call = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'INSERT' && filter.table === 'session_players'
+    );
+    const callback = call![2];
+
+    // Send same sp id again — should update, not add
+    await act(async () => {
+      callback({ new: { ...mockSpRow, rebuys: 1 } });
+    });
+
+    // Count stays at 1 (dedup logic)
+    expect(screen.getByTestId('session-players-count')).toHaveTextContent('1');
+  });
 });
