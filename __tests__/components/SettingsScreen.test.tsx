@@ -504,4 +504,47 @@ describe('SettingsScreen — CI/CD tab', () => {
     await waitFor(() => expect(screen.getByText('75.5%')).toBeInTheDocument());
     expect(screen.getByText('SettingsScreen')).toBeInTheDocument();
   });
+
+  test('StatusBadge in_progress and DeployBadge failure are rendered', async () => {
+    const inProgressData = {
+      ...mockCiData,
+      testRun: { ...mockCiData.testRun, status: 'in_progress', conclusion: null },
+      prodDeploy: { ...mockCiData.prodDeploy, state: 'failure' },
+      allure: { ...mockCiData.allure, failed: 0 }, // avoid duplicate "✕ failed" text
+    };
+    mockFetch(inProgressData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('⟳ running')).toBeInTheDocument());
+    expect(screen.getByText('✕ failed')).toBeInTheDocument();
+  });
+
+  test('StatusBadge queued and DeployBadge pending are rendered', async () => {
+    const queuedData = {
+      ...mockCiData,
+      testRun: { ...mockCiData.testRun, status: 'queued', conclusion: null },
+      prodDeploy: { ...mockCiData.prodDeploy, state: 'pending' },
+    };
+    mockFetch(queuedData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('· queued')).toBeInTheDocument());
+    expect(screen.getByText('⟳ deploying')).toBeInTheDocument();
+  });
+
+  test('StatusBadge failure conclusion and no deployUrl fallback link', async () => {
+    const failureData = {
+      ...mockCiData,
+      testRun: { ...mockCiData.testRun, status: 'completed', conclusion: 'failure' },
+      prodDeploy: { ...mockCiData.prodDeploy, deployUrl: '', state: 'success' },
+    };
+    mockFetch(failureData, mockSbUsage);
+
+    await openCiCdTab();
+
+    await waitFor(() => expect(screen.getByText('✕ failure')).toBeInTheDocument());
+    expect(screen.getByText('poker-timer-black.vercel.app →')).toBeInTheDocument();
+  });
 });
