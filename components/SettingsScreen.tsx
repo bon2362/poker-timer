@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.46',
+    date: "17 April '26",
+    notes: 'CI/CD вкладка: коммит-хэши окрашиваются одним цветом когда совпадают, и разными — когда разные. Наглядно показывает, что пайплайн ещё не завершён.',
+  },
+  {
     version: '4.45',
     date: "16 April '26",
     notes: 'Оптимизация: убран cache-buster ?t=Date.now() из URL loser-изображений + preload winner/loser фото при старте сессии — изображения загружаются мгновенно.',
@@ -837,6 +842,20 @@ function CiCard({ title, children }: { title: string; children: React.ReactNode 
 }
 
 
+const SHA_BADGE_COLORS = [
+  'text-violet-300 bg-violet-400/10 border border-violet-400/20',
+  'text-amber-300 bg-amber-400/10 border border-amber-400/20',
+  'text-emerald-300 bg-emerald-400/10 border border-emerald-400/20',
+  'text-rose-300 bg-rose-400/10 border border-rose-400/20',
+];
+
+function buildShaColorMap(shas: (string | undefined | null)[]): Record<string, string> {
+  const unique = [...new Set(shas.filter(Boolean) as string[])];
+  const map: Record<string, string> = {};
+  unique.forEach((sha, i) => { map[sha] = SHA_BADGE_COLORS[i % SHA_BADGE_COLORS.length]; });
+  return map;
+}
+
 function CiCdTab({ refreshKey }: { refreshKey: number }) {
   const [data, setData] = useState<CiStatusData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -865,14 +884,22 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
         <div className="text-red-400 text-[13px] bg-red-400/10 border border-red-400/20 rounded-xl p-4">{data.error}</div>
       )}
 
-      {!loading && data && !data.error && (
+      {!loading && data && !data.error && (() => {
+        const shaColors = buildShaColorMap([
+          data.prodDeploy?.sha,
+          data.testRun?.commit.sha,
+          data.testReport?.sha,
+        ]);
+        const shaClass = (sha: string | undefined) =>
+          sha ? shaColors[sha] : SHA_BADGE_COLORS[0];
+        return (
         <>
           {/* Latest commit on site = prod deploy sha */}
           <CiCard title="Последний коммит на сайте">
             {data.prodDeploy ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[12px] text-violet-300 bg-violet-400/10 border border-violet-400/20 rounded px-2 py-[2px]">{data.prodDeploy.sha}</span>
+                  <span className={`font-mono text-[12px] rounded px-2 py-[2px] ${shaClass(data.prodDeploy.sha)}`}>{data.prodDeploy.sha}</span>
                   <span className="text-[11px] text-[#555]">{relativeTime(data.prodDeploy.createdAt)}</span>
                 </div>
                 {data.prodDeploy.commitMessage && (
@@ -902,7 +929,7 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
                 </div>
                 <div className="text-[12px] text-[#777] leading-[1.5] line-clamp-2">{data.testRun.commit.message}</div>
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] text-[#444]">{data.testRun.commit.sha}</span>
+                  <span className={`font-mono text-[12px] rounded px-2 py-[2px] ${shaClass(data.testRun.commit.sha)}`}>{data.testRun.commit.sha}</span>
                   <a
                     href={data.testRun.url}
                     target="_blank"
@@ -930,7 +957,7 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
                   <div className="text-[12px] text-[#777] leading-[1.5] line-clamp-2">{data.prodDeploy.commitMessage}</div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] text-[#444]">{data.prodDeploy.sha}</span>
+                  <span className={`font-mono text-[12px] rounded px-2 py-[2px] ${shaClass(data.prodDeploy.sha)}`}>{data.prodDeploy.sha}</span>
                   {data.prodDeploy.deployUrl ? (
                     <a
                       href={data.prodDeploy.deployUrl}
@@ -1175,7 +1202,8 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
             )}
           </CiCard>
         </>
-      )}
+        );
+      })()}
     </div>
   );
 }
