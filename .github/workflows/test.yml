@@ -53,6 +53,8 @@ jobs:
     needs: [unit-tests, e2e-tests]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      deployments: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,10 +62,36 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --meta githubCommitSha=${{ github.sha }} --meta githubCommitRef=${{ github.ref_name }}
+      - name: Create GitHub deployment
+        id: create_deployment
+        run: |
+          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
+            --method POST \
+            -f ref=${{ github.sha }} \
+            -f environment=Production \
+            -f description="Deploy to Vercel" \
+            -f auto_merge=false \
+            -F required_contexts='[]' \
+            --jq '.id')
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy to Vercel
+        id: vercel_deploy
+        run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Update GitHub deployment status
+        if: always()
+        run: |
+          gh api repos/${{ github.repository }}/deployments/${{ steps.create_deployment.outputs.deployment_id }}/statuses \
+            --method POST \
+            -f state=${{ steps.vercel_deploy.outcome == 'success' && 'success' || 'failure' }} \
+            -f environment_url=https://poker-timer-black.vercel.app \
+            -f description="Deployed to Vercel"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-allure:
     needs: e2e-tests
