@@ -14,7 +14,9 @@ export async function getWinnerImageUrl(playerId: string): Promise<string | null
   const filePath = path(playerId);
   const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
   if (!data?.find(f => f.name === filePath)) return null;
-  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath);
+  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath, {
+    transform: { width: 1920, quality: 80 },
+  });
   return urlData.publicUrl;
 }
 

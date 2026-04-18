@@ -13,10 +13,13 @@ test.describe('Timer - Desktop', () => {
   test('E1: can play and pause timer', async ({ page }) => {
     // The "Игра не настроена" overlay (z-40, fixed inset-0) intercepts pointer events.
     // We use JS evaluation to directly dispatch a click on the button element, bypassing the overlay.
+    // Timer may already be running (⏸) or paused (▶) depending on live app state.
 
-    // Verify the play button is present in the DOM
-    const playPauseBtn = page.getByRole('button', { name: '▶︎' });
+    const playPauseBtn = page.locator('button').filter({ hasText: /[▶⏸]/ });
     await expect(playPauseBtn).toBeVisible();
+
+    const initialText = await playPauseBtn.textContent();
+    const startsPlaying = initialText?.includes('⏸');
 
     // Click via JS — reaches the button's React handler even with overlay present
     await page.evaluate(() => {
@@ -26,19 +29,27 @@ test.describe('Timer - Desktop', () => {
       btn?.click();
     });
 
-    // After clicking play, button text should switch to pause icon
-    await expect(page.getByRole('button', { name: '⏸︎' })).toBeVisible({ timeout: 5000 });
+    // After clicking, button should switch to opposite icon
+    if (startsPlaying) {
+      await expect(page.getByRole('button', { name: '▶︎' })).toBeVisible({ timeout: 5000 });
+    } else {
+      await expect(page.getByRole('button', { name: '⏸︎' })).toBeVisible({ timeout: 5000 });
+    }
 
-    // Click again to pause
+    // Click again to toggle back
     await page.evaluate(() => {
       const btn = Array.from(document.querySelectorAll('button')).find(
-        b => b.textContent?.includes('⏸')
+        b => b.textContent?.includes('▶') || b.textContent?.includes('⏸')
       );
       btn?.click();
     });
 
-    // Should return to play icon
-    await expect(page.getByRole('button', { name: '▶︎' })).toBeVisible({ timeout: 5000 });
+    // Should return to initial icon
+    if (startsPlaying) {
+      await expect(page.getByRole('button', { name: '⏸︎' })).toBeVisible({ timeout: 5000 });
+    } else {
+      await expect(page.getByRole('button', { name: '▶︎' })).toBeVisible({ timeout: 5000 });
+    }
   });
 
   // E2: Navigate between stages

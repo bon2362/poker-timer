@@ -27,8 +27,8 @@ test.describe('Mobile Admin Panel', () => {
 
   // M2: Mobile view shows play/pause button that is functional
   test('M2: mobile shows play/pause button', async ({ page }) => {
-    // In mobile view the play button shows ▶ (no variant selector like on desktop)
-    const playBtn = page.locator('button', { hasText: '▶' });
+    // Timer may already be running (⏸) or paused (▶) depending on live app state.
+    const playBtn = page.locator('button').filter({ hasText: /^[▶⏸]$/ });
     await expect(playBtn).toBeVisible();
 
     // Verify the button occupies a wide area (full-width style)
