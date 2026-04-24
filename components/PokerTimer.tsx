@@ -194,7 +194,7 @@ export function PokerTimer() {
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
 
-  const { songPaused, toggleSong } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
+  const { songPaused, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
 
   useEffect(() => {
     if (finalSlideshowDelayRef.current) {
@@ -331,7 +331,12 @@ export function PokerTimer() {
 
       {/* Slideshow overlay — shown during breaks when enabled and photos are loaded */}
       {slideshowCurrentUrl && isOnBreak && (
-        <SlideshowOverlay url={slideshowCurrentUrl} timeLeft={state.timeLeft} />
+        <SlideshowOverlay
+          url={slideshowCurrentUrl}
+          timeLeft={state.timeLeft}
+          songTime={isOnBreak && state.config.breakSongEnabled ? songTime : undefined}
+          showLyrics={isOnBreak && state.config.breakSongEnabled}
+        />
       )}
 
       {/* Controls on top of slideshow — appear on mouse move */}

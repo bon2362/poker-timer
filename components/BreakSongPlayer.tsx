@@ -37,14 +37,16 @@ export function BreakSongPlayer({ onStateChange }: Props) {
   return null;
 }
 
-export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSong: () => void } {
+export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSong: () => void; songTime: number } {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [songPaused, setSongPaused] = useState(false);
+  const [songTime, setSongTime] = useState(0);
 
   useEffect(() => {
     if (!enabled) {
       audioRef.current?.pause();
       setSongPaused(false);
+      setSongTime(0);
       return;
     }
 
@@ -53,6 +55,11 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
     audio.loop = true;
     audioRef.current = audio;
     setSongPaused(false);
+    setSongTime(0);
+
+    const timeInterval = setInterval(() => {
+      setSongTime(audio.currentTime || 0);
+    }, 250);
 
     audio.play()
       .then(() => { if (cancelled) audio.pause(); })
@@ -60,6 +67,7 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
 
     return () => {
       cancelled = true;
+      clearInterval(timeInterval);
       audio.pause();
       audio.src = '';
       audioRef.current = null;
@@ -77,5 +85,5 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
     }
   };
 
-  return { songPaused, toggleSong };
+  return { songPaused, toggleSong, songTime };
 }

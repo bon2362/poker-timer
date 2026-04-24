@@ -2,8 +2,14 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { formatTime } from '@/lib/timer';
+import { getCurrentFinalSongLyric, getNextFinalSongLyric } from './FinalGameSlideshowOverlay';
 
-type Props = { url: string; timeLeft: number };
+type Props = {
+  url: string;
+  timeLeft: number;
+  songTime?: number;
+  showLyrics?: boolean;
+};
 
 function parseDateFromUrl(url: string): string | null {
   const filename = decodeURIComponent(url.split('/').pop()?.split('?')[0] ?? '');
@@ -40,7 +46,7 @@ function Slot({ src, visible }: SlotProps) {
   );
 }
 
-export function SlideshowOverlay({ url, timeLeft }: Props) {
+export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props) {
   // Cross-fade: два слота, чередуем какой сверху
   const [imgA, setImgA] = useState(url);
   const [imgB, setImgB] = useState('');
@@ -61,37 +67,68 @@ export function SlideshowOverlay({ url, timeLeft }: Props) {
 
   const activeUrl = showB ? imgB : imgA;
   const date = parseDateFromUrl(activeUrl);
-  const textStyle = {
+  const timerStyle = {
     fontSize: 'clamp(48px, 8vw, 96px)',
     textShadow: '0 2px 24px rgba(0,0,0,0.9)',
   };
+  const dateStyle = {
+    fontSize: 'clamp(16px, 2.6vw, 32px)',
+    textShadow: '0 2px 16px rgba(0,0,0,0.9)',
+  };
+
+  const showLyricsBlock = showLyrics && typeof songTime === 'number';
+  const lyric = showLyricsBlock ? getCurrentFinalSongLyric(songTime!) : null;
+  const nextLyric = showLyricsBlock ? getNextFinalSongLyric(songTime!) : null;
 
   return (
     <div className="fixed inset-0 z-20 bg-black overflow-hidden">
       <Slot src={imgA} visible={!showB} />
       {imgB && <Slot src={imgB} visible={showB} />}
 
-      {/* Timer — top */}
-      <div className="absolute top-10 inset-x-0 flex justify-center pointer-events-none select-none">
+      {/* Timer + Date — top */}
+      <div className="absolute top-10 inset-x-0 flex flex-col items-center pointer-events-none select-none">
         <div
           className="font-black text-white/85 tabular-nums tracking-[-2px]"
-          style={textStyle}
+          style={timerStyle}
         >
           {formatTime(timeLeft)}
         </div>
-      </div>
-
-      {/* Date — bottom */}
-      {date && (
-        <div className="absolute bottom-16 inset-x-0 flex justify-center pointer-events-none select-none">
+        {date && (
           <div
-            className="font-black text-white/70 tracking-[-1px]"
-            style={textStyle}
+            className="font-black text-white/70 tracking-[-1px] mt-1"
+            style={dateStyle}
           >
             {date}
           </div>
+        )}
+      </div>
+
+      {/* Lyrics — bottom */}
+      {showLyricsBlock && lyric && (
+        <div className="absolute inset-x-0 bottom-[88px] sm:bottom-[96px] flex flex-col items-center px-5 text-center pointer-events-none select-none">
+          <div
+            key={`${lyric.time}-${lyric.text}`}
+            className="max-w-[980px] animate-[final-lyric-rise_500ms_ease-out] text-[26px] sm:text-[40px] lg:text-[56px] text-white font-black leading-[1.1] drop-shadow-[0_4px_28px_rgba(0,0,0,0.95)]"
+          >
+            {lyric.text}
+          </div>
+          {nextLyric && (
+            <div
+              key={`next-${nextLyric.time}`}
+              className="mt-3 max-w-[980px] text-[18px] sm:text-[26px] lg:text-[36px] text-white/35 font-black leading-[1.1] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
+            >
+              {nextLyric.text}
+            </div>
+          )}
         </div>
       )}
+
+      <style>{`
+        @keyframes final-lyric-rise {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
