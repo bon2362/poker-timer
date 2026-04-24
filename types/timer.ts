@@ -12,6 +12,7 @@ export type Config = {
   blindLevels: BlindLevel[];
   slideshowEnabled: boolean;
   slideshowSpeed: number;  // секунды между фото
+  breakSongEnabled: boolean;
 };
 
 export type LevelStage = {

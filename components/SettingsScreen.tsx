@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.48',
+    date: "24 April '26",
+    notes: 'Песня «Потная Раздача» теперь может проигрываться на каждом перерыве — новый переключатель во вкладке «Экран» настроек.',
+  },
+  {
     version: '4.47',
     date: "18 April '26",
     notes: 'Оптимизация: изображения победителя и выбывшего теперь запрашиваются через Supabase Image Transformations (1920px, quality 80) — меньший размер файла без заметной потери качества.',
@@ -687,6 +692,20 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
             </button>
           )}
         </div>
+      </div>
+
+      {/* Песня на перерыве */}
+      <div>
+        <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Песня на перерыве</div>
+        <label className="flex items-center gap-3 bg-[#242424] border border-[#333] rounded-lg px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={config.breakSongEnabled}
+            onChange={e => onDisplaySave({ ...config, breakSongEnabled: e.target.checked })}
+            className="w-4 h-4 accent-violet-600 cursor-pointer"
+          />
+          <span className="text-[14px] text-[#ccc]">Проигрывать «Потную Раздачу» во время каждого перерыва</span>
+        </label>
       </div>
 
       {/* Финальное слайдшоу */}

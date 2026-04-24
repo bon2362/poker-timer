@@ -8,6 +8,7 @@ export const DEFAULT_CONFIG: Config = {
   showPlayers: true,
   slideshowEnabled: false,
   slideshowSpeed: 5,
+  breakSongEnabled: false,
   blindLevels: [
     { sb: 10,  bb: 20   },
     { sb: 20,  bb: 40   },

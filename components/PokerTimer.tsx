@@ -14,6 +14,7 @@ import TractorOverlay from './TractorOverlay';
 import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
+import { BreakSongPlayer } from './BreakSongPlayer';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
@@ -410,6 +411,9 @@ export function PokerTimer() {
       {activeSession && (
         <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
       )}
+
+      {/* Break song — plays while on break when enabled */}
+      {isOnBreak && state.config.breakSongEnabled && <BreakSongPlayer />}
 
       {/* Minute timer overlay */}
       <MinuteTimerOverlay />
