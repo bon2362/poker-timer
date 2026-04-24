@@ -1,13 +1,29 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const isCI = !!process.env.CI;
+const localBaseURL = 'http://127.0.0.1:3000';
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 45000,
   retries: 2,
+  workers: isCI ? 1 : undefined,
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'https://poker-timer-black.vercel.app',
+    baseURL: isCI ? localBaseURL : process.env.PLAYWRIGHT_BASE_URL ?? 'https://poker-timer-black.vercel.app',
     trace: 'on-first-retry',
   },
+  webServer: isCI
+    ? {
+        command: 'npm run dev -- --hostname 127.0.0.1 --port 3000',
+        url: localBaseURL,
+        reuseExistingServer: false,
+        timeout: 120000,
+        env: {
+          CI: 'true',
+          NEXT_PUBLIC_SESSION_ID: 'ci-e2e',
+        },
+      }
+    : undefined,
   projects: [
     {
       name: 'desktop',

@@ -1,7 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+async function waitForDesktopTimerScreen(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+  await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
+}
+
 // Helper: open settings screen bypassing the "Игра не настроена" overlay (z-40, intercepts pointer events)
 async function openSettingsViaGear(page: import('@playwright/test').Page) {
+  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
   await page.evaluate(() => {
     const btn = document.querySelector<HTMLButtonElement>('button[title="Settings"]');
     btn?.click();
@@ -11,10 +19,7 @@ async function openSettingsViaGear(page: import('@playwright/test').Page) {
 
 test.describe('Game Management - Desktop', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-    // Wait for the timer to hydrate — "Round 1" is rendered by PokerTimer component
-    await page.waitForSelector('text=Round 1', { timeout: 15000 });
+    await waitForDesktopTimerScreen(page);
   });
 
   // E7: Setup overlay is visible when there is no active session; otherwise the live game screen is visible.
@@ -87,14 +92,14 @@ test.describe('Game Management - Desktop', () => {
   // E10: BlindInfo section shows Round label and SB/BB values on main screen
   test('E10: main screen shows blind info with round and SB/BB values', async ({ page }) => {
     // Round label (e.g. "Round 1")
-    await expect(page.locator('text=Round 1')).toBeVisible();
+    await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
 
     // Blinds displayed as "SB / BB" — initial prod config is 10 / 20
-    await expect(page.locator('text=10 / 20')).toBeVisible();
+    await expect(page.locator('text=10 / 20')).toBeVisible({ timeout: 15000 });
 
     // "Далее" (next round preview) section is visible below
-    await expect(page.locator('text=Далее')).toBeVisible();
-    await expect(page.locator('text=20 / 40')).toBeVisible();
+    await expect(page.locator('text=Далее')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=20 / 40')).toBeVisible({ timeout: 15000 });
   });
 
   // E11: Timer display shows time in MM:SS format

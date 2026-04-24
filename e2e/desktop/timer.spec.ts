@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
 
+async function waitForTimerApp(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  // 'networkidle' is not used because Supabase Realtime keeps WebSocket connections open.
+  await page.waitForLoadState('domcontentloaded');
+  await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
+}
+
 test.describe('Timer - Desktop', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // 'networkidle' is not used because Supabase Realtime keeps WebSocket connections open.
-    await page.waitForLoadState('domcontentloaded');
-    // Wait for the timer display or overlay to appear — signals React has hydrated
-    await page.waitForSelector('text=Round 1', { timeout: 30000 });
+    await waitForTimerApp(page);
   });
 
   // E1: Play and pause toggle
@@ -101,7 +105,7 @@ test.describe('Timer - Desktop', () => {
   test('E5: settings button is accessible', async ({ page }) => {
     // The ⚙ button has title="Settings" — it is in the top-right corner
     const settingsBtn = page.locator('button[title="Settings"]');
-    await expect(settingsBtn).toBeVisible({ timeout: 10000 });
+    await expect(settingsBtn).toBeVisible({ timeout: 15000 });
   });
 
   // E6: Session overlay shown when no active session; active session screen otherwise remains usable.

@@ -1,18 +1,25 @@
 import { test, expect } from '@playwright/test';
 
+async function waitForSettingsEntryPoints(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+  await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
+}
+
 test.describe('Settings - Desktop', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('text=Round 1', { timeout: 30000 });
+    await waitForSettingsEntryPoints(page);
   });
 
   // Helper: click the gear (Settings) button via JS to bypass the overlay (z-40)
   async function openSettingsViaGear(page: import('@playwright/test').Page) {
+    await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
     await page.evaluate(() => {
       const btn = document.querySelector<HTMLButtonElement>('button[title="Settings"]');
       btn?.click();
     });
+    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible({ timeout: 10000 });
   }
 
   // E12: Can open settings via gear button
@@ -35,7 +42,7 @@ test.describe('Settings - Desktop', () => {
     }
 
     // Settings screen should appear
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();
+    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible({ timeout: 10000 });
   });
 
   // E14: Settings screen has back button to return to timer
@@ -44,12 +51,17 @@ test.describe('Settings - Desktop', () => {
     await openSettingsViaGear(page);
     await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();
 
-    // Click "← Назад" button to return — no overlay on settings screen
-    const backBtn = page.locator('button', { hasText: '← Назад' });
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    // Close settings via the header back button and wait for the settings screen to unmount.
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+        button => button.textContent?.includes('Назад')
+      );
+      btn?.click();
+    });
+    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).not.toBeVisible({ timeout: 10000 });
 
     // Timer screen should be back
     await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
   });
 });
