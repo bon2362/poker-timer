@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 
 const BREAK_TRACK_SRC = '/audio/sweaty-hand.mp3';
 
-export function BreakSongPlayer() {
+type Props = {
+  onStateChange?: (paused: boolean) => void;
+};
+
+export function BreakSongPlayer({ onStateChange }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [paused, setPaused] = useState(false);
-  const [audioBlocked, setAudioBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -15,8 +18,8 @@ export function BreakSongPlayer() {
     audioRef.current = audio;
 
     audio.play()
-      .then(() => { if (cancelled) { audio.pause(); return; } setAudioBlocked(false); })
-      .catch(() => { if (!cancelled) setAudioBlocked(true); });
+      .then(() => { if (cancelled) { audio.pause(); } })
+      .catch(() => { if (!cancelled) { setPaused(true); onStateChange?.(true); } });
 
     return () => {
       cancelled = true;
@@ -24,32 +27,55 @@ export function BreakSongPlayer() {
       audio.src = '';
       audioRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const toggle = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audioBlocked) {
-      audio.play().then(() => { setAudioBlocked(false); setPaused(false); }).catch(() => {});
+  useEffect(() => {
+    onStateChange?.(paused);
+  }, [paused, onStateChange]);
+
+  return null;
+}
+
+export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSong: () => void } {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [songPaused, setSongPaused] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) {
+      audioRef.current?.pause();
+      setSongPaused(false);
       return;
     }
-    if (paused) {
-      audio.play().then(() => setPaused(false)).catch(() => {});
+
+    let cancelled = false;
+    const audio = new Audio(BREAK_TRACK_SRC);
+    audio.loop = true;
+    audioRef.current = audio;
+    setSongPaused(false);
+
+    audio.play()
+      .then(() => { if (cancelled) audio.pause(); })
+      .catch(() => { if (!cancelled) setSongPaused(true); });
+
+    return () => {
+      cancelled = true;
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [enabled]);
+
+  const toggleSong = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (songPaused) {
+      audio.play().then(() => setSongPaused(false)).catch(() => {});
     } else {
       audio.pause();
-      setPaused(true);
+      setSongPaused(true);
     }
   };
 
-  const isPlaying = !paused && !audioBlocked;
-
-  return (
-    <button
-      onClick={toggle}
-      title={isPlaying ? 'Пауза музыки' : 'Включить музыку'}
-      className="fixed bottom-[72px] right-6 z-30 flex items-center gap-2 rounded-lg border border-white/20 bg-black/50 px-4 py-2 text-[13px] text-white/70 backdrop-blur-sm cursor-pointer hover:border-white/40 hover:text-white transition-colors"
-    >
-      {isPlaying ? '⏸' : '▶'} {isPlaying ? 'Пауза' : 'Музыка'}
-    </button>
-  );
+  return { songPaused, toggleSong };
 }

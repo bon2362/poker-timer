@@ -14,7 +14,7 @@ import TractorOverlay from './TractorOverlay';
 import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
-import { BreakSongPlayer } from './BreakSongPlayer';
+import { useBreakSong } from './BreakSongPlayer';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
@@ -194,6 +194,8 @@ export function PokerTimer() {
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
 
+  const { songPaused, toggleSong } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
+
   useEffect(() => {
     if (finalSlideshowDelayRef.current) {
       clearTimeout(finalSlideshowDelayRef.current);
@@ -342,6 +344,8 @@ export function PokerTimer() {
             onPrev={() => dispatch({ type: 'PREV_STAGE' })}
             onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
             onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+            songMuted={state.config.breakSongEnabled ? songPaused : undefined}
+            onToggleSong={state.config.breakSongEnabled ? toggleSong : undefined}
           />
         </div>
       )}
@@ -384,6 +388,8 @@ export function PokerTimer() {
           onPrev={() => dispatch({ type: 'PREV_STAGE' })}
           onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
           onNext={() => dispatch({ type: 'NEXT_STAGE' })}
+          songMuted={isOnBreak && state.config.breakSongEnabled ? songPaused : undefined}
+          onToggleSong={isOnBreak && state.config.breakSongEnabled ? toggleSong : undefined}
         />
       )}
 
@@ -411,9 +417,6 @@ export function PokerTimer() {
       {activeSession && (
         <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
       )}
-
-      {/* Break song — plays while on break when enabled */}
-      {isOnBreak && state.config.breakSongEnabled && <BreakSongPlayer />}
 
       {/* Minute timer overlay */}
       <MinuteTimerOverlay />

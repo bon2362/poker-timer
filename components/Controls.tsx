@@ -5,9 +5,11 @@ type Props = {
   onPrev: () => void;
   onTogglePause: () => void;
   onNext: () => void;
+  songMuted?: boolean;
+  onToggleSong?: () => void;
 };
 
-export function Controls({ isPaused, isOver, visible, onPrev, onTogglePause, onNext }: Props) {
+export function Controls({ isPaused, isOver, visible, onPrev, onTogglePause, onNext, songMuted, onToggleSong }: Props) {
   return (
     <div className={`pb-4 flex items-center justify-center gap-8 transition-opacity duration-500 ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
       <button
@@ -31,6 +33,15 @@ export function Controls({ isPaused, isOver, visible, onPrev, onTogglePause, onN
       >
         {'⏭\uFE0E'}
       </button>
+      {onToggleSong && (
+        <button
+          className="bg-transparent border-none text-[#444] text-[22px] cursor-pointer p-2 hover:text-[#777] transition-colors leading-none"
+          onClick={onToggleSong}
+          title={songMuted ? 'Включить музыку' : 'Выключить музыку'}
+        >
+          {songMuted ? '🔇\uFE0E' : '🔊\uFE0E'}
+        </button>
+      )}
     </div>
   );
 }
