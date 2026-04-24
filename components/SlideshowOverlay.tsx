@@ -85,23 +85,27 @@ export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props)
       <Slot src={imgA} visible={!showB} />
       {imgB && <Slot src={imgB} visible={showB} />}
 
-      {/* Timer + Date — top */}
-      <div className="absolute top-10 inset-x-0 flex flex-col items-center pointer-events-none select-none">
+      {/* Timer — top center */}
+      <div className="absolute top-10 inset-x-0 flex justify-center pointer-events-none select-none">
         <div
           className="font-black text-white/85 tabular-nums tracking-[-2px]"
           style={timerStyle}
         >
           {formatTime(timeLeft)}
         </div>
-        {date && (
+      </div>
+
+      {/* Date — bottom right */}
+      {date && (
+        <div className="absolute bottom-6 right-6 pointer-events-none select-none">
           <div
-            className="font-black text-white/70 tracking-[-1px] mt-1"
+            className="font-black text-white/60 tracking-[-1px]"
             style={dateStyle}
           >
             {date}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Lyrics — bottom */}
       {showLyricsBlock && lyric && (
