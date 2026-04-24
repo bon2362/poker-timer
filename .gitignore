@@ -44,3 +44,7 @@ next-env.d.ts
 # supabase cli temp files
 supabase/.temp/
 .worktrees
+
+# claude code / mcp artifacts
+.claude/
+.playwright-mcp/
