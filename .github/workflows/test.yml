@@ -67,12 +67,17 @@ jobs:
         run: |
           DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
             --method POST \
-            -f ref=${{ github.sha }} \
-            -f environment=Production \
-            -f description="Deploy to Vercel" \
-            -f auto_merge=false \
-            -F required_contexts='[]' \
-            --jq '.id')
+            --input - \
+            --jq '.id' <<EOF
+          {
+            "ref": "${{ github.sha }}",
+            "environment": "Production",
+            "description": "Deploy to Vercel",
+            "auto_merge": false,
+            "required_contexts": []
+          }
+          EOF
+          )
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
