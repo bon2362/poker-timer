@@ -5,6 +5,7 @@ const BREAK_TRACK_SRC = '/audio/sweaty-hand.mp3';
 
 export function BreakSongPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [paused, setPaused] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
 
   useEffect(() => {
@@ -25,18 +26,30 @@ export function BreakSongPlayer() {
     };
   }, []);
 
-  const resumeAudio = () => {
-    audioRef.current?.play().then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true));
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audioBlocked) {
+      audio.play().then(() => { setAudioBlocked(false); setPaused(false); }).catch(() => {});
+      return;
+    }
+    if (paused) {
+      audio.play().then(() => setPaused(false)).catch(() => {});
+    } else {
+      audio.pause();
+      setPaused(true);
+    }
   };
 
-  if (!audioBlocked) return null;
+  const isPlaying = !paused && !audioBlocked;
 
   return (
     <button
-      onClick={resumeAudio}
-      className="fixed top-5 left-1/2 -translate-x-1/2 z-50 rounded-lg border border-white/25 bg-black/60 px-4 py-2 text-[13px] text-white/80 backdrop-blur-sm cursor-pointer hover:border-white/45 hover:text-white"
+      onClick={toggle}
+      title={isPlaying ? 'Пауза музыки' : 'Включить музыку'}
+      className="fixed bottom-[72px] right-6 z-30 flex items-center gap-2 rounded-lg border border-white/20 bg-black/50 px-4 py-2 text-[13px] text-white/70 backdrop-blur-sm cursor-pointer hover:border-white/40 hover:text-white transition-colors"
     >
-      🎵 Нажмите, чтобы включить музыку
+      {isPlaying ? '⏸' : '▶'} {isPlaying ? 'Пауза' : 'Музыка'}
     </button>
   );
 }
