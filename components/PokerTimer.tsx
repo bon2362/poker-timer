@@ -122,13 +122,21 @@ export function PokerTimer() {
     if (!isStillEliminated) setLoserOverlay(null);
   }, [loserOverlay, sessionPlayers]);
 
-  // Keyboard: Space → toggle pause (only when session active)
+  // Keyboard: Space / PageDown / PageUp → toggle pause (only when session active)
+  // PageDown & PageUp support USB presentation clickers (HP 2.4GHz etc.)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!activeSession) return;
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
-        e.preventDefault();
-        dispatch({ type: 'TOGGLE_PAUSE' });
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      switch (e.code) {
+        case 'Space':
+        case 'PageDown':
+        case 'PageUp':
+          e.preventDefault();
+          dispatch({ type: 'TOGGLE_PAUSE' });
+          break;
       }
     }
     document.addEventListener('keydown', onKey);
