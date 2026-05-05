@@ -59,6 +59,8 @@ export type TimerState = {
 export type Action =
   | { type: 'TICK' }
   | { type: 'TOGGLE_PAUSE' }
+  | { type: 'PAUSE_TIMER' }
+  | { type: 'RESUME_TIMER' }
   | { type: 'NEXT_STAGE' }
   | { type: 'PREV_STAGE' }
   | { type: 'RESET_STAGE' }

@@ -108,6 +108,29 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
       }
     }
 
+    case 'PAUSE_TIMER': {
+      if (state.isOver || state.isPaused) return state;
+      const elapsed = Math.floor((Date.now() - state.anchorTs) / 1000);
+      const newElapsed = state.elapsedBeforePause + elapsed;
+      const dur = state.stages[state.currentStage].duration;
+      return {
+        ...state,
+        isPaused: true,
+        elapsedBeforePause: newElapsed,
+        timeLeft: dur - newElapsed,
+      };
+    }
+
+    case 'RESUME_TIMER': {
+      if (state.isOver || !state.isPaused) return state;
+      return {
+        ...state,
+        isPaused: false,
+        anchorTs: Date.now(),
+        timeLeft: computeTimeLeft(state),
+      };
+    }
+
     case 'NEXT_STAGE': {
       if (state.currentStage >= state.stages.length - 1) return state;
       const next = state.currentStage + 1;

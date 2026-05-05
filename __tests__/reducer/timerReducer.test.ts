@@ -123,6 +123,30 @@ describe('TOGGLE_PAUSE', () => {
   });
 });
 
+describe('PAUSE_TIMER / RESUME_TIMER', () => {
+  test('PAUSE_TIMER pauses a running timer without toggling back on repeated dispatch', () => {
+    const state = makeState({ isPaused: false, anchorTs: FIXED_NOW, timeLeft: 1200 });
+    jest.setSystemTime(FIXED_NOW + 5000);
+
+    const paused = timerReducer(state, { type: 'PAUSE_TIMER' });
+    const pausedAgain = timerReducer(paused, { type: 'PAUSE_TIMER' });
+
+    expect(paused.isPaused).toBe(true);
+    expect(pausedAgain.isPaused).toBe(true);
+    expect(pausedAgain.timeLeft).toBe(paused.timeLeft);
+  });
+
+  test('RESUME_TIMER resumes a paused timer without toggling back on repeated dispatch', () => {
+    const state = makeState({ isPaused: true, timeLeft: 1200 });
+
+    const running = timerReducer(state, { type: 'RESUME_TIMER' });
+    const runningAgain = timerReducer(running, { type: 'RESUME_TIMER' });
+
+    expect(running.isPaused).toBe(false);
+    expect(runningAgain.isPaused).toBe(false);
+  });
+});
+
 describe('NEXT_STAGE', () => {
   test('increments currentStage and resets timeLeft', () => {
     const state = makeState({ currentStage: 0, timeLeft: 500 });

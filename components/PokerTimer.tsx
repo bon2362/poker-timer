@@ -14,6 +14,7 @@ import TractorOverlay from './TractorOverlay';
 import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
+import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
@@ -34,6 +35,8 @@ export function PokerTimer() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [loserOverlay, setLoserOverlay] = useState<LoserOverlayState | null>(null);
   const [finalSlideshowVisible, setFinalSlideshowVisible] = useState(false);
+  const [mergeDialogDismissedAtCount, setMergeDialogDismissedAtCount] = useState<number | null>(null);
+  const [mergeConfirming, setMergeConfirming] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalSlideshowDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gamePanelAutoOpenedRef = useRef(false);
@@ -202,11 +205,41 @@ export function PokerTimer() {
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
   const isTwoTableActive = activeSession?.numberOfTables === 2 && !activeSession.tablesMergedAt;
+  const activePlayersCount = sessionPlayers.filter(sp => sp.status === 'playing').length;
   const activePlayersLabel = isTwoTableActive
     ? `${sessionPlayers.filter(sp => sp.status === 'playing' && sp.tableNumber === 1).length} / ${sessionPlayers.filter(sp => sp.status === 'playing' && sp.tableNumber === 2).length}`
     : undefined;
+  const shouldPromptMerge = Boolean(
+    isTwoTableActive &&
+    activeSession &&
+    activeSession.mergeThreshold > 0 &&
+    activePlayersCount <= activeSession.mergeThreshold &&
+    mergeDialogDismissedAtCount !== activePlayersCount
+  );
 
   const { songPaused, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
+
+  useEffect(() => {
+    if (!shouldPromptMerge) return;
+    dispatch({ type: 'PAUSE_TIMER' });
+  }, [dispatch, shouldPromptMerge]);
+
+  useEffect(() => {
+    if (!isTwoTableActive) {
+      setMergeDialogDismissedAtCount(null);
+      setMergeConfirming(false);
+      return;
+    }
+    if (activeSession && activePlayersCount > activeSession.mergeThreshold) {
+      setMergeDialogDismissedAtCount(null);
+    }
+  }, [activePlayersCount, activeSession, isTwoTableActive]);
+
+  const handleCancelMerge = useCallback(() => {
+    setMergeDialogDismissedAtCount(activePlayersCount);
+    setMergeConfirming(false);
+    dispatch({ type: 'RESUME_TIMER' });
+  }, [activePlayersCount, dispatch]);
 
   useEffect(() => {
     if (finalSlideshowDelayRef.current) {
@@ -433,6 +466,16 @@ export function PokerTimer() {
       {/* Game panel */}
       {activeSession && (
         <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
+      )}
+
+      {activeSession && shouldPromptMerge && (
+        <MergeTablesDialog
+          activePlayers={activePlayersCount}
+          mergeThreshold={activeSession.mergeThreshold}
+          confirming={mergeConfirming}
+          onConfirm={() => setMergeConfirming(true)}
+          onCancel={handleCancelMerge}
+        />
       )}
 
       {/* Minute timer overlay */}
