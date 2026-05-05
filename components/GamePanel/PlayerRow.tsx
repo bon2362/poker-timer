@@ -12,6 +12,7 @@ export function PlayerRow({ sp }: Props) {
   const {
     players, activeSession,
     doRebuy, undoRebuy, doAddon, undoAddon,
+    movePlayerToTable,
     eliminatePlayer, undoEliminate, declareWinner,
     sessionPlayers,
   } = useGame();
@@ -23,6 +24,8 @@ export function PlayerRow({ sp }: Props) {
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
   const isLastPlayer = activePlayers.length === 1 && sp.status === 'playing';
+  const canMoveTables = activeSession.numberOfTables === 2 && !activeSession.tablesMergedAt;
+  const targetTable = sp.tableNumber === 1 ? 2 : 1;
 
   /* ── Eliminated / winner row ── */
   if (sp.status === 'eliminated' || sp.status === 'winner') {
@@ -158,7 +161,15 @@ export function PlayerRow({ sp }: Props) {
 
       {/* Expanded menu — elimination + minute timer */}
       {expanded && !isLastPlayer && (
-        <div className="pl-[48px] flex gap-2">
+        <div className="pl-[48px] flex flex-wrap gap-2">
+          {canMoveTables && (
+            <button
+              onClick={async () => { await movePlayerToTable(sp.id, targetTable); setExpanded(false); }}
+              className="text-[12px] bg-[#242020] border border-[#554444] text-[#d0aaaa] rounded px-3 py-1 cursor-pointer hover:bg-[#302424]"
+            >
+              {sp.tableNumber === 1 ? '→ Стол 2' : '← Стол 1'}
+            </button>
+          )}
           <button
             onClick={async () => { await eliminatePlayer(sp.id); setExpanded(false); }}
             className="text-[12px] bg-red-900 border border-red-700 text-red-300 rounded px-3 py-1 cursor-pointer hover:bg-red-800"

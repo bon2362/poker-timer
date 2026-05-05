@@ -96,6 +96,7 @@ type GameContextValue = {
   startSession: (data: NewSessionData, playerIds: string[], playerTables?: Record<string, number>) => Promise<void>;
   doRebuy: (sessionPlayerId: string) => Promise<void>;
   doAddon: (sessionPlayerId: string) => Promise<void>;
+  movePlayerToTable: (sessionPlayerId: string, tableNumber: number) => Promise<void>;
   eliminatePlayer: (sessionPlayerId: string) => Promise<void>;
   undoEliminate: (sessionPlayerId: string) => Promise<void>;
   declareWinner: (sessionPlayerId: string) => Promise<void>;
@@ -238,6 +239,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
   }, []);
 
+  const movePlayerToTable = useCallback(async (sessionPlayerId: string, tableNumber: number) => {
+    if (tableNumber !== 1 && tableNumber !== 2) return;
+    const updated = await updateSessionPlayer(sessionPlayerId, { tableNumber });
+    if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
+  }, []);
+
   const eliminatePlayer = useCallback(async (sessionPlayerId: string) => {
     const activePlayers = state.sessionPlayers.filter(p => p.status === 'playing');
     const position = activePlayers.length; // e.g. 4 active → this player finishes 4th
@@ -296,7 +303,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       showWinner: state.showWinner,
       loading: state.loading,
       addPlayer, updatePlayer, removePlayer,
-      startSession, doRebuy, doAddon, undoRebuy, undoAddon,
+      startSession, doRebuy, doAddon, undoRebuy, undoAddon, movePlayerToTable,
       eliminatePlayer, undoEliminate, declareWinner, finishGame,
     }}>
       {children}

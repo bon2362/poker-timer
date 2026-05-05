@@ -513,6 +513,19 @@ describe('GameContext — extended actions', () => {
     expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { hasAddon: false });
   });
 
+  test('22b. movePlayerToTable updates tableNumber', async () => {
+    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, tableNumber: 2 });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.movePlayerToTable('sp-1', 2);
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { tableNumber: 2 });
+  });
+
   test('23. Realtime UPDATE session_players with status=winner → showWinner=true', async () => {
     renderExtended();
     await waitReady();
