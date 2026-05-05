@@ -34,6 +34,29 @@ export function SessionSetup() {
   const [starting, setStarting] = useState(false);
 
   const locked = !!activeSession;
+  const selectedCount = selectedPlayerIds.size;
+  const mergeThresholdNumber = mergeThreshold === '' ? NaN : parseInt(mergeThreshold, 10);
+  const tableCounts = Array.from(selectedPlayerIds).reduce(
+    (counts, playerId) => {
+      const table = playerTables[playerId] ?? 1;
+      counts[table] += 1;
+      return counts;
+    },
+    { 1: 0, 2: 0 } as Record<1 | 2, number>
+  );
+  const seatingError = numberOfTables === 2 && selectedCount >= 2 && (tableCounts[1] < 2 || tableCounts[2] < 2)
+    ? 'Для двух столов нужно минимум по 2 игрока на каждом столе.'
+    : null;
+  const thresholdError = numberOfTables === 2 && (
+    mergeThreshold === '' ||
+    Number.isNaN(mergeThresholdNumber) ||
+    mergeThresholdNumber < 2 ||
+    mergeThresholdNumber >= selectedCount
+  )
+    ? `Порог объединения должен быть от 2 до ${Math.max(2, selectedCount - 1)}.`
+    : null;
+  const twoTableSetupValid = numberOfTables === 1 || (!seatingError && !thresholdError);
+  const canStart = selectedCount >= 2 && twoTableSetupValid;
 
   function togglePlayer(id: string) {
     if (locked) return;
@@ -56,6 +79,7 @@ export function SessionSetup() {
 
   async function handleStart() {
     if (selectedPlayerIds.size < 2) { alert('Выберите минимум 2 игрока'); return; }
+    if (!twoTableSetupValid) return;
     const sum = prizePcts.reduce((a, b) => a + b, 0);
     if (sum !== 100) { alert('Сумма призовых процентов должна быть 100%'); return; }
 
@@ -70,7 +94,7 @@ export function SessionSetup() {
       prizeSpots,
       prizePcts,
       numberOfTables,
-      mergeThreshold: numberOfTables === 2 ? (parseInt(mergeThreshold, 10) || 0) : 0,
+      mergeThreshold: numberOfTables === 2 ? mergeThresholdNumber : 0,
       tablesMergedAt: null,
     };
 
@@ -199,8 +223,11 @@ export function SessionSetup() {
               className={numInput(locked)}
             />
             <div className="mt-2 text-[12px] text-[#666]">
-              Допустимый диапазон: [2, {Math.max(1, selectedPlayerIds.size - 1)}]
+              Допустимый диапазон: [2, {Math.max(1, selectedCount - 1)}]
             </div>
+            {thresholdError && (
+              <div className="mt-2 text-[12px] font-medium text-red-400">{thresholdError}</div>
+            )}
           </div>
         )}
       </div>
@@ -252,6 +279,9 @@ export function SessionSetup() {
                 </div>
               );
             })}
+            {seatingError && (
+              <div className="pt-2 text-[12px] font-medium text-red-400">{seatingError}</div>
+            )}
           </div>
         )}
       </div>
@@ -260,7 +290,7 @@ export function SessionSetup() {
       {!locked && (
         <button
           onClick={handleStart}
-          disabled={starting || selectedPlayerIds.size < 2}
+          disabled={starting || !canStart}
           className="bg-green-700 text-white border-none rounded-lg py-3 text-[15px] font-semibold cursor-pointer hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {starting ? 'Запускаем...' : '▶ Начать игру'}
