@@ -30,6 +30,9 @@ const mockActiveSession: Session = {
   addonChips: 3000,
   prizeSpots: 3,
   prizePcts: [50, 30, 20],
+  numberOfTables: 1,
+  mergeThreshold: 0,
+  tablesMergedAt: null,
   status: 'active',
   createdAt: '2024-01-01',
 };

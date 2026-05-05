@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.54',
+    date: "06 May '26",
+    notes: 'Двухстоловый режим: добавлена базовая схема БД, типы и RPC для объединения столов.',
+  },
+  {
     version: '4.53',
     date: "05 May '26",
     notes: 'Поддержка презентационного USB-кликера: Page Up / Page Down → пауза/возобновление таймера.',

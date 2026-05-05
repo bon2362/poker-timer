@@ -1,11 +1,14 @@
 // lib/game.ts
 import type { Session, SessionPlayer, GameStats } from '@/types/game';
 
-export function calcGameStats(session: Session, players: SessionPlayer[]): GameStats {
-  const totalPlayers = players.length;
-  const totalRebuys = players.reduce((sum, p) => sum + p.rebuys, 0);
-  const totalAddons = players.filter(p => p.hasAddon).length;
-  const activePlayers = players.filter(p => p.status === 'playing').length;
+export function calcGameStats(session: Session, players: SessionPlayer[], tableNumber?: number): GameStats {
+  const scopedPlayers = tableNumber === undefined
+    ? players
+    : players.filter(p => p.tableNumber === tableNumber);
+  const totalPlayers = scopedPlayers.length;
+  const totalRebuys = scopedPlayers.reduce((sum, p) => sum + p.rebuys, 0);
+  const totalAddons = scopedPlayers.filter(p => p.hasAddon).length;
+  const activePlayers = scopedPlayers.filter(p => p.status === 'playing').length;
 
   const bank =
     totalPlayers * session.buyIn +

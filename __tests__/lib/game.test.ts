@@ -8,6 +8,7 @@ const baseSession: Session = {
   rebuyCost: 500, rebuyChips: 5000, maxRebuys: 0,
   addonCost: 500, addonChips: 5000,
   prizeSpots: 3, prizePcts: [50, 30, 20],
+  numberOfTables: 1, mergeThreshold: 0, tablesMergedAt: null,
 };
 
 function sp(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
@@ -15,6 +16,7 @@ function sp(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
     id: 'sp1', sessionId: 's1', playerId: 'p1',
     rebuys: 0, hasAddon: false,
     status: 'playing', finishPosition: null, eliminatedAt: null,
+    tableNumber: 1,
     ...overrides,
   };
 }
@@ -68,5 +70,20 @@ describe('calcGameStats', () => {
     const players = [sp({ status: 'eliminated' })];
     const stats = calcGameStats(baseSession, players);
     expect(stats.avgStack).toBe(0);
+  });
+
+  test('can scope stats to a single table', () => {
+    const twoTableSession = { ...baseSession, numberOfTables: 2, mergeThreshold: 2 };
+    const players = [
+      sp({ id: 'sp1', playerId: 'p1', tableNumber: 1, rebuys: 1 }),
+      sp({ id: 'sp2', playerId: 'p2', tableNumber: 2, hasAddon: true }),
+      sp({ id: 'sp3', playerId: 'p3', tableNumber: 2 }),
+    ];
+
+    const stats = calcGameStats(twoTableSession, players, 2);
+
+    expect(stats.bank).toBe(2500);
+    expect(stats.totalChips).toBe(25000);
+    expect(stats.avgStack).toBe(12500);
   });
 });

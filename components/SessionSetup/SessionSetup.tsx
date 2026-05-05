@@ -49,6 +49,9 @@ export function SessionSetup() {
       addonChips: parseInt(addonChips, 10) || 0,
       prizeSpots,
       prizePcts,
+      numberOfTables: 1,
+      mergeThreshold: 0,
+      tablesMergedAt: null,
     };
 
     setStarting(true);

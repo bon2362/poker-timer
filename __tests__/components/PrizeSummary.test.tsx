@@ -20,6 +20,9 @@ const mockSession: Session = {
   addonChips: 5000,
   prizeSpots: 3,
   prizePcts: [60, 25, 15],
+  numberOfTables: 1,
+  mergeThreshold: 0,
+  tablesMergedAt: null,
   status: 'active',
   createdAt: '2024-01-01T00:00:00Z',
 };
@@ -34,6 +37,7 @@ const mockSessionPlayers: SessionPlayer[] = [
     status: 'playing',
     finishPosition: null,
     eliminatedAt: null,
+    tableNumber: 1,
   },
   {
     id: 'sp2',
@@ -44,6 +48,7 @@ const mockSessionPlayers: SessionPlayer[] = [
     status: 'playing',
     finishPosition: null,
     eliminatedAt: null,
+    tableNumber: 1,
   },
 ];
 

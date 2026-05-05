@@ -198,6 +198,9 @@ const mockSession = {
   addonChips: 3000,
   prizeSpots: 3,
   prizePcts: [50, 30, 20],
+  numberOfTables: 1,
+  mergeThreshold: 0,
+  tablesMergedAt: null,
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
 };
@@ -211,6 +214,7 @@ const mockSp = {
   status: 'playing' as const,
   finishPosition: null,
   eliminatedAt: null,
+  tableNumber: 1,
 };
 
 const mockSpRow = {
@@ -222,6 +226,7 @@ const mockSpRow = {
   status: 'playing',
   finish_position: null,
   eliminated_at: null,
+  table_number: 1,
 };
 
 let gameCtxRef: ReturnType<typeof import('@/context/GameContext').useGame> | null = null;
@@ -316,7 +321,7 @@ describe('GameContext — extended actions', () => {
 
     await act(async () => {
       await gameCtxRef!.startSession(
-        { buyIn: 1000, initialStack: 2000, rebuyCost: 1000, rebuyChips: 2000, maxRebuys: 1, addonCost: 1000, addonChips: 3000, prizeSpots: 3, prizePcts: [50, 30, 20] },
+        { buyIn: 1000, initialStack: 2000, rebuyCost: 1000, rebuyChips: 2000, maxRebuys: 1, addonCost: 1000, addonChips: 3000, prizeSpots: 3, prizePcts: [50, 30, 20], numberOfTables: 1, mergeThreshold: 0, tablesMergedAt: null },
         ['p-1']
       );
     });

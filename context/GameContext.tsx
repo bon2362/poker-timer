@@ -16,6 +16,7 @@ function rowToSessionPlayer(row: Record<string, unknown>): SessionPlayer {
     status: row.status as SessionPlayer['status'],
     finishPosition: row.finish_position as number | null,
     eliminatedAt: row.eliminated_at as string | null,
+    tableNumber: (row.table_number as number | null) ?? 1,
   };
 }
 

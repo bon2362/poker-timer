@@ -20,6 +20,9 @@ export type Session = {
   addonChips: number      // chips per addon
   prizeSpots: number
   prizePcts: number[]     // e.g. [50, 30, 20], must sum to 100
+  numberOfTables: number
+  mergeThreshold: number
+  tablesMergedAt: string | null
   status: SessionStatus
   createdAt: string
 }
@@ -33,6 +36,7 @@ export type SessionPlayer = {
   status: PlayerStatus
   finishPosition: number | null   // 1 = winner, 2 = runner-up, etc.
   eliminatedAt: string | null
+  tableNumber: number
 }
 
 export type GameStats = {

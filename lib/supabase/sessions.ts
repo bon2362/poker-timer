@@ -14,6 +14,9 @@ function toSession(row: Record<string, unknown>): Session {
     addonChips: row.addon_chips as number,
     prizeSpots: row.prize_spots as number,
     prizePcts: row.prize_pcts as number[],
+    numberOfTables: (row.number_of_tables as number | null) ?? 1,
+    mergeThreshold: (row.merge_threshold as number | null) ?? 0,
+    tablesMergedAt: (row.tables_merged_at as string | null) ?? null,
     status: row.status as Session['status'],
     createdAt: row.created_at as string,
   };
@@ -29,6 +32,7 @@ function toSessionPlayer(row: Record<string, unknown>): SessionPlayer {
     status: row.status as SessionPlayer['status'],
     finishPosition: row.finish_position as number | null,
     eliminatedAt: row.eliminated_at as string | null,
+    tableNumber: (row.table_number as number | null) ?? 1,
   };
 }
 
@@ -55,7 +59,8 @@ export async function fetchActiveSession(): Promise<{ session: Session; sessionP
 
 export async function createSession(
   data: NewSessionData,
-  playerIds: string[]
+  playerIds: string[],
+  playerTables?: Record<string, number>
 ): Promise<{ session: Session; sessionPlayers: SessionPlayer[] } | null> {
   const client = getClient();
   if (!client) return null;
@@ -71,6 +76,9 @@ export async function createSession(
       addon_chips: data.addonChips,
       prize_spots: data.prizeSpots,
       prize_pcts: data.prizePcts,
+      number_of_tables: data.numberOfTables,
+      merge_threshold: data.mergeThreshold,
+      tables_merged_at: data.tablesMergedAt,
       status: 'active',
     })
     .select()
@@ -79,7 +87,11 @@ export async function createSession(
   const session = toSession(sessionRow);
   const { data: spRows, error: spErr } = await client
     .from('session_players')
-    .insert(playerIds.map(pid => ({ session_id: session.id, player_id: pid })))
+    .insert(playerIds.map(pid => ({
+      session_id: session.id,
+      player_id: pid,
+      table_number: data.numberOfTables === 2 ? (playerTables?.[pid] ?? 1) : 1,
+    })))
     .select();
   if (spErr) { console.error('createSession session_players:', spErr); return null; }
   return { session, sessionPlayers: (spRows ?? []).map(toSessionPlayer) };
@@ -87,7 +99,7 @@ export async function createSession(
 
 export async function updateSessionPlayer(
   id: string,
-  updates: Partial<Pick<SessionPlayer, 'rebuys' | 'hasAddon' | 'status' | 'finishPosition' | 'eliminatedAt'>>
+  updates: Partial<Pick<SessionPlayer, 'rebuys' | 'hasAddon' | 'status' | 'finishPosition' | 'eliminatedAt' | 'tableNumber'>>
 ): Promise<SessionPlayer | null> {
   const client = getClient();
   if (!client) return null;
@@ -97,6 +109,7 @@ export async function updateSessionPlayer(
   if (updates.status !== undefined) dbUpdates.status = updates.status;
   if (updates.finishPosition !== undefined) dbUpdates.finish_position = updates.finishPosition;
   if (updates.eliminatedAt !== undefined) dbUpdates.eliminated_at = updates.eliminatedAt;
+  if (updates.tableNumber !== undefined) dbUpdates.table_number = updates.tableNumber;
   const { data, error } = await client
     .from('session_players')
     .update(dbUpdates)
@@ -105,6 +118,14 @@ export async function updateSessionPlayer(
     .single();
   if (error) { console.error('updateSessionPlayer:', error); return null; }
   return toSessionPlayer(data);
+}
+
+export async function mergeTables(sessionId: string): Promise<Session | null> {
+  const client = getClient();
+  if (!client) return null;
+  const { data, error } = await client.rpc('merge_tables', { p_session_id: sessionId });
+  if (error) { console.error('mergeTables:', error); return null; }
+  return data ? toSession(data as Record<string, unknown>) : null;
 }
 
 export async function finishSession(id: string): Promise<boolean> {
