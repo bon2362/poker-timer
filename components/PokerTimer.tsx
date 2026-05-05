@@ -201,6 +201,10 @@ export function PokerTimer() {
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
+  const isTwoTableActive = activeSession?.numberOfTables === 2 && !activeSession.tablesMergedAt;
+  const activePlayersLabel = isTwoTableActive
+    ? `${sessionPlayers.filter(sp => sp.status === 'playing' && sp.tableNumber === 1).length} / ${sessionPlayers.filter(sp => sp.status === 'playing' && sp.tableNumber === 2).length}`
+    : undefined;
 
   const { songPaused, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
 
@@ -311,8 +315,8 @@ export function PokerTimer() {
       {/* Timer — flex-1 wrapper with z-30 during tractor moment so timer floats above video overlay */}
       {!state.isOver && (
         state.tractorMomentActive
-          ? <div className="relative z-30 flex-1 flex flex-col"><TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} /></div>
-          : <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} />
+          ? <div className="relative z-30 flex-1 flex flex-col"><TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} activePlayersLabel={activePlayersLabel} /></div>
+          : <TimerDisplay timeLeft={state.timeLeft} stage={stage} isPaused={state.isPaused} activePlayersLabel={activePlayersLabel} />
       )}
 
       {/* Tournament over */}

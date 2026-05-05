@@ -118,4 +118,11 @@ describe('TimerDisplay', () => {
     const progressBar = container.querySelector('.bg-violet-700');
     expect(progressBar).toHaveStyle({ width: '50%' });
   });
+
+  test('shows active players label when provided', () => {
+    const { getByText } = render(
+      <TimerDisplay timeLeft={1200} stage={levelStage} isPaused={false} activePlayersLabel="3 / 2" />
+    );
+    expect(getByText('В игре 3 / 2')).toBeInTheDocument();
+  });
 });

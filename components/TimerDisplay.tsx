@@ -5,9 +5,10 @@ type Props = {
   timeLeft: number;
   stage: Stage;
   isPaused: boolean;
+  activePlayersLabel?: string;
 };
 
-export function TimerDisplay({ timeLeft, stage, isPaused }: Props) {
+export function TimerDisplay({ timeLeft, stage, isPaused, activePlayersLabel }: Props) {
   const isBreak    = stage.type === 'break';
   const isOvertime = timeLeft < 0;
   const isWarning  = timeLeft <= 60 && timeLeft >= 0 && !isBreak;
@@ -40,11 +41,18 @@ export function TimerDisplay({ timeLeft, stage, isPaused }: Props) {
             PAUSE
           </div>
         )}
-        <div
-          className={`font-black leading-none tabular-nums tracking-[-4px] transition-opacity ${timerColor} ${isPaused ? 'opacity-25' : 'opacity-100'}`}
-          style={{ fontSize: 'clamp(140px, 22vw, 240px)' }}
-        >
-          {formatTime(timeLeft)}
+        <div className="flex flex-col items-center gap-4">
+          {activePlayersLabel && (
+            <div className={`text-[13px] font-bold uppercase tracking-[2px] text-[#555] tabular-nums transition-opacity ${isPaused ? 'opacity-40' : 'opacity-100'}`}>
+              В игре {activePlayersLabel}
+            </div>
+          )}
+          <div
+            className={`font-black leading-none tabular-nums tracking-[-4px] transition-opacity ${timerColor} ${isPaused ? 'opacity-25' : 'opacity-100'}`}
+            style={{ fontSize: 'clamp(140px, 22vw, 240px)' }}
+          >
+            {formatTime(timeLeft)}
+          </div>
         </div>
       </div>
 
