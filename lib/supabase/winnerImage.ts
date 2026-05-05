@@ -1,57 +1,22 @@
 // lib/supabase/winnerImage.ts
-import { getClient } from '@/supabase/client';
-
-const BUCKET = 'avatars';
-
-function path(playerId: string) {
-  return `winner-${playerId}.jpg`;
-}
+import { deleteSpecialImage, getSpecialImageUrl, getSpecialThumbUrl, uploadSpecialImage } from './imageVariants';
 
 /** Возвращает публичный URL изображения победителя для игрока или null */
 export async function getWinnerImageUrl(playerId: string): Promise<string | null> {
-  const client = getClient();
-  if (!client) return null;
-  const filePath = path(playerId);
-  const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
-  if (!data?.find(f => f.name === filePath)) return null;
-  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath, {
-    transform: { width: 1920, quality: 80 },
-  });
-  return urlData.publicUrl;
+  return getSpecialImageUrl('winner', playerId);
 }
 
-/** Возвращает URL миниатюры победителя через Supabase Image Transformations */
+/** Возвращает URL миниатюры победителя */
 export async function getWinnerThumbUrl(playerId: string): Promise<string | null> {
-  const client = getClient();
-  if (!client) return null;
-  const filePath = path(playerId);
-  const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
-  if (!data?.find(f => f.name === filePath)) return null;
-  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(filePath, {
-    transform: { width: 200, height: 200, resize: 'cover' },
-  });
-  return urlData.publicUrl;
+  return getSpecialThumbUrl('winner', playerId);
 }
 
 /** Загружает изображение победителя, возвращает URL оригинала или null */
 export async function uploadWinnerImage(playerId: string, file: File): Promise<string | null> {
-  const client = getClient();
-  if (!client) return null;
-
-  const result = await client.storage.from(BUCKET).upload(path(playerId), file, {
-    contentType: file.type || 'image/jpeg',
-    upsert: true,
-  });
-
-  if (result.error) { console.error('uploadWinnerImage:', result.error); return null; }
-
-  const { data } = client.storage.from(BUCKET).getPublicUrl(path(playerId));
-  return data.publicUrl;
+  return uploadSpecialImage('winner', playerId, file);
 }
 
 /** Удаляет изображение победителя */
 export async function deleteWinnerImage(playerId: string): Promise<void> {
-  const client = getClient();
-  if (!client) return;
-  await client.storage.from(BUCKET).remove([path(playerId)]);
+  await deleteSpecialImage('winner', playerId);
 }
