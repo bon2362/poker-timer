@@ -4,8 +4,17 @@ const BUCKET = 'avatars';
 const FULL_MAX_WIDTH = 1920;
 const FULL_MAX_HEIGHT = 1920;
 const THUMB_SIZE = 200;
+const MAX_OPTIMIZED_FULL_SIZE = 1_000_000;
 
 type SpecialImageKind = 'winner' | 'loser';
+type StorageObject = {
+  name: string;
+  metadata?: {
+    size?: number;
+    contentLength?: number;
+    mimetype?: string;
+  } | null;
+};
 
 const pendingBackfills = new Map<string, Promise<void>>();
 
@@ -21,11 +30,21 @@ function cacheBust(url: string) {
   return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
+async function findFile(filePath: string): Promise<StorageObject | null> {
   const client = getClient();
-  if (!client) return false;
+  if (!client) return null;
   const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
-  return Boolean(data?.find(file => file.name === filePath));
+  return (data?.find(file => file.name === filePath) as StorageObject | undefined) ?? null;
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  return Boolean(await findFile(filePath));
+}
+
+function needsFullOptimization(file: StorageObject): boolean {
+  const size = file.metadata?.size ?? file.metadata?.contentLength ?? 0;
+  const mimetype = file.metadata?.mimetype?.toLowerCase() ?? '';
+  return mimetype !== 'image/jpeg' || size > MAX_OPTIMIZED_FULL_SIZE;
 }
 
 function publicUrl(filePath: string, bustCache = false): string | null {
@@ -140,7 +159,10 @@ async function backfillVariants(kind: SpecialImageKind, playerId: string): Promi
 async function ensureVariants(kind: SpecialImageKind, playerId: string): Promise<void> {
   const fullPath = path(kind, playerId);
   const derivedThumbPath = thumbPath(kind, playerId);
-  if (!(await fileExists(fullPath)) || await fileExists(derivedThumbPath)) return;
+  const fullFile = await findFile(fullPath);
+  if (!fullFile) return;
+  const hasThumb = await fileExists(derivedThumbPath);
+  if (hasThumb && !needsFullOptimization(fullFile)) return;
   if (typeof document === 'undefined') return;
 
   const key = `${kind}:${playerId}`;
