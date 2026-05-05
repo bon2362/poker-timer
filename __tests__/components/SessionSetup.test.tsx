@@ -92,6 +92,32 @@ describe('SessionSetup', () => {
     expect(screen.getByRole('button', { name: '▶ Начать игру' })).toBeEnabled();
   });
 
+  test('shows table count toggle with one table selected by default', () => {
+    setupMocks();
+    render(<SessionSetup />);
+
+    expect(screen.getByText('Кол-во столов')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('Порог объединения')).not.toBeInTheDocument();
+  });
+
+  test('selecting two tables shows merge threshold and selected-player table toggles', async () => {
+    setupMocks();
+    const user = userEvent.setup();
+    render(<SessionSetup />);
+
+    await user.click(screen.getByRole('button', { name: '2' }));
+    expect(screen.getByText('Порог объединения')).toBeInTheDocument();
+    expect(screen.getByText('Допустимый диапазон: [2, 1]')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Стол 1' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: /Alice/i }));
+
+    expect(screen.getByRole('button', { name: 'Стол 1' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Стол 2' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('clicking start with 2+ players selected calls startSession', async () => {
     const { mockStartSession } = setupMocks();
     const user = userEvent.setup();
@@ -100,6 +126,30 @@ describe('SessionSetup', () => {
     await user.click(screen.getByRole('checkbox', { name: /Bob/i }));
     await user.click(screen.getByRole('button', { name: '▶ Начать игру' }));
     await waitFor(() => expect(mockStartSession).toHaveBeenCalledTimes(1));
+    expect(mockStartSession).toHaveBeenCalledWith(
+      expect.objectContaining({ numberOfTables: 1, mergeThreshold: 0, tablesMergedAt: null }),
+      ['p1', 'p2'],
+      { p1: 1, p2: 1 }
+    );
+  });
+
+  test('starting two-table setup passes player table assignments', async () => {
+    const { mockStartSession } = setupMocks();
+    const user = userEvent.setup();
+    render(<SessionSetup />);
+
+    await user.click(screen.getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('checkbox', { name: /Alice/i }));
+    await user.click(screen.getByRole('checkbox', { name: /Bob/i }));
+    await user.click(screen.getAllByRole('button', { name: 'Стол 2' })[1]);
+    await user.click(screen.getByRole('button', { name: '▶ Начать игру' }));
+
+    await waitFor(() => expect(mockStartSession).toHaveBeenCalledTimes(1));
+    expect(mockStartSession).toHaveBeenCalledWith(
+      expect.objectContaining({ numberOfTables: 2, mergeThreshold: 2, tablesMergedAt: null }),
+      ['p1', 'p2'],
+      { p1: 1, p2: 2 }
+    );
   });
 
   test('after startSession, calls timerDispatch with { type: "RESTART" }', async () => {

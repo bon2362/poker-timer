@@ -18,6 +18,16 @@ export function SessionSetup() {
   const [addonChips, setAddonChips] = useState(String(activeSession?.addonChips ?? 3000));
   const [prizeSpots, setPrizeSpots] = useState(activeSession?.prizeSpots ?? 3);
   const [prizePcts, setPrizePcts] = useState<number[]>(activeSession?.prizePcts ?? [50, 30, 20]);
+  const [numberOfTables, setNumberOfTables] = useState<1 | 2>(
+    activeSession?.numberOfTables === 2 ? 2 : 1
+  );
+  const [mergeThreshold, setMergeThreshold] = useState(String(activeSession?.mergeThreshold ?? 2));
+  const [playerTables, setPlayerTables] = useState<Record<string, 1 | 2>>(() => {
+    if (!activeSession) return {};
+    return Object.fromEntries(
+      sessionPlayers.map(sp => [sp.playerId, sp.tableNumber === 2 ? 2 : 1])
+    );
+  });
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(
     activeSession ? new Set(sessionPlayers.map(sp => sp.playerId)) : new Set()
   );
@@ -29,9 +39,19 @@ export function SessionSetup() {
     if (locked) return;
     setSelectedPlayerIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        setPlayerTables(tables => ({ ...tables, [id]: tables[id] ?? 1 }));
+      }
       return next;
     });
+  }
+
+  function setPlayerTable(playerId: string, table: 1 | 2) {
+    if (locked) return;
+    setPlayerTables(prev => ({ ...prev, [playerId]: table }));
   }
 
   async function handleStart() {
@@ -49,13 +69,17 @@ export function SessionSetup() {
       addonChips: parseInt(addonChips, 10) || 0,
       prizeSpots,
       prizePcts,
-      numberOfTables: 1,
-      mergeThreshold: 0,
+      numberOfTables,
+      mergeThreshold: numberOfTables === 2 ? (parseInt(mergeThreshold, 10) || 0) : 0,
       tablesMergedAt: null,
     };
 
     setStarting(true);
-    await startSession(data, Array.from(selectedPlayerIds));
+    const selectedIds = Array.from(selectedPlayerIds);
+    const selectedTables = Object.fromEntries(
+      selectedIds.map(id => [id, numberOfTables === 2 ? (playerTables[id] ?? 1) : 1])
+    );
+    await startSession(data, selectedIds, selectedTables);
     timerDispatch({ type: 'RESTART' });
     setStarting(false);
   }
@@ -133,6 +157,54 @@ export function SessionSetup() {
         />
       </div>
 
+      {/* Table setup */}
+      <div className={`bg-[#242424] rounded-lg p-4 ${locked ? 'opacity-60 pointer-events-none' : ''}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-1">Кол-во столов</div>
+            <div className="text-[12px] text-[#666]">По умолчанию игра идёт за одним столом</div>
+          </div>
+          <div className="grid grid-cols-2 gap-1 bg-[#1a1a1a] border border-[#333] rounded-lg p-1 shrink-0">
+            {[1, 2].map(value => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => !locked && setNumberOfTables(value as 1 | 2)}
+                disabled={locked}
+                aria-pressed={numberOfTables === value}
+                className={`min-w-10 rounded-md px-3 py-1.5 text-[13px] font-bold transition-colors ${
+                  numberOfTables === value
+                    ? 'bg-violet-700 text-white'
+                    : 'text-[#777] hover:text-[#ccc]'
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {numberOfTables === 2 && (
+          <div className="mt-4 border-t border-[#333] pt-4">
+            <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-2">
+              Порог объединения
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={mergeThreshold}
+              onChange={e => !locked && setMergeThreshold(e.target.value.replace(/\D/g, ''))}
+              onBlur={() => { if (!locked && mergeThreshold === '') setMergeThreshold('2'); }}
+              disabled={locked}
+              className={numInput(locked)}
+            />
+            <div className="mt-2 text-[12px] text-[#666]">
+              Допустимый диапазон: [2, {Math.max(1, selectedPlayerIds.size - 1)}]
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Player selection */}
       <div className="bg-[#242424] rounded-lg p-4">
         <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-3">
@@ -142,21 +214,44 @@ export function SessionSetup() {
           <p className="text-[#555] text-[13px]">Добавьте игроков во вкладке «Игроки»</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {players.map(player => (
-              <label
-                key={player.id}
-                className={`flex items-center gap-3 ${locked ? 'cursor-default' : 'cursor-pointer'}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedPlayerIds.has(player.id)}
-                  onChange={() => togglePlayer(player.id)}
-                  disabled={locked}
-                  className="w-4 h-4 accent-violet-600 disabled:cursor-not-allowed"
-                />
-                <span className={`text-[14px] ${locked ? 'text-[#888]' : 'text-[#ccc]'}`}>{player.name}</span>
-              </label>
-            ))}
+            {players.map(player => {
+              const selected = selectedPlayerIds.has(player.id);
+              return (
+                <div key={player.id} className="flex items-center gap-3">
+                  <label className={`flex min-w-0 flex-1 items-center gap-3 ${locked ? 'cursor-default' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => togglePlayer(player.id)}
+                      disabled={locked}
+                      className="w-4 h-4 accent-violet-600 disabled:cursor-not-allowed"
+                    />
+                    <span className={`min-w-0 flex-1 truncate text-[14px] ${locked ? 'text-[#888]' : 'text-[#ccc]'}`}>{player.name}</span>
+                  </label>
+
+                  {numberOfTables === 2 && selected && (
+                    <div className="grid grid-cols-2 gap-1 bg-[#1a1a1a] border border-[#333] rounded-md p-1 shrink-0">
+                      {[1, 2].map(value => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setPlayerTable(player.id, value as 1 | 2)}
+                          disabled={locked}
+                          aria-pressed={(playerTables[player.id] ?? 1) === value}
+                          className={`rounded px-2 py-1 text-[11px] font-semibold transition-colors ${
+                            (playerTables[player.id] ?? 1) === value
+                              ? 'bg-violet-700 text-white'
+                              : 'text-[#777] hover:text-[#ccc]'
+                          }`}
+                        >
+                          Стол {value}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

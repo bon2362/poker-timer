@@ -93,7 +93,7 @@ type GameContextValue = {
   updatePlayer: (id: string, updates: Partial<Pick<Player, 'name' | 'avatarUrl'>>) => Promise<void>;
   removePlayer: (id: string) => Promise<void>;
   // session actions
-  startSession: (data: NewSessionData, playerIds: string[]) => Promise<void>;
+  startSession: (data: NewSessionData, playerIds: string[], playerTables?: Record<string, number>) => Promise<void>;
   doRebuy: (sessionPlayerId: string) => Promise<void>;
   doAddon: (sessionPlayerId: string) => Promise<void>;
   eliminatePlayer: (sessionPlayerId: string) => Promise<void>;
@@ -217,8 +217,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REMOVE_PLAYER', id });
   }, [state.activeSession, state.sessionPlayers]);
 
-  const startSession = useCallback(async (data: NewSessionData, playerIds: string[]) => {
-    const result = await createSession(data, playerIds);
+  const startSession = useCallback(async (data: NewSessionData, playerIds: string[], playerTables?: Record<string, number>) => {
+    const result = await createSession(data, playerIds, playerTables);
     if (result) {
       dispatch({ type: 'SET_SESSION', session: result.session, sessionPlayers: result.sessionPlayers });
     }
