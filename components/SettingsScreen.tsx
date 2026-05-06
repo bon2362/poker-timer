@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '5.0',
+    date: "07 May '26",
+    notes: 'Релиз к игре 10 мая: текущие правки завершены, приложение готово к боевому использованию.',
+  },
+  {
     version: '4.68',
     date: "06 May '26",
     notes: 'CI: тест восстановления настроек таймера синхронизирован с новыми настройками музыки перерыва по умолчанию.',
@@ -392,7 +397,7 @@ function ChangelogModal({ onClose }: { onClose: () => void }) {
               );
             }
             return (
-              <div key={entry.version}>
+              <div key={`${entry.version}-${i}`}>
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-violet-400 font-bold text-[13px]">v{entry.version}</span>
                   <span className="text-[#444] text-[11px]">{entry.date}</span>
