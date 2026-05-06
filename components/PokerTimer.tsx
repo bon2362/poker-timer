@@ -341,7 +341,7 @@ export function PokerTimer() {
       {/* Top bar */}
       <div className="relative w-full px-7 pt-5">
         <BlindInfo stage={stage} />
-        <div className="absolute top-5 right-10 flex gap-1 items-center">
+        <div className={`absolute top-5 right-10 flex gap-1 items-center transition-opacity duration-500 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <button
             className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
             onClick={toggleFullscreen}
