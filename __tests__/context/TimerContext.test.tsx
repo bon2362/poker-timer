@@ -402,8 +402,8 @@ describe('TimerContext', () => {
 
     renderWithProvider();
 
-    await waitFor(() => expect(screen.getByTestId('breakSong')).toHaveTextContent('true'));
-    expect(screen.getByTestId('timeLeft')).toHaveTextContent('300');
+    await waitFor(() => expect(screen.getByTestId('timeLeft')).toHaveTextContent('300'));
+    expect(screen.getByTestId('breakSong')).toHaveTextContent('true');
     expect(saveAppConfig).not.toHaveBeenCalled();
   });
 
