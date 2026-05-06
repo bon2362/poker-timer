@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.65',
+    date: "06 May '26",
+    notes: 'Двухстоловый режим: убран дублирующий счётчик игроков над таймером, остаётся сетка игроков по столам.',
+  },
+  {
     version: '4.64',
     date: "06 May '26",
     notes: 'Двухстоловый режим: добавлен Playwright happy-path от setup 2 столов до объединения и победителя.',
