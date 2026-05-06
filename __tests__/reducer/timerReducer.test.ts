@@ -427,14 +427,24 @@ describe('SAVE_DISPLAY_CONFIG', () => {
 });
 
 describe('RESTORE_CONFIG', () => {
-  test('rebuilds stages when timer is at the initial stage start', () => {
+  test('rebuilds stages when explicitly restoring an initial timer', () => {
+    const state = makeState();
+    const config = { ...DEFAULT_CONFIG, levelDuration: 5, breakSongEnabled: true };
+    const next = timerReducer(state, { type: 'RESTORE_CONFIG', config, resetInitialTimer: true });
+
+    expect(next.config.breakSongEnabled).toBe(true);
+    expect(next.stages[0].duration).toBe(300);
+    expect(next.timeLeft).toBe(300);
+  });
+
+  test('does not rebuild the initial timer unless requested', () => {
     const state = makeState();
     const config = { ...DEFAULT_CONFIG, levelDuration: 5, breakSongEnabled: true };
     const next = timerReducer(state, { type: 'RESTORE_CONFIG', config });
 
     expect(next.config.breakSongEnabled).toBe(true);
-    expect(next.stages[0].duration).toBe(300);
-    expect(next.timeLeft).toBe(300);
+    expect(next.stages[0].duration).toBe(1200);
+    expect(next.timeLeft).toBe(1200);
   });
 
   test('does not replace active persisted stages while a tournament is in progress', () => {

@@ -107,7 +107,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR_SOUND' });
   }, [state.pendingSound]);
 
-  // --- Restore timer state from DB on mount / session change ---
+  // --- Restore app config + timer state from DB on mount / session change ---
   useEffect(() => {
     if (gameLoading) return;
 
@@ -120,39 +120,41 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
-    fetchTimerState().then(saved => {
-      if (cancelled || !saved) return;
-      if (isPersistedTimerStateStaleForSession(saved.updatedAt, activeSession?.createdAt)) {
-        dispatch({ type: 'RESTART' });
+    Promise.all([fetchAppConfig(), fetchTimerState()]).then(([config, saved]) => {
+      if (cancelled) return;
+
+      if (!saved) {
+        if (config) {
+          appConfigRestoringRef.current = true;
+          dispatch({ type: 'RESTORE_CONFIG', config, resetInitialTimer: true });
+        } else {
+          saveConfigQueueRef.current = saveConfigQueueRef.current
+            .catch(() => {})
+            .then(() => saveAppConfig(state.config));
+        }
         return;
       }
+
+      if (isPersistedTimerStateStaleForSession(saved.updatedAt, activeSession?.createdAt)) {
+        dispatch({ type: 'RESTART' });
+        if (config) {
+          appConfigRestoringRef.current = true;
+          dispatch({ type: 'RESTORE_CONFIG', config, resetInitialTimer: true });
+        }
+        return;
+      }
+
       suppressSyncSnapshotRef.current = toSyncSnapshot(saved);
       dispatch({ type: 'RESTORE_STATE', payload: saved });
-    });
-
-    return () => { cancelled = true; };
-  }, [activeSession?.createdAt, gameLoading]);
-
-  // --- Restore durable app config from Supabase on cold start ---
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchAppConfig().then(config => {
-      if (cancelled) return;
       if (config) {
         appConfigRestoringRef.current = true;
         dispatch({ type: 'RESTORE_CONFIG', config });
-        return;
       }
-
-      saveConfigQueueRef.current = saveConfigQueueRef.current
-        .catch(() => {})
-        .then(() => saveAppConfig(state.config));
     });
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeSession?.createdAt, gameLoading]);
 
   // --- Realtime: subscribe + receive anchor state from other devices ---
   useEffect(() => {

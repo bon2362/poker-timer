@@ -74,7 +74,7 @@ export type Action =
   | { type: 'OPEN_SETTINGS' }
   | { type: 'SAVE_SETTINGS'; config: Config }
   | { type: 'SAVE_DISPLAY_CONFIG'; config: Config }
-  | { type: 'RESTORE_CONFIG'; config: Config }
+  | { type: 'RESTORE_CONFIG'; config: Config; resetInitialTimer?: boolean }
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }

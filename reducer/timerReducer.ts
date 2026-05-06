@@ -259,7 +259,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
 
     case 'RESTORE_CONFIG': {
       saveConfig(action.config);
-      if (!isAtInitialStageStart(state)) {
+      if (!action.resetInitialTimer || !isAtInitialStageStart(state)) {
         return { ...state, config: action.config };
       }
       const stages = buildStages(action.config);

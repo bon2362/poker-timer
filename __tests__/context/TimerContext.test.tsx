@@ -51,7 +51,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // --- Component under test ---
 import { TimerProvider, useTimer } from '@/context/TimerContext';
-import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
+import { fetchTimerState, isPersistedTimerStateStaleForSession, saveTimerState } from '@/lib/supabase/timerState';
 import { fetchAppConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { getTimerChannel } from '@/supabase/client';
 import { DEFAULT_CONFIG } from '@/lib/storage';
@@ -92,6 +92,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   (fetchAppConfig as jest.Mock).mockResolvedValue(null);
   (saveAppConfig as jest.Mock).mockResolvedValue(undefined);
+  (fetchTimerState as jest.Mock).mockResolvedValue(null);
+  (isPersistedTimerStateStaleForSession as jest.Mock).mockReturnValue(false);
+  (saveTimerState as jest.Mock).mockResolvedValue(undefined);
   localStorageMock.clear();
   jest.useRealTimers();
 });
@@ -410,5 +413,38 @@ describe('TimerContext', () => {
     await waitFor(() => expect(screen.getByTestId('breakSong')).toHaveTextContent('true'));
     expect(screen.getByTestId('timeLeft')).toHaveTextContent('300');
     expect(saveAppConfig).not.toHaveBeenCalled();
+  });
+
+  test('18. durable app config does not reset a restored timer_state on reload', async () => {
+    (fetchAppConfig as jest.Mock).mockResolvedValueOnce({
+      ...DEFAULT_CONFIG,
+      levelDuration: 5,
+      breakSongEnabled: true,
+    });
+    (fetchTimerState as jest.Mock).mockResolvedValueOnce({
+      currentStage: 1,
+      anchorTs: Date.now(),
+      elapsedBeforePause: 120,
+      isPaused: true,
+      isOver: false,
+      warnedOneMin: false,
+      stageType: 'level',
+      levelNum: 2,
+      sb: 20,
+      bb: 40,
+      stageDurationSecs: 1200,
+      stages: [
+        { type: 'level', levelNum: 1, sb: 10, bb: 20, duration: 1200 },
+        { type: 'level', levelNum: 2, sb: 20, bb: 40, duration: 1200 },
+      ],
+      updatedAt: '2026-04-12T00:00:00.000Z',
+    });
+
+    renderWithProvider();
+
+    await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('1'));
+    expect(screen.getByTestId('timeLeft')).toHaveTextContent('1080');
+    expect(screen.getByTestId('breakSong')).toHaveTextContent('true');
+    expect(saveTimerState).not.toHaveBeenCalled();
   });
 });
