@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useGame } from '@/context/GameContext';
 import { useTimer } from '@/context/TimerContext';
 import { useMinuteTimer } from '@/context/MinuteTimerContext';
 import { Avatar } from './PlayerManager/PlayerManager';
+import { MergeTablesDialog } from './MergeTablesDialog';
 import type { SessionPlayer, Player } from '@/types/game';
 
 type Props = { onClose: () => void };
@@ -134,13 +135,53 @@ function EliminatedAdminRow({ sp, player }: { sp: SessionPlayer; player: Player 
 
 /* ── Main admin panel ── */
 export function MobileAdminPanel({ onClose }: Props) {
-  const { activeSession, sessionPlayers, players } = useGame();
+  const { activeSession, sessionPlayers, players, confirmMerge } = useGame();
   const { state: timerState, dispatch: timerDispatch } = useTimer();
+  const [mergeDialogDismissedAtCount, setMergeDialogDismissedAtCount] = useState<number | null>(null);
+  const [mergeConfirming, setMergeConfirming] = useState(false);
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
+  const activePlayersCount = activePlayers.length;
+  const isTwoTableActive = activeSession?.numberOfTables === 2 && !activeSession.tablesMergedAt;
+  const shouldPromptMerge = Boolean(
+    isTwoTableActive &&
+    activeSession &&
+    activeSession.mergeThreshold > 0 &&
+    activePlayersCount <= activeSession.mergeThreshold &&
+    mergeDialogDismissedAtCount !== activePlayersCount
+  );
   const eliminated = sessionPlayers
     .filter(p => p.status === 'eliminated' || p.status === 'winner')
     .sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0));
+
+  useEffect(() => {
+    if (!shouldPromptMerge) return;
+    timerDispatch({ type: 'PAUSE_TIMER' });
+  }, [shouldPromptMerge, timerDispatch]);
+
+  useEffect(() => {
+    if (!isTwoTableActive) {
+      setMergeDialogDismissedAtCount(null);
+      setMergeConfirming(false);
+      return;
+    }
+    if (activeSession && activePlayersCount > activeSession.mergeThreshold) {
+      setMergeDialogDismissedAtCount(null);
+    }
+  }, [activePlayersCount, activeSession, isTwoTableActive]);
+
+  const handleCancelMerge = useCallback(() => {
+    setMergeDialogDismissedAtCount(activePlayersCount);
+    setMergeConfirming(false);
+    timerDispatch({ type: 'RESUME_TIMER' });
+  }, [activePlayersCount, timerDispatch]);
+
+  const handleConfirmMerge = useCallback(async () => {
+    setMergeConfirming(true);
+    await confirmMerge();
+    setMergeConfirming(false);
+    timerDispatch({ type: 'RESUME_TIMER' });
+  }, [confirmMerge, timerDispatch]);
 
   const btnToggle = (active: boolean) =>
     `flex-1 py-3 rounded-xl border font-semibold text-[13px] cursor-pointer active:scale-95 transition-all ${
@@ -222,6 +263,16 @@ export function MobileAdminPanel({ onClose }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {activeSession && shouldPromptMerge && (
+        <MergeTablesDialog
+          activePlayers={activePlayersCount}
+          mergeThreshold={activeSession.mergeThreshold}
+          confirming={mergeConfirming}
+          onConfirm={handleConfirmMerge}
+          onCancel={handleCancelMerge}
+        />
       )}
     </div>
   );
