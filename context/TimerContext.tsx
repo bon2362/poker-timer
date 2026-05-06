@@ -6,7 +6,7 @@ import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
 import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import { useGame } from '@/context/GameContext';
-import type { TimerState, Action } from '@/types/timer';
+import type { TimerState, Action, DisplayConfigSnapshot } from '@/types/timer';
 
 type TimerContextValue = {
   state: TimerState;
@@ -39,6 +39,26 @@ function syncSnapshotMatchesState(snapshot: SyncSnapshot, state: TimerState): bo
   );
 }
 
+function toDisplaySnapshot(state: TimerState): DisplayConfigSnapshot {
+  return {
+    showCombos: state.config.showCombos,
+    showPlayers: state.config.showPlayers,
+    slideshowEnabled: state.config.slideshowEnabled,
+    slideshowSpeed: state.config.slideshowSpeed,
+    breakSongEnabled: state.config.breakSongEnabled,
+  };
+}
+
+function displaySnapshotMatchesState(snapshot: DisplayConfigSnapshot, state: TimerState): boolean {
+  return (
+    snapshot.showCombos === state.config.showCombos &&
+    snapshot.showPlayers === state.config.showPlayers &&
+    snapshot.slideshowEnabled === state.config.slideshowEnabled &&
+    snapshot.slideshowSpeed === state.config.slideshowSpeed &&
+    snapshot.breakSongEnabled === state.config.breakSongEnabled
+  );
+}
+
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
   const { activeSession, loading: gameLoading } = useGame();
@@ -61,10 +81,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     isOver: state.isOver,
   });
 
-  const prevDisplayRef = useRef({
-    showCombos: state.config.showCombos,
-    showPlayers: state.config.showPlayers,
-  });
+  const prevDisplayRef = useRef(toDisplaySnapshot(state));
+  const displaySnapshotRef = useRef(toDisplaySnapshot(state));
+
+  displaySnapshotRef.current = toDisplaySnapshot(state);
 
   // Timer tick — just recomputes timeLeft from anchor, no decrement
   useEffect(() => {
@@ -121,9 +141,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
     channel.on('broadcast', { event: 'display' }, ({ payload }) => {
       fromDisplayBroadcastRef.current = true;
-      dispatch({ type: 'RESTORE_DISPLAY', showCombos: payload.showCombos, showPlayers: payload.showPlayers });
+      dispatch({ type: 'RESTORE_DISPLAY', config: payload });
     });
-    channel.subscribe();
+    channel.on('broadcast', { event: 'display-request' }, () => {
+      channel.send({ type: 'broadcast', event: 'display', payload: displaySnapshotRef.current });
+    });
+    channel.subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        channel.send({ type: 'broadcast', event: 'display-request', payload: {} });
+      }
+    });
     return () => {
       getClient()?.removeChannel(channel);
       channelRef.current = getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main');
@@ -231,26 +258,32 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     return () => { client.removeChannel(channel); };
   }, [dispatch]);
 
-  // --- Broadcast display config changes (showCombos / showPlayers) ---
+  // --- Broadcast display/media config changes ---
   useEffect(() => {
     if (fromDisplayBroadcastRef.current) {
       fromDisplayBroadcastRef.current = false;
-      prevDisplayRef.current = { showCombos: state.config.showCombos, showPlayers: state.config.showPlayers };
+      prevDisplayRef.current = toDisplaySnapshot(state);
       return;
     }
 
     const prev = prevDisplayRef.current;
-    if (state.config.showCombos === prev.showCombos && state.config.showPlayers === prev.showPlayers) return;
+    if (displaySnapshotMatchesState(prev, state)) return;
 
-    prevDisplayRef.current = { showCombos: state.config.showCombos, showPlayers: state.config.showPlayers };
+    prevDisplayRef.current = toDisplaySnapshot(state);
 
     if (channelRef.current.state === 'joined') {
       channelRef.current.send({
         type: 'broadcast', event: 'display',
-        payload: { showCombos: state.config.showCombos, showPlayers: state.config.showPlayers },
+        payload: toDisplaySnapshot(state),
       });
     }
-  }, [state.config.showCombos, state.config.showPlayers]);
+  }, [
+    state.config.showCombos,
+    state.config.showPlayers,
+    state.config.slideshowEnabled,
+    state.config.slideshowSpeed,
+    state.config.breakSongEnabled,
+  ]);
 
   return (
     <TimerContext.Provider value={{ state, dispatch }}>

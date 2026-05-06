@@ -276,7 +276,7 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     }
 
     case 'RESTORE_DISPLAY': {
-      const newConfig = { ...state.config, showCombos: action.showCombos, showPlayers: action.showPlayers };
+      const newConfig = { ...state.config, ...action.config };
       saveConfig(newConfig);
       return { ...state, config: newConfig };
     }

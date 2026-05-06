@@ -53,7 +53,7 @@ export function PokerTimer() {
   // Auto-open panel when session becomes active (if not already explicitly hidden)
   useEffect(() => {
     if (activeSession && !gamePanelAutoOpenedRef.current) {
-      dispatch({ type: 'RESTORE_DISPLAY', showCombos: state.config.showCombos, showPlayers: true });
+      dispatch({ type: 'RESTORE_DISPLAY', config: { showCombos: state.config.showCombos, showPlayers: true } });
       gamePanelAutoOpenedRef.current = true;
     }
     if (!activeSession) {
@@ -204,6 +204,7 @@ export function PokerTimer() {
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
+  const showBreakMediaOverlay = isOnBreak && (Boolean(slideshowCurrentUrl) || state.config.breakSongEnabled);
   const isTwoTableActive = activeSession?.numberOfTables === 2 && !activeSession.tablesMergedAt;
   const activePlayersCount = sessionPlayers.filter(sp => sp.status === 'playing').length;
   const shouldPromptMerge = Boolean(
@@ -378,8 +379,8 @@ export function PokerTimer() {
         />
       )}
 
-      {/* Slideshow overlay — shown during breaks when enabled and photos are loaded */}
-      {slideshowCurrentUrl && isOnBreak && (
+      {/* Slideshow / lyrics overlay — shown during breaks when media is enabled */}
+      {showBreakMediaOverlay && (
         <SlideshowOverlay
           url={slideshowCurrentUrl}
           timeLeft={state.timeLeft}
@@ -389,7 +390,7 @@ export function PokerTimer() {
       )}
 
       {/* Controls on top of slideshow — appear on mouse move */}
-      {slideshowCurrentUrl && isOnBreak && (
+      {showBreakMediaOverlay && (
         <div className="fixed inset-x-0 bottom-0 z-30">
           <Controls
             isPaused={state.isPaused}

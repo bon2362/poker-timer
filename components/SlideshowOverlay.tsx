@@ -5,7 +5,7 @@ import { formatTime } from '@/lib/timer';
 import { getCurrentFinalSongLyric, getNextFinalSongLyric } from './FinalGameSlideshowOverlay';
 
 type Props = {
-  url: string;
+  url?: string | null;
   timeLeft: number;
   songTime?: number;
   showLyrics?: boolean;
@@ -48,12 +48,19 @@ function Slot({ src, visible }: SlotProps) {
 
 export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props) {
   // Cross-fade: два слота, чередуем какой сверху
-  const [imgA, setImgA] = useState(url);
+  const [imgA, setImgA] = useState(url ?? '');
   const [imgB, setImgB] = useState('');
   const [showB, setShowB] = useState(false);
   const activeIsB = useRef(false);
 
   useEffect(() => {
+    if (!url) {
+      setImgA('');
+      setImgB('');
+      setShowB(false);
+      activeIsB.current = false;
+      return;
+    }
     if (activeIsB.current) {
       setImgA(url);
       setShowB(false);
@@ -66,7 +73,7 @@ export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props)
   }, [url]);
 
   const activeUrl = showB ? imgB : imgA;
-  const date = parseDateFromUrl(activeUrl);
+  const date = activeUrl ? parseDateFromUrl(activeUrl) : null;
   const timerStyle = {
     fontSize: 'clamp(48px, 8vw, 96px)',
     textShadow: '0 2px 24px rgba(0,0,0,0.9)',
@@ -82,8 +89,14 @@ export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props)
 
   return (
     <div className="fixed inset-0 z-20 bg-black overflow-hidden">
-      <Slot src={imgA} visible={!showB} />
-      {imgB && <Slot src={imgB} visible={showB} />}
+      {imgA ? (
+        <>
+          <Slot src={imgA} visible={!showB} />
+          {imgB && <Slot src={imgB} visible={showB} />}
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-[#050505]" />
+      )}
 
       {/* Timer — top center */}
       <div className="absolute top-10 inset-x-0 flex justify-center pointer-events-none select-none">

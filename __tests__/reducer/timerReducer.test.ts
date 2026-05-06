@@ -470,15 +470,26 @@ describe('TOGGLE_GAME_PANEL', () => {
 describe('RESTORE_DISPLAY', () => {
   test('sets showCombos and showPlayers from action payload', () => {
     const state = makeState({ config: { ...DEFAULT_CONFIG, showCombos: true, showPlayers: true } });
-    const next = timerReducer(state, { type: 'RESTORE_DISPLAY', showCombos: false, showPlayers: false });
+    const next = timerReducer(state, { type: 'RESTORE_DISPLAY', config: { showCombos: false, showPlayers: false } });
     expect(next.config.showCombos).toBe(false);
     expect(next.config.showPlayers).toBe(false);
   });
 
   test('preserves other config fields', () => {
     const state = makeState({ config: { ...DEFAULT_CONFIG, levelDuration: 25 } });
-    const next = timerReducer(state, { type: 'RESTORE_DISPLAY', showCombos: true, showPlayers: true });
+    const next = timerReducer(state, { type: 'RESTORE_DISPLAY', config: { showCombos: true, showPlayers: true } });
     expect(next.config.levelDuration).toBe(25);
+  });
+
+  test('restores break media settings from action payload', () => {
+    const state = makeState({ config: { ...DEFAULT_CONFIG, breakSongEnabled: false, slideshowEnabled: false } });
+    const next = timerReducer(state, {
+      type: 'RESTORE_DISPLAY',
+      config: { breakSongEnabled: true, slideshowEnabled: true, slideshowSpeed: 7 },
+    });
+    expect(next.config.breakSongEnabled).toBe(true);
+    expect(next.config.slideshowEnabled).toBe(true);
+    expect(next.config.slideshowSpeed).toBe(7);
   });
 });
 

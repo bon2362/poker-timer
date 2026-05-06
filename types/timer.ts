@@ -30,6 +30,11 @@ export type BreakStage = {
 
 export type Stage = LevelStage | BreakStage;
 
+export type DisplayConfigSnapshot = Pick<
+  Config,
+  'showCombos' | 'showPlayers' | 'slideshowEnabled' | 'slideshowSpeed' | 'breakSongEnabled'
+>;
+
 export type SoundEvent =
   | 'warnBlinds'
   | 'blindsUp'
@@ -73,7 +78,7 @@ export type Action =
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }
   | { type: 'TOGGLE_GAME_PANEL' }
-  | { type: 'RESTORE_DISPLAY'; showCombos: boolean; showPlayers: boolean }
+  | { type: 'RESTORE_DISPLAY'; config: Partial<DisplayConfigSnapshot> }
   | { type: 'JUMP_TO_END' }
   | { type: 'RESTORE_STATE'; payload: {
       currentStage: number; anchorTs: number; elapsedBeforePause: number;
