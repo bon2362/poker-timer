@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.64',
+    date: "06 May '26",
+    notes: 'Двухстоловый режим: добавлен Playwright happy-path от setup 2 столов до объединения и победителя.',
+  },
+  {
     version: '4.63',
     date: "06 May '26",
     notes: 'Двухстоловый режим: после объединения интерфейс окончательно ведёт игру как одностоловую, включая возврат вылетевших игроков.',
