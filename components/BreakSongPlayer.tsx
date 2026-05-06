@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const BREAK_TRACK_SRC = '/audio/sweaty-hand.mp3';
+const BREAK_SONG_PAUSED_KEY = 'pokerTimerBreakSongPaused';
 
 type Props = {
   onStateChange?: (paused: boolean) => void;
@@ -37,15 +38,31 @@ export function BreakSongPlayer({ onStateChange }: Props) {
   return null;
 }
 
+function loadPersistedPaused(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(BREAK_SONG_PAUSED_KEY) === 'true';
+}
+
+function savePersistedPaused(paused: boolean): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(BREAK_SONG_PAUSED_KEY, String(paused));
+}
+
 export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSong: () => void; songTime: number } {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [songPaused, setSongPaused] = useState(false);
+  const [songPaused, setSongPaused] = useState(loadPersistedPaused);
   const [songTime, setSongTime] = useState(0);
+  const persistedPausedRef = useRef(songPaused);
+
+  const setPausedPreference = (paused: boolean) => {
+    persistedPausedRef.current = paused;
+    setSongPaused(paused);
+    savePersistedPaused(paused);
+  };
 
   useEffect(() => {
     if (!enabled) {
       audioRef.current?.pause();
-      setSongPaused(false);
       setSongTime(0);
       return;
     }
@@ -54,16 +71,19 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
     const audio = new Audio(BREAK_TRACK_SRC);
     audio.loop = true;
     audioRef.current = audio;
-    setSongPaused(false);
     setSongTime(0);
 
     const timeInterval = setInterval(() => {
       setSongTime(audio.currentTime || 0);
     }, 250);
 
-    audio.play()
-      .then(() => { if (cancelled) audio.pause(); })
-      .catch(() => { if (!cancelled) setSongPaused(true); });
+    if (!persistedPausedRef.current) {
+      audio.play()
+        .then(() => { if (cancelled) audio.pause(); })
+        .catch(() => { if (!cancelled) setPausedPreference(true); });
+    } else {
+      setSongPaused(true);
+    }
 
     return () => {
       cancelled = true;
@@ -78,10 +98,10 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
     const audio = audioRef.current;
     if (!audio) return;
     if (songPaused) {
-      audio.play().then(() => setSongPaused(false)).catch(() => {});
+      audio.play().then(() => setPausedPreference(false)).catch(() => {});
     } else {
       audio.pause();
-      setSongPaused(true);
+      setPausedPreference(true);
     }
   };
 
