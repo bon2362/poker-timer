@@ -1,9 +1,9 @@
 // context/GameContext.tsx
 'use client';
-import { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback, useRef, ReactNode } from 'react';
 import type { Player, Session, SessionPlayer, NewSessionData } from '@/types/game';
 import { fetchPlayers, createPlayer, updatePlayer as updatePlayerDB, deletePlayer as deletePlayerDB } from '@/lib/supabase/players';
-import { fetchActiveSession, createSession, updateSessionPlayer, finishSession } from '@/lib/supabase/sessions';
+import { fetchActiveSession, createSession, updateSessionPlayer, finishSession, mergeTables } from '@/lib/supabase/sessions';
 import { getClient } from '@/supabase/client';
 
 function rowToSessionPlayer(row: Record<string, unknown>): SessionPlayer {
@@ -97,6 +97,7 @@ type GameContextValue = {
   doRebuy: (sessionPlayerId: string) => Promise<void>;
   doAddon: (sessionPlayerId: string) => Promise<void>;
   movePlayerToTable: (sessionPlayerId: string, tableNumber: number) => Promise<void>;
+  confirmMerge: () => Promise<void>;
   eliminatePlayer: (sessionPlayerId: string) => Promise<void>;
   undoEliminate: (sessionPlayerId: string) => Promise<void>;
   declareWinner: (sessionPlayerId: string) => Promise<void>;
@@ -117,6 +118,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     showWinner: false,
     loading: true,
   });
+  const suppressSessionPlayerUpdatesUntilRef = useRef(0);
+  const suppressMergedSessionRefetchUntilRef = useRef(0);
+  const activeSessionRef = useRef<Session | null>(null);
+  const sessionPlayersRef = useRef<SessionPlayer[]>([]);
+
+  useEffect(() => {
+    activeSessionRef.current = state.activeSession;
+    sessionPlayersRef.current = state.sessionPlayers;
+  }, [state.activeSession, state.sessionPlayers]);
 
   // Load initial data
   useEffect(() => {
@@ -161,6 +171,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'session_players' },
         (payload) => {
+          if (Date.now() < suppressSessionPlayerUpdatesUntilRef.current) return;
+          const activeSession = activeSessionRef.current;
+          const sessionPlayers = sessionPlayersRef.current;
+          const waitingForMergeConfirmation = Boolean(
+            activeSession?.numberOfTables === 2 &&
+            !activeSession.tablesMergedAt &&
+            activeSession.mergeThreshold > 0 &&
+            sessionPlayers.filter(sp => sp.status === 'playing').length <= activeSession.mergeThreshold
+          );
+          if (waitingForMergeConfirmation) return;
           const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
           dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: sp });
           if (sp.status === 'winner') dispatch({ type: 'SHOW_WINNER' });
@@ -186,6 +206,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
             dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
             dispatch({ type: 'HIDE_WINNER' });
           } else if (row.status === 'active') {
+            if (row.tables_merged_at) {
+              if (Date.now() < suppressMergedSessionRefetchUntilRef.current) return;
+              suppressSessionPlayerUpdatesUntilRef.current = Date.now() + 3000;
+            }
             const sessionData = await fetchActiveSession();
             if (sessionData) {
               dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
@@ -245,6 +269,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
   }, []);
 
+  const confirmMerge = useCallback(async () => {
+    if (!state.activeSession) return;
+    suppressMergedSessionRefetchUntilRef.current = Date.now() + 3000;
+    suppressSessionPlayerUpdatesUntilRef.current = Date.now() + 3000;
+    const merged = await mergeTables(state.activeSession.id);
+    if (!merged) {
+      suppressMergedSessionRefetchUntilRef.current = 0;
+      suppressSessionPlayerUpdatesUntilRef.current = 0;
+      return;
+    }
+    const sessionData = await fetchActiveSession();
+    if (sessionData) {
+      dispatch({ type: 'SET_SESSION', session: sessionData.session, sessionPlayers: sessionData.sessionPlayers });
+    } else {
+      dispatch({ type: 'SET_SESSION', session: merged, sessionPlayers: state.sessionPlayers.map(sp => ({ ...sp, tableNumber: 1 })) });
+    }
+  }, [state.activeSession, state.sessionPlayers]);
+
   const eliminatePlayer = useCallback(async (sessionPlayerId: string) => {
     const activePlayers = state.sessionPlayers.filter(p => p.status === 'playing');
     const position = activePlayers.length; // e.g. 4 active → this player finishes 4th
@@ -303,7 +345,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       showWinner: state.showWinner,
       loading: state.loading,
       addPlayer, updatePlayer, removePlayer,
-      startSession, doRebuy, doAddon, undoRebuy, undoAddon, movePlayerToTable,
+      startSession, doRebuy, doAddon, undoRebuy, undoAddon, movePlayerToTable, confirmMerge,
       eliminatePlayer, undoEliminate, declareWinner, finishGame,
     }}>
       {children}

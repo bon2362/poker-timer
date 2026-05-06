@@ -34,12 +34,14 @@ const mockFetchActiveSession = jest.fn().mockResolvedValue({ session: null, sess
 const mockCreateSession = jest.fn();
 const mockUpdateSessionPlayer = jest.fn();
 const mockFinishSession = jest.fn();
+const mockMergeTables = jest.fn();
 
 jest.mock('@/lib/supabase/sessions', () => ({
   fetchActiveSession: (...args: unknown[]) => mockFetchActiveSession(...args),
   createSession: (...args: unknown[]) => mockCreateSession(...args),
   updateSessionPlayer: (...args: unknown[]) => mockUpdateSessionPlayer(...args),
   finishSession: (...args: unknown[]) => mockFinishSession(...args),
+  mergeTables: (...args: unknown[]) => mockMergeTables(...args),
 }));
 
 // localStorage mock
@@ -543,6 +545,85 @@ describe('GameContext — extended actions', () => {
     expect(screen.getByTestId('show-winner')).toHaveTextContent('true');
   });
 
+  test('23b. confirmMerge calls RPC and refetches active session once', async () => {
+    const mergedSession = { ...mockSession, numberOfTables: 2, tablesMergedAt: '2026-05-06T00:00:00Z' };
+    mockMergeTables.mockResolvedValue(mergedSession);
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] })
+      .mockResolvedValueOnce({ session: mergedSession, sessionPlayers: [{ ...mockSp, tableNumber: 1 }] });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.confirmMerge();
+    });
+
+    expect(mockMergeTables).toHaveBeenCalledWith('session-1');
+    expect(mockFetchActiveSession).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('session')).toHaveTextContent('session-1');
+  });
+
+  test('23c. confirmMerge suppresses its own merged session realtime echo', async () => {
+    const mergedSession = { ...mockSession, numberOfTables: 2, tablesMergedAt: '2026-05-06T00:00:00Z' };
+    mockMergeTables.mockResolvedValue(mergedSession);
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] })
+      .mockResolvedValueOnce({ session: mergedSession, sessionPlayers: [{ ...mockSp, tableNumber: 1 }] });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.confirmMerge();
+    });
+
+    const sessionUpdate = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'sessions'
+    )![2];
+
+    await act(async () => {
+      await sessionUpdate({ new: { status: 'active', tables_merged_at: '2026-05-06T00:00:00Z' } });
+    });
+
+    expect(mockFetchActiveSession).toHaveBeenCalledTimes(2);
+  });
+
+  test('23d. confirmMerge suppresses realtime echo before RPC promise resolves', async () => {
+    const mergedSession = { ...mockSession, numberOfTables: 2, tablesMergedAt: '2026-05-06T00:00:00Z' };
+    let resolveMerge!: (value: typeof mergedSession) => void;
+    mockMergeTables.mockReturnValue(new Promise(resolve => { resolveMerge = resolve; }));
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] })
+      .mockResolvedValueOnce({ session: mergedSession, sessionPlayers: [{ ...mockSp, tableNumber: 1 }] });
+
+    renderExtended();
+    await waitReady();
+
+    let mergePromise!: Promise<void>;
+    await act(async () => {
+      mergePromise = gameCtxRef!.confirmMerge();
+    });
+
+    const sessionUpdate = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'sessions'
+    )![2];
+
+    await act(async () => {
+      await sessionUpdate({ new: { status: 'active', tables_merged_at: '2026-05-06T00:00:00Z' } });
+    });
+
+    expect(mockFetchActiveSession).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveMerge(mergedSession);
+      await mergePromise;
+    });
+
+    expect(mockFetchActiveSession).toHaveBeenCalledTimes(2);
+  });
+
+
   test('24. Realtime INSERT sessions → fetches and sets new session', async () => {
     mockFetchActiveSession
       .mockResolvedValueOnce({ session: null, sessionPlayers: [] }) // initial load
@@ -583,6 +664,57 @@ describe('GameContext — extended actions', () => {
     });
 
     expect(screen.getByTestId('session')).toHaveTextContent('session-2');
+  });
+
+  test('25b. Realtime merged session refetches once and suppresses bulk session_player updates', async () => {
+    const mergedSession = { ...mockSession, tablesMergedAt: '2026-05-06T00:00:00Z' };
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] })
+      .mockResolvedValueOnce({ session: mergedSession, sessionPlayers: [{ ...mockSp, tableNumber: 1 }] });
+
+    renderExtended();
+    await waitReady();
+
+    const sessionUpdate = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'sessions'
+    )![2];
+    const playerUpdate = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'session_players'
+    )![2];
+
+    await act(async () => {
+      await sessionUpdate({ new: { status: 'active', tables_merged_at: '2026-05-06T00:00:00Z' } });
+      playerUpdate({ new: { ...mockSpRow, id: 'sp-2', player_id: 'p-2' } });
+    });
+
+    expect(mockFetchActiveSession).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('session-players-count')).toHaveTextContent('1');
+  });
+
+  test('25c. Waiting merge prompt suppresses bulk player updates before merged session event', async () => {
+    const promptSession = { ...mockSession, numberOfTables: 2, mergeThreshold: 1 };
+    const mergedSession = { ...promptSession, tablesMergedAt: '2026-05-06T00:00:00Z' };
+    mockFetchActiveSession
+      .mockResolvedValueOnce({ session: promptSession, sessionPlayers: [mockSp] })
+      .mockResolvedValueOnce({ session: mergedSession, sessionPlayers: [{ ...mockSp, tableNumber: 1 }] });
+
+    renderExtended();
+    await waitReady();
+
+    const sessionUpdate = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'sessions'
+    )![2];
+    const playerUpdate = mockChannel.on.mock.calls.find(
+      ([type, filter]) => type === 'postgres_changes' && filter.event === 'UPDATE' && filter.table === 'session_players'
+    )![2];
+
+    await act(async () => {
+      playerUpdate({ new: { ...mockSpRow, id: 'sp-2', player_id: 'p-2' } });
+      await sessionUpdate({ new: { status: 'active', tables_merged_at: '2026-05-06T00:00:00Z' } });
+    });
+
+    expect(mockFetchActiveSession).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('session-players-count')).toHaveTextContent('1');
   });
 
   test('26. ADD_SESSION_PLAYER dedup: duplicate INSERT updates existing sp instead of adding', async () => {

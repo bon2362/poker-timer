@@ -30,7 +30,7 @@ type LoserOverlayState = {
 
 export function PokerTimer() {
   const { state, dispatch } = useTimer();
-  const { activeSession, showWinner, loading, sessionPlayers, players, finishGame } = useGame();
+  const { activeSession, showWinner, loading, sessionPlayers, players, finishGame, confirmMerge } = useGame();
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const [loserOverlay, setLoserOverlay] = useState<LoserOverlayState | null>(null);
@@ -240,6 +240,13 @@ export function PokerTimer() {
     setMergeConfirming(false);
     dispatch({ type: 'RESUME_TIMER' });
   }, [activePlayersCount, dispatch]);
+
+  const handleConfirmMerge = useCallback(async () => {
+    setMergeConfirming(true);
+    await confirmMerge();
+    setMergeConfirming(false);
+    dispatch({ type: 'RESUME_TIMER' });
+  }, [confirmMerge, dispatch]);
 
   useEffect(() => {
     if (finalSlideshowDelayRef.current) {
@@ -473,7 +480,7 @@ export function PokerTimer() {
           activePlayers={activePlayersCount}
           mergeThreshold={activeSession.mergeThreshold}
           confirming={mergeConfirming}
-          onConfirm={() => setMergeConfirming(true)}
+          onConfirm={handleConfirmMerge}
           onCancel={handleCancelMerge}
         />
       )}
