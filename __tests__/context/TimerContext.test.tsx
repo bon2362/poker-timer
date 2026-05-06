@@ -381,7 +381,7 @@ describe('TimerContext', () => {
     await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('0'));
   });
 
-  test('16. display broadcast received → RESTORE_DISPLAY updates showCombos', async () => {
+  test('16. display broadcast is ignored because app_config is the durable source', async () => {
     renderWithProvider();
     await waitFor(() => expect(fetchTimerState).toHaveBeenCalled());
 
@@ -390,15 +390,7 @@ describe('TimerContext', () => {
       ([type, opts]: [string, { event: string }]) => type === 'broadcast' && opts.event === 'display'
     )?.[2];
 
-    expect(displayCb).toBeDefined();
-
-    const initialCombos = screen.getByTestId('showCombos').textContent;
-
-    await act(async () => {
-      displayCb({ payload: { showCombos: initialCombos !== 'true', showPlayers: true } });
-    });
-
-    expect(screen.getByTestId('showCombos').textContent).not.toBe(initialCombos);
+    expect(displayCb).toBeUndefined();
   });
 
   test('17. restores durable app config on cold start without another client', async () => {

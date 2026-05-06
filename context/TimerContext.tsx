@@ -7,7 +7,7 @@ import { getClient, getTimerChannel } from '@/supabase/client';
 import { fetchAppConfig, normalizeConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import { useGame } from '@/context/GameContext';
-import type { TimerState, Action, DisplayConfigSnapshot } from '@/types/timer';
+import type { TimerState, Action } from '@/types/timer';
 
 type TimerContextValue = {
   state: TimerState;
@@ -40,26 +40,6 @@ function syncSnapshotMatchesState(snapshot: SyncSnapshot, state: TimerState): bo
   );
 }
 
-function toDisplaySnapshot(state: TimerState): DisplayConfigSnapshot {
-  return {
-    showCombos: state.config.showCombos,
-    showPlayers: state.config.showPlayers,
-    slideshowEnabled: state.config.slideshowEnabled,
-    slideshowSpeed: state.config.slideshowSpeed,
-    breakSongEnabled: state.config.breakSongEnabled,
-  };
-}
-
-function displaySnapshotMatchesState(snapshot: DisplayConfigSnapshot, state: TimerState): boolean {
-  return (
-    snapshot.showCombos === state.config.showCombos &&
-    snapshot.showPlayers === state.config.showPlayers &&
-    snapshot.slideshowEnabled === state.config.slideshowEnabled &&
-    snapshot.slideshowSpeed === state.config.slideshowSpeed &&
-    snapshot.breakSongEnabled === state.config.breakSongEnabled
-  );
-}
-
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
   const { activeSession, loading: gameLoading } = useGame();
@@ -69,7 +49,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   // Echo suppression: skip sync effect only for the exact state received from another source.
   const suppressSyncSnapshotRef = useRef<SyncSnapshot | null>(null);
-  const fromDisplayBroadcastRef = useRef(false);
 
   // Track session createdAt to detect session end vs start
   const prevSessionCreatedAtRef = useRef(activeSession?.createdAt);
@@ -82,7 +61,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     isOver: state.isOver,
   });
 
-  const prevDisplayRef = useRef(toDisplaySnapshot(state));
   const saveConfigQueueRef = useRef<Promise<void>>(Promise.resolve());
   const appConfigRestoringRef = useRef(false);
   const didStartConfigPersistRef = useRef(false);
@@ -162,10 +140,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     channel.on('broadcast', { event: 'state' }, ({ payload }) => {
       suppressSyncSnapshotRef.current = toSyncSnapshot(payload);
       dispatch({ type: 'RESTORE_STATE', payload });
-    });
-    channel.on('broadcast', { event: 'display' }, ({ payload }) => {
-      fromDisplayBroadcastRef.current = true;
-      dispatch({ type: 'RESTORE_DISPLAY', config: payload });
     });
     channel.subscribe();
     return () => {
@@ -297,33 +271,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     return () => { client.removeChannel(channel); };
   }, [dispatch]);
-
-  // --- Broadcast display/media config changes ---
-  useEffect(() => {
-    if (fromDisplayBroadcastRef.current) {
-      fromDisplayBroadcastRef.current = false;
-      prevDisplayRef.current = toDisplaySnapshot(state);
-      return;
-    }
-
-    const prev = prevDisplayRef.current;
-    if (displaySnapshotMatchesState(prev, state)) return;
-
-    prevDisplayRef.current = toDisplaySnapshot(state);
-
-    if (channelRef.current.state === 'joined') {
-      channelRef.current.send({
-        type: 'broadcast', event: 'display',
-        payload: toDisplaySnapshot(state),
-      });
-    }
-  }, [
-    state.config.showCombos,
-    state.config.showPlayers,
-    state.config.slideshowEnabled,
-    state.config.slideshowSpeed,
-    state.config.breakSongEnabled,
-  ]);
 
   // Persist config changes to durable storage. localStorage remains a cache/fallback,
   // but Supabase app_config is the source of truth for cold-start clients.
