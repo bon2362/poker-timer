@@ -28,6 +28,8 @@ const mockUseTimer = useTimer as jest.Mock;
 const players: Player[] = [
   { id: 'p1', name: 'Alice', avatarUrl: null, createdAt: '' },
   { id: 'p2', name: 'Bob', avatarUrl: null, createdAt: '' },
+  { id: 'p3', name: 'Cara', avatarUrl: null, createdAt: '' },
+  { id: 'p4', name: 'Dan', avatarUrl: null, createdAt: '' },
 ];
 
 const baseSession: Session = {
@@ -63,18 +65,20 @@ function sp(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
   };
 }
 
-function setup(session: Session = baseSession) {
+function setup(session: Session = baseSession, sessionPlayers: SessionPlayer[] = [sp(), sp({ id: 'sp-2', playerId: 'p2', tableNumber: 2 })]) {
   const confirmMerge = jest.fn().mockResolvedValue(undefined);
+  const movePlayerToTable = jest.fn().mockResolvedValue(undefined);
   const timerDispatch = jest.fn();
   mockUseGame.mockReturnValue({
     activeSession: session,
-    sessionPlayers: [sp(), sp({ id: 'sp-2', playerId: 'p2', tableNumber: 2 })],
+    sessionPlayers,
     players,
     confirmMerge,
     doRebuy: jest.fn(),
     undoRebuy: jest.fn(),
     doAddon: jest.fn(),
     undoAddon: jest.fn(),
+    movePlayerToTable,
     eliminatePlayer: jest.fn(),
     declareWinner: jest.fn(),
     undoEliminate: jest.fn(),
@@ -83,7 +87,7 @@ function setup(session: Session = baseSession) {
     state: { config: { showPlayers: true, showCombos: true } },
     dispatch: timerDispatch,
   });
-  return { confirmMerge, timerDispatch };
+  return { confirmMerge, movePlayerToTable, timerDispatch };
 }
 
 describe('MobileAdminPanel merge dialog', () => {
@@ -124,5 +128,50 @@ describe('MobileAdminPanel merge dialog', () => {
     render(<MobileAdminPanel onClose={jest.fn()} />);
 
     expect(screen.queryByText('Объединить столы?')).not.toBeInTheDocument();
+  });
+});
+
+describe('MobileAdminPanel two-table layout', () => {
+  const fourPlayers = [
+    sp({ id: 'sp-1', playerId: 'p1', tableNumber: 1 }),
+    sp({ id: 'sp-2', playerId: 'p2', tableNumber: 1 }),
+    sp({ id: 'sp-3', playerId: 'p3', tableNumber: 2 }),
+    sp({ id: 'sp-4', playerId: 'p4', tableNumber: 2 }),
+  ];
+
+  test('groups active players by table before merge', () => {
+    setup({ ...baseSession, mergeThreshold: 2 }, fourPlayers);
+
+    render(<MobileAdminPanel onClose={jest.fn()} />);
+
+    expect(screen.getByText('Стол 1 (2)')).toBeInTheDocument();
+    expect(screen.getByText('Стол 2 (2)')).toBeInTheDocument();
+    expect(screen.queryByText('В игре (4)')).not.toBeInTheDocument();
+  });
+
+  test('moves active player to another table from expanded row', async () => {
+    const { movePlayerToTable } = setup({ ...baseSession, mergeThreshold: 2 }, fourPlayers);
+    const user = userEvent.setup();
+
+    render(<MobileAdminPanel onClose={jest.fn()} />);
+    await user.click(screen.getByRole('button', { name: /Alice/ }));
+    await user.click(screen.getByRole('button', { name: '→ Стол 2' }));
+
+    expect(movePlayerToTable).toHaveBeenCalledWith('sp-1', 2);
+  });
+
+  test('uses unified active list and hides move controls after merge', async () => {
+    setup(
+      { ...baseSession, tablesMergedAt: '2026-05-06T00:00:00Z' },
+      fourPlayers.map(player => ({ ...player, tableNumber: 1 }))
+    );
+    const user = userEvent.setup();
+
+    render(<MobileAdminPanel onClose={jest.fn()} />);
+    expect(screen.getByText('В игре (4)')).toBeInTheDocument();
+    expect(screen.queryByText('Стол 1 (4)')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Alice/ }));
+    expect(screen.queryByRole('button', { name: '→ Стол 2' })).not.toBeInTheDocument();
   });
 });

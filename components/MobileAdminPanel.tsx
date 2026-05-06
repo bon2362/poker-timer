@@ -11,13 +11,25 @@ type Props = { onClose: () => void };
 
 /* ── Active player row (collapsible) ── */
 function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
-  const { activeSession, doRebuy, undoRebuy, doAddon, undoAddon, eliminatePlayer, declareWinner, sessionPlayers } = useGame();
+  const {
+    activeSession,
+    doRebuy,
+    undoRebuy,
+    doAddon,
+    undoAddon,
+    movePlayerToTable,
+    eliminatePlayer,
+    declareWinner,
+    sessionPlayers,
+  } = useGame();
   const { startMinute } = useMinuteTimer();
   const [expanded, setExpanded] = useState(false);
   if (!activeSession) return null;
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
   const isLastPlayer = activePlayers.length === 1;
+  const canMoveTables = activeSession.numberOfTables === 2 && !activeSession.tablesMergedAt;
+  const targetTable = sp.tableNumber === 1 ? 2 : 1;
 
   const btnBase = 'flex items-center justify-center rounded-xl border font-semibold cursor-pointer active:scale-95 transition-transform';
 
@@ -86,6 +98,15 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
           )}
 
           {/* Eliminate / Winner + Minute */}
+          {canMoveTables && (
+            <button
+              onClick={async () => { await movePlayerToTable(sp.id, targetTable); setExpanded(false); }}
+              className={`${btnBase} w-full py-3 text-[15px] bg-[#242020] border-[#554444] text-[#d0aaaa] hover:bg-[#302424]`}
+            >
+              {sp.tableNumber === 1 ? '→ Стол 2' : '← Стол 1'}
+            </button>
+          )}
+
           <div className="flex gap-2">
             {isLastPlayer ? (
               <button
@@ -153,6 +174,10 @@ export function MobileAdminPanel({ onClose }: Props) {
   const eliminated = sessionPlayers
     .filter(p => p.status === 'eliminated' || p.status === 'winner')
     .sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0));
+  const tableSections = [
+    { tableNumber: 1, players: activePlayers.filter(p => p.tableNumber === 1) },
+    { tableNumber: 2, players: activePlayers.filter(p => p.tableNumber === 2) },
+  ];
 
   useEffect(() => {
     if (!shouldPromptMerge) return;
@@ -237,16 +262,33 @@ export function MobileAdminPanel({ onClose }: Props) {
         <div className="flex-1 overflow-y-auto px-4 py-4 pb-8 flex flex-col gap-4">
           {/* Active players */}
           {activePlayers.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <div className="text-[11px] text-[#444] tracking-[2px] uppercase px-1">
-                В игре ({activePlayers.length})
+            isTwoTableActive ? (
+              <div className="flex flex-col gap-4">
+                {tableSections.map(section => (
+                  <div key={section.tableNumber} className="flex flex-col gap-3">
+                    <div className="sticky top-0 z-10 -mx-4 border-y border-[#2a2a2a] bg-[#1a1a1a]/95 px-4 py-2 text-[11px] text-[#444] tracking-[2px] uppercase backdrop-blur-sm">
+                      Стол {section.tableNumber} ({section.players.length})
+                    </div>
+                    {section.players.map(sp => {
+                      const player = players.find(p => p.id === sp.playerId);
+                      if (!player) return null;
+                      return <PlayerAdminRow key={sp.id} sp={sp} player={player} />;
+                    })}
+                  </div>
+                ))}
               </div>
-              {activePlayers.map(sp => {
-                const player = players.find(p => p.id === sp.playerId);
-                if (!player) return null;
-                return <PlayerAdminRow key={sp.id} sp={sp} player={player} />;
-              })}
-            </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="text-[11px] text-[#444] tracking-[2px] uppercase px-1">
+                  В игре ({activePlayers.length})
+                </div>
+                {activePlayers.map(sp => {
+                  const player = players.find(p => p.id === sp.playerId);
+                  if (!player) return null;
+                  return <PlayerAdminRow key={sp.id} sp={sp} player={player} />;
+                })}
+              </div>
+            )
           )}
 
           {/* Eliminated players */}
