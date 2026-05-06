@@ -6,9 +6,9 @@ export const DEFAULT_CONFIG: Config = {
   breakEvery: 2,
   showCombos: true,
   showPlayers: true,
-  slideshowEnabled: false,
-  slideshowSpeed: 5,
-  breakSongEnabled: false,
+  slideshowEnabled: true,
+  slideshowSpeed: 7,
+  breakSongEnabled: true,
   blindLevels: [
     { sb: 10,  bb: 20   },
     { sb: 20,  bb: 40   },

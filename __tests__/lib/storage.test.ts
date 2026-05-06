@@ -17,6 +17,13 @@ describe('loadConfig', () => {
     expect(config).toEqual(DEFAULT_CONFIG);
   });
 
+  test('uses break media defaults', () => {
+    const config = loadConfig();
+    expect(config.slideshowEnabled).toBe(true);
+    expect(config.slideshowSpeed).toBe(7);
+    expect(config.breakSongEnabled).toBe(true);
+  });
+
   test('returns parsed config when present in localStorage', () => {
     localStorage.setItem('pokerTimerConfig', JSON.stringify(mockConfig));
     const config = loadConfig();
