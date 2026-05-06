@@ -101,4 +101,19 @@ describe('GamePanel', () => {
     expect(screen.getByText('В игре (2)')).toBeInTheDocument();
     expect(screen.getByText('Фишек в игре')).toBeInTheDocument();
   });
+
+  test('renders eliminated players in one common section after merge', () => {
+    setup(
+      { ...baseSession, numberOfTables: 2, tablesMergedAt: '2026-05-06T00:00:00Z' },
+      [
+        sp({ id: 'sp-1', playerId: 'p1', tableNumber: 1 }),
+        sp({ id: 'sp-2', playerId: 'p2', tableNumber: 1, status: 'eliminated', finishPosition: 2 }),
+      ]
+    );
+
+    render(<GamePanel isOpen onToggle={jest.fn()} />);
+
+    expect(screen.queryByText(/Стол 1/)).not.toBeInTheDocument();
+    expect(screen.getByText('Вылетели (1)')).toBeInTheDocument();
+  });
 });

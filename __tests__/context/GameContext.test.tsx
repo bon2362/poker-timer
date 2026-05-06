@@ -474,6 +474,27 @@ describe('GameContext — extended actions', () => {
     });
   });
 
+  test('19b. undoEliminate restores merged players to table 1', async () => {
+    const mergedSession = { ...mockSession, numberOfTables: 2, tablesMergedAt: '2026-05-06T00:00:00Z' };
+    const eliminatedSp = { ...mockSp, status: 'eliminated' as const, finishPosition: 2, eliminatedAt: '2024-01-01', tableNumber: 2 };
+    mockFetchActiveSession.mockResolvedValue({ session: mergedSession, sessionPlayers: [eliminatedSp] });
+    mockUpdateSessionPlayer.mockResolvedValue({ ...eliminatedSp, status: 'playing', finishPosition: null, eliminatedAt: null, tableNumber: 1 });
+
+    renderExtended();
+    await waitReady();
+
+    await act(async () => {
+      await gameCtxRef!.undoEliminate('sp-1');
+    });
+
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', {
+      status: 'playing',
+      finishPosition: null,
+      eliminatedAt: null,
+      tableNumber: 1,
+    });
+  });
+
   test('20. undoRebuy decrements rebuys', async () => {
     const spWithRebuy = { ...mockSp, rebuys: 2 };
     mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [spWithRebuy] });

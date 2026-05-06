@@ -314,9 +314,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       status: 'playing',
       finishPosition: null,
       eliminatedAt: null,
+      ...(state.activeSession?.tablesMergedAt ? { tableNumber: 1 } : {}),
     });
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
-  }, []);
+  }, [state.activeSession?.tablesMergedAt]);
 
   const undoRebuy = useCallback(async (sessionPlayerId: string) => {
     const sp = state.sessionPlayers.find(p => p.id === sessionPlayerId);
