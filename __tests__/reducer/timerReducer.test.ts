@@ -426,6 +426,30 @@ describe('SAVE_DISPLAY_CONFIG', () => {
   });
 });
 
+describe('RESTORE_CONFIG', () => {
+  test('rebuilds stages when timer is at the initial stage start', () => {
+    const state = makeState();
+    const config = { ...DEFAULT_CONFIG, levelDuration: 5, breakSongEnabled: true };
+    const next = timerReducer(state, { type: 'RESTORE_CONFIG', config });
+
+    expect(next.config.breakSongEnabled).toBe(true);
+    expect(next.stages[0].duration).toBe(300);
+    expect(next.timeLeft).toBe(300);
+  });
+
+  test('does not replace active persisted stages while a tournament is in progress', () => {
+    const state = makeRunningState(500, { currentStage: 1 });
+    const originalStages = state.stages;
+    const config = { ...DEFAULT_CONFIG, levelDuration: 5 };
+    const next = timerReducer(state, { type: 'RESTORE_CONFIG', config });
+
+    expect(next.config.levelDuration).toBe(5);
+    expect(next.stages).toBe(originalStages);
+    expect(next.currentStage).toBe(1);
+    expect(next.timeLeft).toBe(500);
+  });
+});
+
 describe('JUMP_TO_END', () => {
   test('sets timeLeft to 65 and elapsedBeforePause to dur-65', () => {
     const stages = buildStages(DEFAULT_CONFIG);

@@ -5,7 +5,7 @@
 --   Dashboard → your project → SQL Editor → paste and Run
 
 -- 1. Add stages_json: stores the full stage list so the RPC can navigate stages
---    without knowing the app config (which lives in localStorage)
+--    without requiring a currently open web client to rebuild the app config
 ALTER TABLE timer_state
   ADD COLUMN IF NOT EXISTS stages_json JSONB;
 

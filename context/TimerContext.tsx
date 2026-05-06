@@ -4,6 +4,7 @@ import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
+import { fetchAppConfig, normalizeConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import { useGame } from '@/context/GameContext';
 import type { TimerState, Action, DisplayConfigSnapshot } from '@/types/timer';
@@ -82,9 +83,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   });
 
   const prevDisplayRef = useRef(toDisplaySnapshot(state));
-  const displaySnapshotRef = useRef(toDisplaySnapshot(state));
-
-  displaySnapshotRef.current = toDisplaySnapshot(state);
+  const saveConfigQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const appConfigRestoringRef = useRef(false);
+  const didStartConfigPersistRef = useRef(false);
 
   // Timer tick — just recomputes timeLeft from anchor, no decrement
   useEffect(() => {
@@ -132,6 +133,27 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [activeSession?.createdAt, gameLoading]);
 
+  // --- Restore durable app config from Supabase on cold start ---
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchAppConfig().then(config => {
+      if (cancelled) return;
+      if (config) {
+        appConfigRestoringRef.current = true;
+        dispatch({ type: 'RESTORE_CONFIG', config });
+        return;
+      }
+
+      saveConfigQueueRef.current = saveConfigQueueRef.current
+        .catch(() => {})
+        .then(() => saveAppConfig(state.config));
+    });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- Realtime: subscribe + receive anchor state from other devices ---
   useEffect(() => {
     const channel = channelRef.current;
@@ -143,18 +165,34 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       fromDisplayBroadcastRef.current = true;
       dispatch({ type: 'RESTORE_DISPLAY', config: payload });
     });
-    channel.on('broadcast', { event: 'display-request' }, () => {
-      channel.send({ type: 'broadcast', event: 'display', payload: displaySnapshotRef.current });
-    });
-    channel.subscribe((status: string) => {
-      if (status === 'SUBSCRIBED') {
-        channel.send({ type: 'broadcast', event: 'display-request', payload: {} });
-      }
-    });
+    channel.subscribe();
     return () => {
       getClient()?.removeChannel(channel);
       channelRef.current = getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main');
     };
+  }, []);
+
+  // --- Realtime DB sync for durable app config ---
+  useEffect(() => {
+    const client = getClient();
+    if (!client) return;
+
+    const channel = client
+      .channel('app-config-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_config', filter: 'id=eq.main' },
+        (payload) => {
+          const row = payload.new as Record<string, unknown> | null;
+          const config = normalizeConfig(row?.config_json);
+          if (!config) return;
+          appConfigRestoringRef.current = true;
+          dispatch({ type: 'RESTORE_CONFIG', config });
+        }
+      )
+      .subscribe();
+
+    return () => { client.removeChannel(channel); };
   }, []);
 
   // --- Event-driven sync: persist + broadcast only when significant state changes ---
@@ -284,6 +322,24 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     state.config.slideshowSpeed,
     state.config.breakSongEnabled,
   ]);
+
+  // Persist config changes to durable storage. localStorage remains a cache/fallback,
+  // but Supabase app_config is the source of truth for cold-start clients.
+  useEffect(() => {
+    if (!didStartConfigPersistRef.current) {
+      didStartConfigPersistRef.current = true;
+      return;
+    }
+
+    if (appConfigRestoringRef.current) {
+      appConfigRestoringRef.current = false;
+      return;
+    }
+
+    saveConfigQueueRef.current = saveConfigQueueRef.current
+      .catch(() => {})
+      .then(() => saveAppConfig(state.config));
+  }, [state.config]);
 
   return (
     <TimerContext.Provider value={{ state, dispatch }}>

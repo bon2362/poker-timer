@@ -22,6 +22,12 @@ jest.mock('@/lib/supabase/timerState', () => ({
   saveTimerState: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/lib/supabase/appConfig', () => ({
+  fetchAppConfig: jest.fn().mockResolvedValue(null),
+  normalizeConfig: jest.fn((value) => value),
+  saveAppConfig: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('@/lib/audio', () => ({ playSound: jest.fn() }));
 
 jest.mock('@/context/GameContext', () => ({
@@ -46,7 +52,9 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 // --- Component under test ---
 import { TimerProvider, useTimer } from '@/context/TimerContext';
 import { fetchTimerState, saveTimerState } from '@/lib/supabase/timerState';
+import { fetchAppConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { getTimerChannel } from '@/supabase/client';
+import { DEFAULT_CONFIG } from '@/lib/storage';
 
 function TestConsumer() {
   const { state, dispatch } = useTimer();
@@ -58,6 +66,7 @@ function TestConsumer() {
       <div data-testid="timeLeft">{state.timeLeft}</div>
       <div data-testid="pendingSound">{state.pendingSound ?? 'null'}</div>
       <div data-testid="showCombos">{String(state.config.showCombos)}</div>
+      <div data-testid="breakSong">{String(state.config.breakSongEnabled)}</div>
       <button onClick={() => dispatch({ type: 'TOGGLE_PAUSE' })}>toggle</button>
       <button onClick={() => dispatch({ type: 'NEXT_STAGE' })}>next</button>
       <button onClick={() => dispatch({ type: 'PREV_STAGE' })}>prev</button>
@@ -81,6 +90,8 @@ function renderWithProvider() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (fetchAppConfig as jest.Mock).mockResolvedValue(null);
+  (saveAppConfig as jest.Mock).mockResolvedValue(undefined);
   localStorageMock.clear();
   jest.useRealTimers();
 });
@@ -385,5 +396,19 @@ describe('TimerContext', () => {
     });
 
     expect(screen.getByTestId('showCombos').textContent).not.toBe(initialCombos);
+  });
+
+  test('17. restores durable app config on cold start without another client', async () => {
+    (fetchAppConfig as jest.Mock).mockResolvedValueOnce({
+      ...DEFAULT_CONFIG,
+      levelDuration: 5,
+      breakSongEnabled: true,
+    });
+
+    renderWithProvider();
+
+    await waitFor(() => expect(screen.getByTestId('breakSong')).toHaveTextContent('true'));
+    expect(screen.getByTestId('timeLeft')).toHaveTextContent('300');
+    expect(saveAppConfig).not.toHaveBeenCalled();
   });
 });

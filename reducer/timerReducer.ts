@@ -33,6 +33,16 @@ function findRestoredStageIndex(stages: Stage[], restored: RestoredStageInfo): n
   return stages.findIndex(stage => stageMatchesRestoredInfo(stage, restored));
 }
 
+function isAtInitialStageStart(state: TimerState): boolean {
+  return (
+    state.currentStage === 0 &&
+    state.elapsedBeforePause === 0 &&
+    state.isPaused &&
+    !state.isOver &&
+    state.timeLeft === state.stages[0]?.duration
+  );
+}
+
 export function timerReducer(state: TimerState, action: Action): TimerState {
   switch (action.type) {
     case 'TICK': {
@@ -245,6 +255,26 @@ export function timerReducer(state: TimerState, action: Action): TimerState {
     case 'SAVE_DISPLAY_CONFIG': {
       saveConfig(action.config);
       return { ...state, config: action.config };
+    }
+
+    case 'RESTORE_CONFIG': {
+      saveConfig(action.config);
+      if (!isAtInitialStageStart(state)) {
+        return { ...state, config: action.config };
+      }
+      const stages = buildStages(action.config);
+      return {
+        ...state,
+        config: action.config,
+        stages,
+        currentStage: 0,
+        anchorTs: Date.now(),
+        elapsedBeforePause: 0,
+        timeLeft: stages[0].duration,
+        warnedOneMin: false,
+        pendingSound: null,
+        tractorMomentActive: false,
+      };
     }
 
     case 'CLEAR_SOUND': {

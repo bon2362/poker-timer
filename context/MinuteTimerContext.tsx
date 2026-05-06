@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { getClient } from '@/supabase/client';
+import { fetchMinuteTimerState, saveMinuteTimerState } from '@/lib/supabase/minuteTimerState';
 
 type MinuteTimerState = {
   active: boolean;
@@ -25,25 +26,30 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
   const [playerId, setPlayerId] = useState('');
   const [timeLeft, setTimeLeft] = useState(MINUTE_DURATION);
   const endTsRef = useRef<number>(0);
-  const fromBroadcastRef = useRef(false);
-  const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getClient>>['channel']> | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
-  // Lazily get or create channel
-  function getChannel() {
-    if (channelRef.current) return channelRef.current;
-    const client = getClient();
-    if (!client) return null;
-    channelRef.current = client.channel('minute-timer', { config: { broadcast: { self: false } } });
-    return channelRef.current;
-  }
+  const persist = useCallback((next: { active: boolean; playerName: string; playerId: string; endTs: number }) => {
+    saveQueueRef.current = saveQueueRef.current
+      .catch(() => {})
+      .then(() => saveMinuteTimerState(next));
+  }, []);
 
-  // Broadcast helper — send event to other devices
-  const broadcast = useCallback((event: 'minute_start' | 'minute_stop', payload: Record<string, unknown>) => {
-    const ch = getChannel();
-    if (ch && ch.state === 'joined') {
-      ch.send({ type: 'broadcast', event, payload });
+  const applyRemoteState = useCallback((next: { active: boolean; playerName: string; playerId: string; endTs: number }) => {
+    const remaining = Math.ceil((next.endTs - Date.now()) / 1000);
+    if (!next.active || remaining <= 0) {
+      setActive(false);
+      setPlayerName('');
+      setPlayerId('');
+      setTimeLeft(MINUTE_DURATION);
+      endTsRef.current = 0;
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    setPlayerName(next.playerName);
+    setPlayerId(next.playerId);
+    endTsRef.current = next.endTs;
+    setTimeLeft(remaining);
+    setActive(true);
   }, []);
 
   const startMinute = useCallback((name: string, id: string) => {
@@ -53,8 +59,8 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
     setTimeLeft(MINUTE_DURATION);
     endTsRef.current = endTs;
     setActive(true);
-    broadcast('minute_start', { playerName: name, playerId: id, endTs });
-  }, [broadcast]);
+    persist({ active: true, playerName: name, playerId: id, endTs });
+  }, [persist]);
 
   const stopMinute = useCallback(() => {
     setActive(false);
@@ -62,45 +68,44 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
     setPlayerId('');
     setTimeLeft(MINUTE_DURATION);
     endTsRef.current = 0;
-    if (!fromBroadcastRef.current) {
-      broadcast('minute_stop', {});
-    }
-    fromBroadcastRef.current = false;
-  }, [broadcast]);
+    persist({ active: false, playerName: '', playerId: '', endTs: 0 });
+  }, [persist]);
 
-  // Subscribe to broadcast from other devices
+  // Restore durable minute timer state on cold start.
   useEffect(() => {
-    const ch = getChannel();
-    if (!ch) return;
-
-    ch.on('broadcast', { event: 'minute_start' }, ({ payload }: { payload: Record<string, unknown> }) => {
-      const { playerName: name, playerId: id, endTs } = payload as {
-        playerName: string; playerId: string; endTs: number;
-      };
-      const remaining = Math.ceil((endTs - Date.now()) / 1000);
-      if (remaining <= 0) return; // already expired
-      fromBroadcastRef.current = true;
-      setPlayerName(name);
-      setPlayerId(id);
-      endTsRef.current = endTs;
-      setTimeLeft(remaining);
-      setActive(true);
+    let cancelled = false;
+    fetchMinuteTimerState().then(saved => {
+      if (cancelled || !saved) return;
+      applyRemoteState(saved);
     });
+    return () => { cancelled = true; };
+  }, [applyRemoteState]);
 
-    ch.on('broadcast', { event: 'minute_stop' }, () => {
-      fromBroadcastRef.current = true;
-      setActive(false);
-      setPlayerName('');
-      setPlayerId('');
-      setTimeLeft(MINUTE_DURATION);
-      endTsRef.current = 0;
-    });
+  // Subscribe to durable DB changes from other devices.
+  useEffect(() => {
+    const client = getClient();
+    if (!client) return;
 
-    ch.subscribe();
+    const channel = client
+      .channel('minute-timer-state-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'minute_timer_state', filter: 'id=eq.main' },
+        (payload) => {
+          const row = payload.new as Record<string, unknown> | null;
+          if (!row) return;
+          applyRemoteState({
+            active: row.active as boolean,
+            playerName: (row.player_name as string | null) ?? '',
+            playerId: (row.player_id as string | null) ?? '',
+            endTs: Number(row.end_ts ?? 0),
+          });
+        }
+      )
+      .subscribe();
 
-    return () => { getClient()?.removeChannel(ch); channelRef.current = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => { client.removeChannel(channel); };
+  }, [applyRemoteState]);
 
   // Tick every 200ms for smooth countdown
   useEffect(() => {
@@ -116,6 +121,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
           setPlayerId('');
           setTimeLeft(MINUTE_DURATION);
           endTsRef.current = 0;
+          persist({ active: false, playerName: '', playerId: '', endTs: 0 });
         }, 2000);
         clearInterval(id);
       } else {

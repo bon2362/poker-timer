@@ -55,21 +55,32 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'REMOVE_PLAYER':
       return { ...state, players: state.players.filter(p => p.id !== action.id) };
     case 'SET_SESSION':
-      return { ...state, activeSession: action.session, sessionPlayers: action.sessionPlayers };
-    case 'ADD_SESSION_PLAYER': {
-      const exists = state.sessionPlayers.some(sp => sp.id === action.sessionPlayer.id);
-      if (exists) {
-        return { ...state, sessionPlayers: state.sessionPlayers.map(sp => sp.id === action.sessionPlayer.id ? action.sessionPlayer : sp) };
-      }
-      return { ...state, sessionPlayers: [...state.sessionPlayers, action.sessionPlayer] };
-    }
-    case 'UPDATE_SESSION_PLAYER':
       return {
         ...state,
-        sessionPlayers: state.sessionPlayers.map(sp =>
-          sp.id === action.sessionPlayer.id ? action.sessionPlayer : sp
-        ),
+        activeSession: action.session,
+        sessionPlayers: action.sessionPlayers,
+        showWinner: action.sessionPlayers.some(sp => sp.status === 'winner'),
       };
+    case 'ADD_SESSION_PLAYER': {
+      const exists = state.sessionPlayers.some(sp => sp.id === action.sessionPlayer.id);
+      const sessionPlayers = exists
+        ? state.sessionPlayers.map(sp => sp.id === action.sessionPlayer.id ? action.sessionPlayer : sp)
+        : [...state.sessionPlayers, action.sessionPlayer];
+      if (exists) {
+        return { ...state, sessionPlayers, showWinner: sessionPlayers.some(sp => sp.status === 'winner') };
+      }
+      return { ...state, sessionPlayers, showWinner: sessionPlayers.some(sp => sp.status === 'winner') };
+    }
+    case 'UPDATE_SESSION_PLAYER': {
+      const sessionPlayers = state.sessionPlayers.map(sp =>
+        sp.id === action.sessionPlayer.id ? action.sessionPlayer : sp
+      );
+      return {
+        ...state,
+        sessionPlayers,
+        showWinner: sessionPlayers.some(sp => sp.status === 'winner'),
+      };
+    }
     case 'SHOW_WINNER':
       return { ...state, showWinner: true };
     case 'HIDE_WINNER':

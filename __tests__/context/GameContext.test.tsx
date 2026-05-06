@@ -566,6 +566,18 @@ describe('GameContext — extended actions', () => {
     expect(screen.getByTestId('show-winner')).toHaveTextContent('true');
   });
 
+  test('23a. initial fetch with winner restores showWinner on cold start', async () => {
+    mockFetchActiveSession.mockResolvedValue({
+      session: mockSession,
+      sessionPlayers: [{ ...mockSp, status: 'winner', finishPosition: 1 }],
+    });
+
+    renderExtended();
+    await waitReady();
+
+    expect(screen.getByTestId('show-winner')).toHaveTextContent('true');
+  });
+
   test('23b. confirmMerge calls RPC and refetches active session once', async () => {
     const mergedSession = { ...mockSession, numberOfTables: 2, tablesMergedAt: '2026-05-06T00:00:00Z' };
     mockMergeTables.mockResolvedValue(mergedSession);
