@@ -5,6 +5,18 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://bsptimer.online'),
   title: 'Poker Timer',
   description: 'Poker tournament timer',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/poker-timer-favicon/favicon.svg', type: 'image/svg+xml' },
+      { url: '/poker-timer-favicon/favicon-48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/poker-timer-favicon/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/poker-timer-favicon/favicon-16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/poker-timer-favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
