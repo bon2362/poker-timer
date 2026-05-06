@@ -217,6 +217,15 @@ export function PokerTimer() {
 
   const { songPaused, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
 
+  const handleToggleBreakSong = useCallback(() => {
+    if (!isOnBreak) return;
+    if (state.config.breakSongEnabled) {
+      toggleSong();
+      return;
+    }
+    dispatch({ type: 'SAVE_DISPLAY_CONFIG', config: { ...state.config, breakSongEnabled: true } });
+  }, [dispatch, isOnBreak, state.config, toggleSong]);
+
   useEffect(() => {
     if (!shouldPromptMerge) return;
     dispatch({ type: 'PAUSE_TIMER' });
@@ -399,8 +408,8 @@ export function PokerTimer() {
             onPrev={() => dispatch({ type: 'PREV_STAGE' })}
             onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
             onNext={() => dispatch({ type: 'NEXT_STAGE' })}
-            songMuted={state.config.breakSongEnabled ? songPaused : undefined}
-            onToggleSong={state.config.breakSongEnabled ? toggleSong : undefined}
+            songMuted={isOnBreak ? (state.config.breakSongEnabled ? songPaused : true) : undefined}
+            onToggleSong={isOnBreak ? handleToggleBreakSong : undefined}
           />
         </div>
       )}
@@ -443,8 +452,8 @@ export function PokerTimer() {
           onPrev={() => dispatch({ type: 'PREV_STAGE' })}
           onTogglePause={() => dispatch({ type: 'TOGGLE_PAUSE' })}
           onNext={() => dispatch({ type: 'NEXT_STAGE' })}
-          songMuted={isOnBreak && state.config.breakSongEnabled ? songPaused : undefined}
-          onToggleSong={isOnBreak && state.config.breakSongEnabled ? toggleSong : undefined}
+          songMuted={isOnBreak ? (state.config.breakSongEnabled ? songPaused : true) : undefined}
+          onToggleSong={isOnBreak ? handleToggleBreakSong : undefined}
         />
       )}
 
