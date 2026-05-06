@@ -39,6 +39,11 @@ function getSupabase() {
   return supabase;
 }
 
+function hasSupabaseEnv() {
+  loadEnvLocal();
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
 function isLocalBaseURL(baseURL: string | undefined) {
   if (!baseURL) return false;
   const { hostname } = new URL(baseURL);
@@ -141,6 +146,7 @@ async function eliminatePlayer(page: Page, playerName: string) {
 test.describe.serial('Two-table mode - Desktop', () => {
   test.beforeEach(async ({ baseURL, page }) => {
     test.skip(!isLocalBaseURL(baseURL), 'Two-table E2E mutates session data and only runs against local/CI baseURL');
+    test.skip(!hasSupabaseEnv(), 'Two-table E2E requires Supabase URL and anon key for isolated test data');
 
     const client = getSupabase();
     await cleanupTestData();
