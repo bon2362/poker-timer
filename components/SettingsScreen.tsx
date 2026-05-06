@@ -1073,12 +1073,12 @@ function CiCdTab({ refreshKey }: { refreshKey: number }) {
                     </a>
                   ) : (
                     <a
-                      href="https://poker-timer-black.vercel.app"
+                      href="https://bsptimer.online"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] text-violet-400 hover:text-violet-300"
                     >
-                      poker-timer-black.vercel.app →
+                      bsptimer.online →
                     </a>
                   )}
                 </div>

@@ -93,7 +93,7 @@ jobs:
           gh api repos/${{ github.repository }}/deployments/${{ steps.create_deployment.outputs.deployment_id }}/statuses \
             --method POST \
             -f state=${{ steps.vercel_deploy.outcome == 'success' && 'success' || 'failure' }} \
-            -f environment_url=https://poker-timer-black.vercel.app \
+            -f environment_url=https://bsptimer.online \
             -f description="Deployed to Vercel"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

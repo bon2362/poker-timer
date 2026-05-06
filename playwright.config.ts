@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 2,
   workers: isCI ? 1 : undefined,
   use: {
-    baseURL: isCI ? localBaseURL : process.env.PLAYWRIGHT_BASE_URL ?? 'https://poker-timer-black.vercel.app',
+    baseURL: isCI ? localBaseURL : process.env.PLAYWRIGHT_BASE_URL ?? 'https://bsptimer.online',
     trace: 'on-first-retry',
   },
   webServer: isCI

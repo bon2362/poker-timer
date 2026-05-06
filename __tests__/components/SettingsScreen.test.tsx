@@ -368,7 +368,7 @@ describe('SettingsScreen — CI/CD tab', () => {
       state: 'success',
       description: 'Deployment succeeded',
       createdAt: new Date().toISOString(),
-      deployUrl: 'https://poker-timer-black.vercel.app',
+      deployUrl: 'https://bsptimer.online',
       sha: 'abc1234',
       commitMessage: 'test commit message',
     },
@@ -545,6 +545,6 @@ describe('SettingsScreen — CI/CD tab', () => {
     await openCiCdTab();
 
     await waitFor(() => expect(screen.getByText('✕ failure')).toBeInTheDocument());
-    expect(screen.getByText('poker-timer-black.vercel.app →')).toBeInTheDocument();
+    expect(screen.getByText('bsptimer.online →')).toBeInTheDocument();
   });
 });

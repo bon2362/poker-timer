@@ -3,7 +3,7 @@
 ## Стек и ссылки
 
 - **Репозиторий:** https://github.com/bon2362/poker-timer
-- **Прод (Vercel):** https://poker-timer-black.vercel.app
+- **Прод (Vercel):** https://bsptimer.online
 - **Бэклог (GitHub Projects):** https://github.com/users/bon2362/projects/2
 
 ## Архитектура
