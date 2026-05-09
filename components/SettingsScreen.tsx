@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '5.1',
+    date: "09 May '26",
+    notes: 'Кликер: клавиша управления паузой изменена с Page Up/Down на Tab.',
+  },
+  {
     version: '5.0',
     date: "07 May '26",
     notes: 'Релиз к игре 10 мая: текущие правки завершены, приложение готово к боевому использованию.',

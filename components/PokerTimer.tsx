@@ -125,8 +125,8 @@ export function PokerTimer() {
     if (!isStillEliminated) setLoserOverlay(null);
   }, [loserOverlay, sessionPlayers]);
 
-  // Keyboard: Space / PageDown / PageUp → toggle pause (only when session active)
-  // PageDown & PageUp support USB presentation clickers (HP 2.4GHz etc.)
+  // Keyboard: Space / Tab → toggle pause (only when session active)
+  // Tab supports USB presentation clickers (HP 2.4GHz etc.)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!activeSession) return;
@@ -135,8 +135,7 @@ export function PokerTimer() {
 
       switch (e.code) {
         case 'Space':
-        case 'PageDown':
-        case 'PageUp':
+        case 'Tab':
           e.preventDefault();
           dispatch({ type: 'TOGGLE_PAUSE' });
           break;
