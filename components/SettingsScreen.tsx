@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '5.2',
+    date: "09 May '26",
+    notes: 'Кликер: Page Up → звук «Казино», Page Down → звук «Пидора ответ».',
+  },
+  {
     version: '5.1',
     date: "09 May '26",
     notes: 'Кликер: клавиша управления паузой изменена с Page Up/Down на Tab.',

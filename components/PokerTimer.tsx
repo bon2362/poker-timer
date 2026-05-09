@@ -16,6 +16,7 @@ import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
 import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
+import { playOneShot } from '@/lib/audio';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
@@ -125,8 +126,8 @@ export function PokerTimer() {
     if (!isStillEliminated) setLoserOverlay(null);
   }, [loserOverlay, sessionPlayers]);
 
-  // Keyboard: Space / Tab → toggle pause (only when session active)
-  // Tab supports USB presentation clickers (HP 2.4GHz etc.)
+  // Keyboard: Space / Tab → toggle pause; PageUp / PageDown → clicker sounds
+  // Tab, PageUp, PageDown support USB presentation clickers (HP 2.4GHz etc.)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!activeSession) return;
@@ -138,6 +139,14 @@ export function PokerTimer() {
         case 'Tab':
           e.preventDefault();
           dispatch({ type: 'TOGGLE_PAUSE' });
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          playOneShot('/audio/clicker-casino.mp3');
+          break;
+        case 'PageDown':
+          e.preventDefault();
+          playOneShot('/audio/clicker-pidora.mp3');
           break;
       }
     }

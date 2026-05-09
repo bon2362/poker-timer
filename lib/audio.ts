@@ -45,6 +45,11 @@ export function playTick(): void {
   } catch {}
 }
 
+/** Воспроизвести произвольный звуковой файл (для кликера и др.) */
+export function playOneShot(src: string): void {
+  new Audio(src).play().catch(() => {});
+}
+
 /** Звук победителя — аплодисменты */
 export function playWinnerFanfare(): { stop: () => void } {
   const audio = new Audio('/audio/applause.mp3');
