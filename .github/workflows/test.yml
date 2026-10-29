@@ -24,7 +24,8 @@ jobs:
           fail_ci_if_error: false
 
   e2e-tests:
-    runs-on: ubuntu-latest
+    # Playwright 1.59 does not yet support the Ubuntu 26.04 image behind ubuntu-latest.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
