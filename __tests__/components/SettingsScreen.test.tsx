@@ -115,6 +115,17 @@ describe('SettingsScreen — Tabs', () => {
 });
 
 describe('SettingsScreen — Changelog', () => {
+  test('shows v6.0 as the release prepared for the October 31 game', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    expect(screen.getByText('v6.0')).toBeInTheDocument();
+    await user.click(screen.getByText('v6.0'));
+
+    expect(screen.getByText("31 Oct '26")).toBeInTheDocument();
+    expect(screen.getByText(/Релиз к игре 31 октября/)).toBeInTheDocument();
+  });
+
   test('clicking version string opens changelog modal', async () => {
     const user = userEvent.setup();
     renderSettings();

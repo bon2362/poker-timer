@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '6.0',
+    date: "31 Oct '26",
+    notes: 'Релиз к игре 31 октября: перед блайндами 300 запускается новый минутный видеоролик с мягкими переходами изображения и звука.',
+  },
+  {
     version: '5.2',
     date: "09 May '26",
     notes: 'Кликер: Page Up → звук «Казино», Page Down → звук «Пидора ответ».',

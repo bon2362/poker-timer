@@ -28,6 +28,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
+      <head>
+        <link rel="preload" as="video" href="/video/blind-300.mp4" type="video/mp4" />
+      </head>
       <body className="bg-[#1a1a1a] text-white overflow-hidden">
         {children}
       </body>
