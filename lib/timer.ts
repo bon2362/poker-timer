@@ -1,5 +1,9 @@
 import type { Config, Stage } from '@/types/timer';
 
+export function shouldShowSidePanels(tractorMomentActive: boolean): boolean {
+  return !tractorMomentActive;
+}
+
 export function buildStages(config: Config): Stage[] {
   const levelDuration = config.levelDuration * 60;
   const breakDuration = config.breakDuration * 60;

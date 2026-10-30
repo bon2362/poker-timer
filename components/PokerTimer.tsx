@@ -17,6 +17,7 @@ import { LoserImageOverlay } from './LoserImageOverlay';
 import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
 import { playOneShot } from '@/lib/audio';
+import { shouldShowSidePanels } from '@/lib/timer';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
@@ -389,7 +390,7 @@ export function PokerTimer() {
       )}
 
       {/* Combos panel */}
-      {!state.isOver && (
+      {!state.isOver && shouldShowSidePanels(state.tractorMomentActive) && (
         <CombosPanel
           visible={state.config.showCombos !== false}
           onToggle={() => dispatch({ type: 'TOGGLE_COMBOS' })}
@@ -486,7 +487,7 @@ export function PokerTimer() {
       )}
 
       {/* Game panel */}
-      {activeSession && (
+      {activeSession && shouldShowSidePanels(state.tractorMomentActive) && (
         <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
       )}
 
