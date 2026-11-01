@@ -17,15 +17,15 @@ const sessionPlayerRow = {
 describe('Supabase session mapping', () => {
   test('maps new game-history fields and defaults absent legacy fields to null', () => {
     expect(toSession(sessionRow)).toMatchObject({
-      slug: null, finishedAt: null, finishedAtApproximate: false, blindStructure: null,
+      slug: null, startedAt: null, finishedAt: null, finishedAtApproximate: false, blindStructure: null,
     });
     expect(toSession({
       ...sessionRow,
-      slug: '2026-november-01', finished_at: '2026-11-01T23:00:00Z',
+      slug: '2026-november-01', started_at: '2026-11-01T18:00:00Z', finished_at: '2026-11-01T23:00:00Z',
       finished_at_approximate: true,
       blind_structure: { levelDuration: 20, breakDuration: 10, breakEvery: 2, blindLevels: [] },
     })).toMatchObject({
-      slug: '2026-november-01', finishedAt: '2026-11-01T23:00:00Z',
+      slug: '2026-november-01', startedAt: '2026-11-01T18:00:00Z', finishedAt: '2026-11-01T23:00:00Z',
       finishedAtApproximate: true,
       blindStructure: { levelDuration: 20, breakDuration: 10, breakEvery: 2, blindLevels: [] },
     });

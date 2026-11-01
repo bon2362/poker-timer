@@ -1,3 +1,4 @@
+import { GameCard } from '@/components/games/GameCard';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { GameDetail } from '@/components/games/GameDetail';
 import { Leaderboard } from '@/components/games/Leaderboard';
@@ -17,13 +18,15 @@ const game: GameDetails = {
   players: [], winner: { id: 'sp', playerId: 'p', sessionId: 'game', name: 'Алекс', avatarUrl: null, rebuys: 0, hasAddon: false, status: 'winner', finishPosition: 1, payout: 1000, eliminatedAt: null, tableNumber: 1 },
   bank: 1000, photos: [], images: [],
 };
-test('old game hides missing photos, saved pictures and blinds, and marks approximate final time', () => {
+test('old game hides missing photos, saved pictures and blinds, and marks approximate game length', () => {
   render(<GameDetail game={game} now={new Date('2026-11-01')} />);
   expect(screen.queryByText('Фото с вечера')).not.toBeInTheDocument();
   expect(screen.queryByText('С экрана таймера')).not.toBeInTheDocument();
   expect(screen.queryByText(/УРОВНИ БЛАЙНДОВ/)).not.toBeInTheDocument();
   expect(screen.queryByText('Фото с вечера появятся позже')).not.toBeInTheDocument();
-  expect(screen.getByText('~00:41')).toBeInTheDocument();
+  expect(screen.getByText('Длительность')).toBeInTheDocument();
+  expect(screen.getByText('~1 ч 11 мин')).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Выигрыш' })).toBeInTheDocument();
 });
 test('only recent games without photos promise photos later', () => {
   render(<GameDetail game={game} now={new Date('2026-05-12')} />);
@@ -68,4 +71,17 @@ test('shows saved pictures and stored blind structure when present', () => {
 test('catalogue and parent layout forbid indexing for the entire games section', () => {
   expect(catalogueMetadata.robots).toEqual({ index: false, follow: false });
   expect(layoutMetadata.robots).toEqual({ index: false, follow: false });
+});
+test('exact game length uses the recorded start', () => {
+  render(<GameDetail game={{ ...game, session: { ...game.session, startedAt: '2026-05-10T22:00:00Z', finishedAtApproximate: false } }} now={new Date('2026-11-01')} />);
+  expect(screen.getByText('41 мин')).toBeInTheDocument();
+});
+test('catalog cover prefers the winner image, then a photo', () => {
+  const photo = { id: 'ph', url: '/full.jpg', thumbUrl: '/photo-thumb.jpg', path: 'full.jpg', thumbPath: 'photo-thumb.jpg', width: 800, height: 600, takenAt: null, createdAt: '', sessionId: 'game' };
+  const image = { id: 'img', playerId: 'p', name: 'Алекс', kind: 'winner' as const, finishPosition: 1, url: '/winner.jpg', thumbUrl: '/winner-thumb.jpg' };
+  const { container, rerender } = render(<GameCard game={{ ...game, photos: [photo], images: [image] }} />);
+  expect(container.querySelector('img')).toHaveAttribute('src', '/winner.jpg');
+  expect(screen.getByText('1 фото')).toBeInTheDocument();
+  rerender(<GameCard game={{ ...game, photos: [photo], images: [] }} />);
+  expect(container.querySelector('img')).toHaveAttribute('src', '/photo-thumb.jpg');
 });

@@ -42,7 +42,7 @@ export function AdminLoginForm({ onSuccess, onClose, redirectTo }: Props) {
   return (
     <div className="w-full max-w-[360px] mx-auto text-white font-sans">
       <div className="flex flex-col items-center mb-8 gap-4">
-        <img src="/poker-timer-favicon/favicon.svg" alt="Poker Timer" className="w-[52px] h-[52px]" />
+        <a href="/" aria-label="На главную"><img src="/poker-timer-favicon/favicon.svg" alt="Poker Timer" className="w-[52px] h-[52px]" /></a>
         <h1 className="text-[13px] font-semibold tracking-[3px] text-[#8a8a8a]">АДМИНКА</h1>
       </div>
       <form onSubmit={submit} className="flex flex-col gap-4">

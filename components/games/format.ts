@@ -12,4 +12,9 @@ export function gameDate(iso: string, weekday = false): string {
 export function gameTime(iso: string): string {
   return new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Belgrade', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
+export function gameDuration(startIso: string, endIso: string): string {
+  const minutes = Math.max(0, Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60000));
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours} ч ${String(minutes % 60).padStart(2, '0')} мин` : `${minutes} мин`;
+}
 export const headingClass = 'font-[family-name:var(--font-game-serif)]';

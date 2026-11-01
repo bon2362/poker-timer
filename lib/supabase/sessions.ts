@@ -20,6 +20,7 @@ export function toSession(row: Record<string, unknown>): Session {
     status: row.status as Session['status'],
     createdAt: row.created_at as string,
     slug: (row.slug as string | null) ?? null,
+    startedAt: (row.started_at as string | null) ?? null,
     finishedAt: (row.finished_at as string | null) ?? null,
     finishedAtApproximate: (row.finished_at_approximate as boolean | null) ?? false,
     blindStructure: (row.blind_structure as Session['blindStructure']) ?? null,
@@ -135,6 +136,14 @@ export async function mergeTables(sessionId: string): Promise<Session | null> {
   const { data, error } = await client.rpc('merge_tables', { p_session_id: sessionId });
   if (error) { console.error('mergeTables:', error); return null; }
   return data ? toSession(data as Record<string, unknown>) : null;
+}
+
+/** Records the first timer start. Other devices may report it too, so only an empty value is written. */
+export async function markSessionStarted(id: string, startedAt: string): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+  const { error } = await client.from('sessions').update({ started_at: startedAt }).eq('id', id).is('started_at', null);
+  if (error) console.error('markSessionStarted:', error);
 }
 
 export async function finishSession(id: string): Promise<boolean> {

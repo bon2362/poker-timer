@@ -29,6 +29,7 @@ export type Session = {
   status: SessionStatus
   createdAt: string
   slug?: string | null
+  startedAt?: string | null
   finishedAt?: string | null
   finishedAtApproximate?: boolean
   blindStructure?: BlindStructure | null
@@ -56,6 +57,6 @@ export type GameStats = {
   payouts: number[]  // index 0 = 1st place payout
 }
 
-export type NewSessionData = Omit<Session, 'id' | 'createdAt' | 'status' | 'slug' | 'finishedAt' | 'finishedAtApproximate'>
+export type NewSessionData = Omit<Session, 'id' | 'createdAt' | 'status' | 'slug' | 'startedAt' | 'finishedAt' | 'finishedAtApproximate'>
 import type { Config } from './timer'
 

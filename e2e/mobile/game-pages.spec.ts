@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Public game pages', () => {
   test('catalogue opens without login, forbids indexing and fits a phone', async ({ page }) => {
     await page.goto('/games');
-    await expect(page.getByRole('heading', { name: 'Таблица компании' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Общий рейтинг' })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.getByRole('heading', { name: 'Игры', exact: true })).toBeVisible();

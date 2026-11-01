@@ -30,6 +30,8 @@ jest.mock('@/lib/supabase/appConfig', () => ({
 
 jest.mock('@/lib/audio', () => ({ playSound: jest.fn() }));
 
+jest.mock('@/lib/supabase/sessions', () => ({ markSessionStarted: jest.fn().mockResolvedValue(undefined) }));
+
 jest.mock('@/context/GameContext', () => ({
   useGame: jest.fn(() => ({
     activeSession: null,
@@ -55,6 +57,8 @@ import { fetchTimerState, isPersistedTimerStateStaleForSession, saveTimerState }
 import { fetchAppConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { getTimerChannel } from '@/supabase/client';
 import { DEFAULT_CONFIG } from '@/lib/storage';
+import { markSessionStarted } from '@/lib/supabase/sessions';
+import { useGame } from '@/context/GameContext';
 
 function TestConsumer() {
   const { state, dispatch } = useTimer();
@@ -438,5 +442,32 @@ describe('TimerContext', () => {
     expect(screen.getByTestId('timeLeft')).toHaveTextContent('1080');
     expect(screen.getByTestId('breakSong')).toHaveTextContent('true');
     expect(saveTimerState).not.toHaveBeenCalled();
+  });
+});
+
+describe('game start time', () => {
+  const session = { id: 'game', createdAt: new Date(Date.now() - 60000).toISOString(), startedAt: null };
+  beforeEach(() => { jest.mocked(markSessionStarted).mockClear(); });
+  afterEach(() => { jest.mocked(useGame).mockReturnValue({ activeSession: null, loading: false } as never); });
+
+  test('is recorded once, on the first timer run of an active game', async () => {
+    jest.mocked(useGame).mockReturnValue({ activeSession: session, loading: false } as never);
+    render(<TimerProvider><TestConsumer /></TimerProvider>);
+    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
+    expect(markSessionStarted).not.toHaveBeenCalled();
+    await act(async () => { screen.getByText('toggle').click(); });
+    await waitFor(() => expect(markSessionStarted).toHaveBeenCalledTimes(1));
+    expect(markSessionStarted).toHaveBeenCalledWith('game', expect.any(String));
+    await act(async () => { screen.getByText('toggle').click(); });
+    await act(async () => { screen.getByText('toggle').click(); });
+    expect(markSessionStarted).toHaveBeenCalledTimes(1);
+  });
+
+  test('is not overwritten when already recorded', async () => {
+    jest.mocked(useGame).mockReturnValue({ activeSession: { ...session, startedAt: session.createdAt }, loading: false } as never);
+    render(<TimerProvider><TestConsumer /></TimerProvider>);
+    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
+    await act(async () => { screen.getByText('toggle').click(); });
+    expect(markSessionStarted).not.toHaveBeenCalled();
   });
 });

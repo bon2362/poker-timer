@@ -7,6 +7,7 @@ import { getClient, getTimerChannel } from '@/supabase/client';
 import { fetchAppConfig, normalizeConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import { useGame } from '@/context/GameContext';
+import { markSessionStarted } from '@/lib/supabase/sessions';
 import type { TimerState, Action } from '@/types/timer';
 
 type TimerContextValue = {
@@ -62,6 +63,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   });
 
   const saveConfigQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const startedSessionRef = useRef<string | null>(null);
+
+  // After "Начать игру" the timer waits on pause, so the game really starts on the first run.
+  useEffect(() => {
+    if (!activeSession || activeSession.startedAt || state.isPaused || state.isOver) return;
+    if (startedSessionRef.current === activeSession.id) return;
+    if (state.anchorTs < Date.parse(activeSession.createdAt)) return;
+    startedSessionRef.current = activeSession.id;
+    void markSessionStarted(activeSession.id, new Date(state.anchorTs).toISOString());
+  }, [activeSession, state.isPaused, state.isOver, state.anchorTs]);
   const appConfigRestoringRef = useRef(false);
   const didStartConfigPersistRef = useRef(false);
 

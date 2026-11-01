@@ -59,7 +59,7 @@ async function readGames(slug?: string): Promise<GameDetails[]> {
 }
 
 /** Uses only the public Supabase client; archived players remain included. */
-export async function listFinishedGames(): Promise<GameSummary[]> { return readGames(); }
+export async function listFinishedGames(): Promise<GameDetails[]> { return readGames(); }
 export async function getGameBySlug(slug: string): Promise<GameDetails | null> { return (await readGames(slug))[0] ?? null; }
 export async function getLeaderboard(): Promise<PublicLeaderboardRow[]> {
   const games = await readGames();
