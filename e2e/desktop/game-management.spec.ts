@@ -1,3 +1,4 @@
+import { loginAsAdmin } from '../helpers/admin';
 import { test, expect } from '@playwright/test';
 
 async function waitForDesktopTimerScreen(page: import('@playwright/test').Page) {
@@ -18,7 +19,8 @@ async function openSettingsViaGear(page: import('@playwright/test').Page) {
 }
 
 test.describe('Game Management - Desktop', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    await loginAsAdmin(page, baseURL);
     await waitForDesktopTimerScreen(page);
   });
 

@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useGame, type GameActionResult } from '@/context/GameContext';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 import { useTimer } from '@/context/TimerContext';
 import { calcGameStats } from '@/lib/game';
 import { Avatar } from '../PlayerManager/PlayerManager';
@@ -13,6 +14,8 @@ type Props = {
 };
 
 export function WinnerScreen({ onFinishGame }: Props) {
+  const { isAdmin, checking } = useAdminAuth();
+  const canControl = isAdmin && !checking;
   const { activeSession, sessionPlayers, players, finishGame } = useGame();
   const { state: timerState, dispatch: timerDispatch } = useTimer();
   const [winnerImageUrl, setWinnerImageUrl] = useState<string | null>(null);
@@ -22,6 +25,7 @@ export function WinnerScreen({ onFinishGame }: Props) {
   const [finishing, setFinishing] = useState(false);
 
   const handleFinishGame = async () => {
+    if (!canControl) return;
     setFinishError(null);
     setFinishing(true);
     if (!onFinishGame && !timerState.isPaused) {
@@ -115,13 +119,13 @@ export function WinnerScreen({ onFinishGame }: Props) {
             </div>
           )}
 
-          <button
+          {canControl && <button
             onClick={handleFinishGame}
             disabled={finishing}
             className="mt-2 bg-black/40 border border-white/20 text-white/60 rounded-xl px-8 py-3 text-[14px] cursor-pointer hover:border-white/40 hover:text-white/90 transition-colors backdrop-blur-sm"
           >
             {finishing ? 'Завершение…' : 'Завершить игру'}
-          </button>
+          </button>}
           {finishError && <p role="alert" className="text-[14px] text-red-400">{finishError}</p>}
         </div>
       </div>
@@ -170,13 +174,13 @@ export function WinnerScreen({ onFinishGame }: Props) {
           </div>
         )}
 
-        <button
+        {canControl && <button
           onClick={handleFinishGame}
           disabled={finishing}
           className="mt-2 bg-[#1e1e1e] border border-[#333] text-[#888] rounded-xl px-8 py-3 text-[15px] cursor-pointer hover:border-[#555] hover:text-[#ccc] transition-colors"
         >
           {finishing ? 'Завершение…' : 'Завершить игру'}
-        </button>
+        </button>}
         {finishError && <p role="alert" className="text-[14px] text-red-400">{finishError}</p>}
       </div>
     </div>

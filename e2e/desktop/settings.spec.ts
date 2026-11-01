@@ -1,3 +1,4 @@
+import { loginAsAdmin } from '../helpers/admin';
 import { test, expect } from '@playwright/test';
 
 async function waitForSettingsEntryPoints(page: import('@playwright/test').Page) {
@@ -8,7 +9,8 @@ async function waitForSettingsEntryPoints(page: import('@playwright/test').Page)
 }
 
 test.describe('Settings - Desktop', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    await loginAsAdmin(page, baseURL);
     await waitForSettingsEntryPoints(page);
   });
 

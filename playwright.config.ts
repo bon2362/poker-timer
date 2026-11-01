@@ -20,6 +20,8 @@ export default defineConfig({
         timeout: 120000,
         env: {
           CI: 'true',
+          ADMIN_PASSWORD: 'local-e2e-admin-password',
+          ADMIN_SESSION_SECRET: 'local-e2e-session-secret-not-for-production',
           NEXT_PUBLIC_SESSION_ID: 'ci-e2e',
         },
       }

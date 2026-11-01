@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useAdminAuth } from '@/context/AdminAuthContext';
+import { AdminLoginDialog } from './admin/AdminLoginForm';
 import { useTimer } from '@/context/TimerContext';
 import { MobileAdminPanel } from './MobileAdminPanel';
 import { MinuteTimerOverlay } from './MinuteTimerOverlay';
@@ -49,18 +51,26 @@ function Clock() {
 /* ── Main mobile view ── */
 export function MobileView() {
   const { state, dispatch } = useTimer();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, checking } = useAdminAuth();
+  const canControl = isAdmin && !checking;
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const lastTapRef = useRef<number>(0);
 
   // Double-tap on blind info → open admin panel
   function handleBlindDoubleTap() {
     const now = Date.now();
-    if (now - lastTapRef.current < 400) setIsAdmin(true);
+    if (lastTapRef.current && now - lastTapRef.current < 400 && !checking) {
+      if (canControl) setPanelOpen(true);
+      else setLoginOpen(true);
+      lastTapRef.current = 0;
+      return;
+    }
     lastTapRef.current = now;
   }
 
-  if (isAdmin) {
-    return <MobileAdminPanel onClose={() => setIsAdmin(false)} />;
+  if (canControl && panelOpen) {
+    return <MobileAdminPanel onClose={() => setPanelOpen(false)} />;
   }
 
   const stage = state.stages[state.currentStage];
@@ -137,7 +147,7 @@ export function MobileView() {
         )}
 
         {/* Play / Pause button */}
-        {!state.isOver && (
+        {canControl && !state.isOver && (
           <button
             onClick={() => dispatch({ type: 'TOGGLE_PAUSE' })}
             className={`w-full max-w-[280px] py-5 rounded-2xl text-[28px] font-bold border-none cursor-pointer transition-colors active:scale-95 ${
@@ -153,6 +163,8 @@ export function MobileView() {
         {/* Clock */}
         <Clock />
       </div>
+
+      {loginOpen && !canControl && <AdminLoginDialog onSuccess={() => { setLoginOpen(false); setPanelOpen(true); }} onClose={() => setLoginOpen(false)} />}
 
       {/* Minute timer overlay */}
       <MinuteTimerOverlay mobile />

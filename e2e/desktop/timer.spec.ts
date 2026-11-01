@@ -1,3 +1,4 @@
+import { loginAsAdmin, isLocalBaseURL, TEST_ADMIN_PASSWORD } from '../helpers/admin';
 import { test, expect } from '@playwright/test';
 
 async function waitForTimerApp(page: import('@playwright/test').Page) {
@@ -9,7 +10,8 @@ async function waitForTimerApp(page: import('@playwright/test').Page) {
 }
 
 test.describe('Timer - Desktop', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    await loginAsAdmin(page, baseURL);
     await waitForTimerApp(page);
   });
 
@@ -120,4 +122,55 @@ test.describe('Timer - Desktop', () => {
       await expect(page.getByRole('button', { name: 'Открыть настройки' })).not.toBeVisible();
     }
   });
+});
+
+test.describe('Timer viewer - Desktop', () => {
+  test('viewer sees the timer without settings, controls or setup overlay', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByText('Round 1', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Войти в управление' })).toBeEnabled();
+    await expect(page.locator('button[title="Settings"]')).toHaveCount(0);
+    await expect(page.locator('button[title="Следующий уровень"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /[▶⏸]/ })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Игра не настроена' })).toHaveCount(0);
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('PageUp');
+    await page.keyboard.press('PageDown');
+    await expect(page.getByText('Round 1', { exact: true })).toBeVisible();
+    await expect(page.getByText('20:00', { exact: true }).first()).toBeVisible();
+  });
+
+  test('desktop entry shows password form and successful login unlocks settings', async ({ page, baseURL }) => {
+    test.skip(!isLocalBaseURL(baseURL), 'Login test uses local fixture credentials only');
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Войти в управление' }).click();
+    await page.getByLabel('Пароль', { exact: true }).fill('wrong');
+    await page.getByRole('button', { name: 'Войти', exact: true }).click();
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Неверный пароль');
+    await expect(page.locator('button[title="Settings"]')).toHaveCount(0);
+    await page.getByLabel('Пароль', { exact: true }).fill(TEST_ADMIN_PASSWORD);
+    await page.getByRole('button', { name: 'Войти', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('button[title="Settings"]')).toBeVisible();
+    await page.reload();
+    await expect(page.locator('button[title="Settings"]')).toBeVisible();
+  });
+});
+
+test('admin login page supports phone and desktop widths and returns to the timer', async ({ page, baseURL }, testInfo) => {
+  test.skip(!isLocalBaseURL(baseURL), 'Login test uses local fixture credentials only');
+  await page.goto('/admin/login');
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.getByLabel('Пароль', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Войти', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: '← На сайт' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`admin-login-${width}.png`) });
+  }
+  await page.getByLabel('Пароль', { exact: true }).fill(TEST_ADMIN_PASSWORD);
+  await page.getByRole('button', { name: 'Войти', exact: true }).click();
+  await expect(page).toHaveURL(new URL('/', baseURL).href);
+  await expect(page.locator('button[title="Settings"]')).toBeVisible();
 });

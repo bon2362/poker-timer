@@ -1,3 +1,4 @@
+import { loginAsAdmin } from '../helpers/admin';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -148,6 +149,7 @@ test.describe.serial('Two-table mode - Desktop', () => {
     test.skip(!isLocalBaseURL(baseURL), 'Two-table E2E mutates session data and only runs against local/CI baseURL');
     test.skip(!hasSupabaseEnv(), 'Two-table E2E requires Supabase URL and anon key for isolated test data');
 
+    await loginAsAdmin(page, baseURL);
     const client = getSupabase();
     await cleanupTestData();
     await failOnSupabaseError(client.from('sessions').update({ status: 'finished' }).eq('status', 'active'));

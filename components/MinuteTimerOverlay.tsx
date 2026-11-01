@@ -1,5 +1,6 @@
 'use client';
 import { useMinuteTimer } from '@/context/MinuteTimerContext';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 import { useGame } from '@/context/GameContext';
 import { Avatar } from './PlayerManager/PlayerManager';
 
@@ -8,6 +9,8 @@ function pad(n: number) {
 }
 
 export function MinuteTimerOverlay({ mobile }: { mobile?: boolean }) {
+  const { isAdmin, checking } = useAdminAuth();
+  const canControl = isAdmin && !checking;
   const { state, stopMinute } = useMinuteTimer();
   const { players } = useGame();
   if (!state.active) return null;
@@ -46,14 +49,14 @@ export function MinuteTimerOverlay({ mobile }: { mobile?: boolean }) {
             <div className="text-red-400 text-[18px] font-bold animate-pulse">
               Время вышло!
             </div>
-          ) : (
+          ) : canControl ? (
             <button
               onClick={stopMinute}
               className="mt-4 bg-[#2a2a2a] border border-[#444] text-[#aaa] rounded-2xl px-8 py-4 text-[16px] font-semibold cursor-pointer hover:border-[#666] hover:text-white active:scale-95 transition-all"
             >
               Решение принято
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     );
@@ -80,14 +83,14 @@ export function MinuteTimerOverlay({ mobile }: { mobile?: boolean }) {
           <div className="text-red-400 text-[24px] font-bold animate-pulse">
             Время вышло!
           </div>
-        ) : (
+        ) : canControl ? (
           <button
             onClick={stopMinute}
             className="mt-2 bg-[#1e1e1e] border border-[#333] text-[#888] rounded-xl px-8 py-3 text-[15px] cursor-pointer hover:border-[#555] hover:text-[#ccc] transition-colors"
           >
             Решение принято
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

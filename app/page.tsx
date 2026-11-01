@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { AdminAuthProvider } from '@/context/AdminAuthContext';
 import { GameProvider } from '@/context/GameContext';
 import { TimerProvider } from '@/context/TimerContext';
 import { MinuteTimerProvider } from '@/context/MinuteTimerContext';
@@ -27,12 +28,14 @@ export default function Home() {
   if (isMobile === null) return null;
 
   return (
-    <GameProvider>
-      <TimerProvider>
-        <MinuteTimerProvider>
-          {isMobile ? <MobileView /> : <PokerTimer />}
-        </MinuteTimerProvider>
-      </TimerProvider>
-    </GameProvider>
+    <AdminAuthProvider>
+      <GameProvider>
+        <TimerProvider>
+          <MinuteTimerProvider>
+            {isMobile ? <MobileView /> : <PokerTimer />}
+          </MinuteTimerProvider>
+        </TimerProvider>
+      </GameProvider>
+    </AdminAuthProvider>
   );
 }

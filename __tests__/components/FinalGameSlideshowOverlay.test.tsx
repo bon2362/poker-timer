@@ -33,6 +33,13 @@ describe('FinalGameSlideshowOverlay', () => {
     global.Audio = OriginalAudio;
   });
 
+  test('keeps the slideshow visible without a finish action for a viewer', async () => {
+    render(<FinalGameSlideshowOverlay urls={['https://example.com/a.jpg']} controlsVisible canFinish={false} onFinish={jest.fn()} />);
+    await act(async () => {});
+    expect(document.querySelectorAll('img').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Завершить' })).not.toBeInTheDocument();
+  });
+
   test('uses the current lyric cue for song time', () => {
     expect(getCurrentFinalSongLyric(0).text).toBe('Тусклый свет кухни');       // before first cue → returns first
     expect(getCurrentFinalSongLyric(44).text).toBe('Потная раздача, бьётся в тишине'); // chorus 1 starts at 43.3

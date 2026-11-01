@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useAdminAuth } from '@/context/AdminAuthContext';
+import { AdminLoginDialog } from './admin/AdminLoginForm';
 import { useTimer } from '@/context/TimerContext';
 import { useGame } from '@/context/GameContext';
 import { BlindInfo } from './BlindInfo';
@@ -32,6 +34,9 @@ type LoserOverlayState = {
 
 export function PokerTimer() {
   const { state, dispatch } = useTimer();
+  const { isAdmin, checking } = useAdminAuth();
+  const canControl = isAdmin && !checking;
+  const [loginOpen, setLoginOpen] = useState(false);
   const { activeSession, showWinner, loading, sessionPlayers, players, finishGame, confirmMerge } = useGame();
 
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -133,7 +138,7 @@ export function PokerTimer() {
   // Tab, PageUp, PageDown support USB presentation clickers (HP 2.4GHz etc.)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!activeSession) return;
+      if (!canControl || !activeSession || loginOpen) return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -155,7 +160,7 @@ export function PokerTimer() {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [activeSession, dispatch]);
+  }, [activeSession, canControl, dispatch, loginOpen]);
 
   // Load slideshow photos on mount and preload them into browser cache
   useEffect(() => {
@@ -336,7 +341,7 @@ export function PokerTimer() {
     nextText = `${nextStage.sb} / ${nextStage.bb}`;
   }
 
-  if (state.screen === 'settings') {
+  if (canControl && state.screen === 'settings') {
     return (
       <SettingsScreen
         config={state.config}
@@ -357,7 +362,7 @@ export function PokerTimer() {
       {/* Top bar */}
       <div className="relative w-full px-7 pt-5">
         <BlindInfo stage={stage} />
-        <div className={`absolute top-5 right-10 flex gap-1 items-center transition-opacity duration-500 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`absolute top-5 right-10 z-[70] flex gap-1 items-center transition-opacity duration-500 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <button
             className="bg-transparent border-none text-[#555] text-[20px] cursor-pointer p-1 w-8"
             onClick={toggleFullscreen}
@@ -365,13 +370,13 @@ export function PokerTimer() {
           >
             ⛶
           </button>
-          <button
+          {canControl ? <button
             className="bg-transparent border-none text-[#383838] text-[20px] cursor-pointer p-1 w-8 hover:text-[#555] transition-colors"
             onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
             title="Settings"
           >
             {'⚙\uFE0E'}
-          </button>
+          </button> : <button disabled={checking} onClick={() => setLoginOpen(true)} className="min-h-11 px-3 text-[14px] text-[#8a8a8a] cursor-pointer disabled:opacity-50">Войти в управление</button>}
         </div>
       </div>
 
@@ -387,12 +392,12 @@ export function PokerTimer() {
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <h1 className="text-[48px] font-black text-violet-600">Tournament Over</h1>
           <p className="text-[#888] text-[18px]">Хорошая игра!</p>
-          <button
+          {canControl && <button
             className="bg-violet-700 text-white border-none rounded-lg px-6 h-11 text-[15px] cursor-pointer hover:bg-violet-800"
             onClick={() => dispatch({ type: 'RESTART' })}
           >
             ↺ Начать заново
-          </button>
+          </button>}
         </div>
       )}
 
@@ -400,7 +405,7 @@ export function PokerTimer() {
       {!state.isOver && shouldShowSidePanels(state.tractorMomentActive) && (
         <CombosPanel
           visible={state.config.showCombos !== false}
-          onToggle={() => dispatch({ type: 'TOGGLE_COMBOS' })}
+          onToggle={() => { if (canControl) dispatch({ type: 'TOGGLE_COMBOS' }); }}
         />
       )}
 
@@ -416,7 +421,7 @@ export function PokerTimer() {
       )}
 
       {/* Controls on top of slideshow — appear on mouse move */}
-      {showBreakMediaOverlay && (
+      {canControl && showBreakMediaOverlay && (
         <div className="fixed inset-x-0 bottom-0 z-30">
           <Controls
             isPaused={state.isPaused}
@@ -437,7 +442,7 @@ export function PokerTimer() {
       )}
 
       {/* Controls on top of tractor video overlay */}
-      {state.tractorMomentActive && !state.isOver && (
+      {canControl && state.tractorMomentActive && !state.isOver && (
         <div className="fixed inset-x-0 bottom-0 z-30">
           <Controls
             isPaused={state.isPaused}
@@ -461,7 +466,7 @@ export function PokerTimer() {
       )}
 
       {/* Controls — below next blind info so they never overlap */}
-      {!state.isOver && !state.tractorMomentActive && (
+      {canControl && !state.isOver && !state.tractorMomentActive && (
         <Controls
           isPaused={state.isPaused}
           isOver={state.isOver}
@@ -478,7 +483,7 @@ export function PokerTimer() {
       <ClockDisplay />
 
       {/* Session overlay — shown when loading done and no active session */}
-      {!loading && !activeSession && (
+      {canControl && !loading && !activeSession && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl p-8 text-center max-w-[320px]">
             <div className="text-4xl mb-4">🃏</div>
@@ -495,11 +500,11 @@ export function PokerTimer() {
       )}
 
       {/* Game panel */}
-      {activeSession && shouldShowSidePanels(state.tractorMomentActive) && (
+      {canControl && activeSession && shouldShowSidePanels(state.tractorMomentActive) && (
         <GamePanel isOpen={state.config.showPlayers} onToggle={() => dispatch({ type: 'TOGGLE_GAME_PANEL' })} />
       )}
 
-      {activeSession && shouldPromptMerge && (
+      {canControl && activeSession && shouldPromptMerge && (
         <MergeTablesDialog
           activePlayers={activePlayersCount}
           mergeThreshold={activeSession.mergeThreshold}
@@ -524,6 +529,8 @@ export function PokerTimer() {
         />
       )}
 
+      {loginOpen && !canControl && <AdminLoginDialog onSuccess={() => setLoginOpen(false)} onClose={() => setLoginOpen(false)} />}
+
       {/* Winner screen */}
       {showWinner && <WinnerScreen onFinishGame={handleFinishGame} />}
 
@@ -536,6 +543,7 @@ export function PokerTimer() {
         <FinalGameSlideshowOverlay
           urls={slideshowUrls}
           controlsVisible={controlsVisible}
+          canFinish={canControl}
           onFinish={handleFinishGame}
         />
       )}

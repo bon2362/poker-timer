@@ -1,8 +1,10 @@
+import { loginAsAdmin } from '../helpers/admin';
 import { test, expect } from '@playwright/test';
 
 // These tests run in the 'mobile' project which uses iPhone 14 viewport (390x844)
 test.describe('Mobile Layout', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    await loginAsAdmin(page, baseURL);
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('text=Round 1', { timeout: 30000 });
