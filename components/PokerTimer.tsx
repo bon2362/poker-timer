@@ -183,11 +183,6 @@ export function PokerTimer() {
     });
   }, [activeSession, players]);
 
-  async function handleSlideshowChanged() {
-    const items = await listSlideshowItems();
-    setSlideshowItems(items);
-  }
-
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -352,7 +347,6 @@ export function PokerTimer() {
           dispatch({ type: 'JUMP_TO_END' });
           dispatch({ type: 'CLOSE_SETTINGS' });
         }}
-        onSlideshowChanged={handleSlideshowChanged}
       />
     );
   }

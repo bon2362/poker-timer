@@ -14,8 +14,6 @@ jest.mock('@/components/SessionSetup/SessionSetup', () => ({
 
 jest.mock('@/lib/supabase/slideshow', () => ({
   listSlideshowPhotos: jest.fn().mockResolvedValue([]),
-  uploadSlideshowPhoto: jest.fn().mockResolvedValue(undefined),
-  deleteAllSlideshowPhotos: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/lib/audio', () => ({
@@ -41,7 +39,6 @@ function renderSettings(props: Partial<React.ComponentProps<typeof SettingsScree
     onSave: jest.fn(),
     onDisplaySave: jest.fn(),
     onClose: jest.fn(),
-    onSlideshowChanged: jest.fn(),
   };
   return render(<SettingsScreen {...defaults} {...props} />);
 }
@@ -115,12 +112,14 @@ describe('SettingsScreen — Tabs', () => {
 });
 
 describe('SettingsScreen — Changelog', () => {
-  test('shows v6.0 as the release prepared for the October 31 game', async () => {
+  test('shows v6.1 and keeps the October 31 release in history', async () => {
     const user = userEvent.setup();
     renderSettings();
 
+    expect(screen.getByText('v6.1')).toBeInTheDocument();
+    await user.click(screen.getByText('v6.1'));
+
     expect(screen.getByText('v6.0')).toBeInTheDocument();
-    await user.click(screen.getByText('v6.0'));
 
     expect(screen.getByText("31 Oct '26")).toBeInTheDocument();
     expect(screen.getByText(/Релиз к игре 31 октября/)).toBeInTheDocument();
@@ -252,7 +251,7 @@ describe('SettingsScreen — Tournament tab content', () => {
 });
 
 describe('SettingsScreen — Display tab', () => {
-  const { listSlideshowPhotos, uploadSlideshowPhoto, deleteAllSlideshowPhotos } =
+  const { listSlideshowPhotos } =
     jest.requireMock('@/lib/supabase/slideshow');
 
   async function openDisplayTab() {
@@ -294,22 +293,15 @@ describe('SettingsScreen — Display tab', () => {
     expect(onDisplaySave).toHaveBeenCalledWith(expect.objectContaining({ slideshowSpeed: 10 }));
   });
 
-  test('"+ Добавить фото" button and hidden file input rendered in display tab', async () => {
+  test('keeps photo count and preview while directing photo additions to a game', async () => {
+    listSlideshowPhotos.mockResolvedValue(['https://example.com/a.jpg']);
     await openDisplayTab();
-    await waitFor(() => expect(listSlideshowPhotos).toHaveBeenCalled());
-
-    expect(screen.getByRole('button', { name: '+ Добавить фото' })).toBeInTheDocument();
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(fileInput).toBeInTheDocument();
-    expect(fileInput.accept).toBe('image/*');
-  });
-
-  test('"Удалить все" button appears when photos exist', async () => {
-    (listSlideshowPhotos as jest.Mock).mockResolvedValue(['https://example.com/a.jpg']);
-
-    await openDisplayTab();
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Удалить все' })).toBeInTheDocument());
+    expect(await screen.findByText('1')).toBeInTheDocument();
+    expect(screen.getByText('Новые фото добавляются через карточку игры')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '+ Добавить фото' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Удалить все' })).not.toBeInTheDocument();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Потная Раздача' })).toBeInTheDocument();
   });
 
   test('"Потная Раздача" button is always visible in display tab', async () => {
@@ -317,19 +309,7 @@ describe('SettingsScreen — Display tab', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Потная Раздача' })).toBeInTheDocument());
   });
 
-  test('clicking "Удалить все" calls deleteAllSlideshowPhotos after confirm', async () => {
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
-    (listSlideshowPhotos as jest.Mock).mockResolvedValue(['https://example.com/a.jpg']);
 
-    const user = userEvent.setup();
-    renderSettings();
-    await user.click(screen.getByRole('button', { name: 'Оформление' }));
-
-    const deleteBtn = await screen.findByRole('button', { name: 'Удалить все' });
-    await user.click(deleteBtn);
-
-    expect(deleteAllSlideshowPhotos).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('SettingsScreen — Tournament tab reset', () => {
@@ -346,7 +326,6 @@ describe('SettingsScreen — Tournament tab reset', () => {
         onSave={jest.fn()}
         onDisplaySave={jest.fn()}
         onClose={jest.fn()}
-        onSlideshowChanged={jest.fn()}
       />
     );
 

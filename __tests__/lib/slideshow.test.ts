@@ -49,9 +49,10 @@ test('reads every photo beyond the 1000-row limit in a stable order', async () =
 });
 
 test.each([
-  [{ created_at: '2026-10-31T23:30:00Z' }, '2026-05-09T12:00:00Z', '01.11.2026'],
-  [{ created_at: '2026-05-09T22:30:00Z' }, null, '10.05.2026'],
-  [null, '2026-05-09T22:30:00Z', '10.05.2026'],
+  [{ created_at: '2026-10-31T23:30:00Z' }, '2026-05-09T12:00:00Z', '1 ноября 2026'],
+  [{ created_at: '2026-05-09T22:30:00Z' }, null, '10 мая 2026'],
+  [null, '2026-05-09T22:30:00Z', '10 мая 2026'],
+  [null, '2023-02-06T12:00:00Z', '6 февраля 2023'],
   [null, null, null],
 ] as const)('chooses the game date in Belgrade or the available taken_at date (%j, %s)', async (sessions, taken_at, date) => {
   usePhotos([{ id: 'photo', path: '31-10-2020.jpg', sessions, taken_at }]);

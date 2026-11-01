@@ -1,6 +1,5 @@
 // lib/supabase/slideshow.ts
 import { getClient } from '@/supabase/client';
-import { gameDateInBelgrade } from '@/lib/games/slug';
 
 const BUCKET = 'slideshow';
 const PAGE_SIZE = 1000;
@@ -28,8 +27,11 @@ export async function listSlideshowItems(): Promise<SlideshowItem[]> {
       const iso = photo.sessions?.created_at ?? photo.taken_at;
       let date = null;
       if (iso) {
-        const { day, month, year } = gameDateInBelgrade(iso);
-        date = `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+        date = new Intl.DateTimeFormat('ru-RU', {
+          timeZone: 'Europe/Belgrade', day: 'numeric', month: 'long', year: 'numeric',
+        }).formatToParts(new Date(iso))
+          .filter(part => ['day', 'month', 'year'].includes(part.type))
+          .map(part => part.value).join(' ');
       }
       items.push({ url: client.storage.from(BUCKET).getPublicUrl(photo.path).data.publicUrl, date });
     }
@@ -40,24 +42,4 @@ export async function listSlideshowItems(): Promise<SlideshowItem[]> {
 /** Совместимый список адресов для настроек и финального слайд-шоу. */
 export async function listSlideshowPhotos(): Promise<string[]> {
   return (await listSlideshowItems()).map(item => item.url);
-}
-
-/** Загружает один файл в бакет, возвращает true при успехе */
-export async function uploadSlideshowPhoto(file: File): Promise<boolean> {
-  const client = getClient();
-  if (!client) return false;
-  // Сохраняем оригинальное имя файла (с префиксом для уникальности)
-  const path = `${Date.now()}-${file.name}`;
-  const { error } = await client.storage.from(BUCKET).upload(path, file);
-  if (error) console.error('[slideshow] upload error:', error.message, error);
-  return !error;
-}
-
-/** Удаляет все файлы из бакета */
-export async function deleteAllSlideshowPhotos(): Promise<void> {
-  const client = getClient();
-  if (!client) return;
-  const { data } = await client.storage.from(BUCKET).list('');
-  if (!data?.length) return;
-  await client.storage.from(BUCKET).remove(data.map(f => f.name));
 }

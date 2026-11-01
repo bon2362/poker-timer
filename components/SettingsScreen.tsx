@@ -1,10 +1,10 @@
 // components/SettingsScreen.tsx
 'use client';
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import type { Config, BlindLevel, SoundEvent } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import { playSound } from '@/lib/audio';
-import { listSlideshowPhotos, uploadSlideshowPhoto, deleteAllSlideshowPhotos } from '@/lib/supabase/slideshow';
+import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
 import { PlayerManager } from './PlayerManager/PlayerManager';
 import { SessionSetup } from './SessionSetup/SessionSetup';
 import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
@@ -14,6 +14,11 @@ type ChangelogEntry =
   | { divider: true; label: string };
 
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '6.1',
+    date: "01 Nov '26",
+    notes: 'Завершение игры сохраняет призовые, время и изображение победителя с проверкой ошибок. Повторное завершение сохраняет адрес игры. Фото для слайдшоу берутся из записей игр с датами на русском; новые фото добавляются через карточку игры.',
+  },
   {
     version: '6.0',
     date: "31 Oct '26",
@@ -435,7 +440,6 @@ type Props = {
   onDisplaySave: (config: Config) => void;
   onClose: () => void;
   onJumpToEnd?: () => void;
-  onSlideshowChanged: () => void;
 };
 
 type FormErrors = {
@@ -445,7 +449,7 @@ type FormErrors = {
   blinds?: string;
 };
 
-export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpToEnd, onSlideshowChanged }: Props) {
+export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpToEnd }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('tournament');
   const [showChangelog, setShowChangelog] = useState(false);
   const [cicdRefreshKey, setCicdRefreshKey] = useState(0);
@@ -518,7 +522,7 @@ export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpT
           <TournamentTab config={config} onSave={onSave} onClose={onClose} />
         )}
         {activeTab === 'players' && <PlayerManager />}
-        {activeTab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} onSlideshowChanged={onSlideshowChanged} />}
+        {activeTab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} />}
         {activeTab === 'cicd' && <CiCdTab refreshKey={cicdRefreshKey} />}
       </div>
     </div>
@@ -686,39 +690,16 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
 
 // ── Display Tab ───────────────────────────────────────────────────────────
 
-function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Config; onDisplaySave: (c: Config) => void; onSlideshowChanged: () => void }) {
+function DisplayTab({ config, onDisplaySave }: { config: Config; onDisplaySave: (c: Config) => void }) {
   const [slideshowEnabled, setSlideshowEnabled] = useState(config.slideshowEnabled);
   const [slideshowSpeed, setSlideshowSpeed] = useState(String(config.slideshowSpeed ?? 5));
   const [photoCount, setPhotoCount] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     listSlideshowPhotos().then(urls => { setPhotoCount(urls.length); setPhotoUrls(urls); });
   }, []);
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    setUploading(true);
-    await Promise.all(files.map(uploadSlideshowPhoto));
-    const updated = await listSlideshowPhotos();
-    setPhotoCount(updated.length);
-    setPhotoUrls(updated);
-    onSlideshowChanged();
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-
-  async function handleDeleteAll() {
-    if (!confirm(`Удалить все фотографии (${photoCount})?`)) return;
-    await deleteAllSlideshowPhotos();
-    setPhotoCount(0);
-    setPhotoUrls([]);
-    onSlideshowChanged();
-  }
 
   return (
     <div className="px-6 py-5 flex flex-col gap-5">
@@ -784,24 +765,7 @@ function DisplayTab({ config, onDisplaySave, onSlideshowChanged }: { config: Con
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex-1 bg-[#242424] border border-[#444] text-[#ccc] rounded-lg px-4 py-2 text-[13px] cursor-pointer hover:border-violet-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {uploading ? 'Загружаем…' : '+ Добавить фото'}
-          </button>
-          {(photoCount ?? 0) > 0 && (
-            <button
-              onClick={handleDeleteAll}
-              className="bg-[#242424] border border-[#444] text-[#666] rounded-lg px-3 py-2 text-[13px] cursor-pointer hover:border-red-700 hover:text-red-400 transition-colors"
-            >
-              Удалить все
-            </button>
-          )}
-        </div>
+        <p className="text-[13px] text-[#888]">Новые фото добавляются через карточку игры</p>
       </div>
 
       {/* Песня на перерыве */}
