@@ -38,7 +38,7 @@ function from(table: string) {
     }
     return { data: matching, error: null };
   };
-  const query = {
+  const query: any = {
     select: jest.fn(() => query),
     eq: jest.fn((key: string, value: unknown) => { filters.push([key, value]); return query; }),
     or: jest.fn((filter: string) => { referenceFilter = filter; return query; }),
