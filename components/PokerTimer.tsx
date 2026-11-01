@@ -342,7 +342,7 @@ export function PokerTimer() {
           {canControl ? <a
             href="/admin"
             target="_blank"
-            rel="noopener"
+            rel="opener"
             className="bg-transparent border-none text-[#383838] text-[20px] cursor-pointer p-1 w-8 hover:text-[#555] transition-colors no-underline"
             title="Settings"
           >
@@ -463,7 +463,7 @@ export function PokerTimer() {
             <a
               href="/admin/tournament"
               target="_blank"
-              rel="noopener"
+              rel="opener"
               className="inline-block no-underline bg-violet-700 text-white border-none rounded-lg px-6 py-3 text-[15px] font-semibold cursor-pointer hover:bg-violet-800 w-full"
             >
               Открыть настройки

@@ -131,7 +131,7 @@ export function SessionSetup() {
             🔒 активная сессия
           </span>
         )}
-        {locked && <a href="/" target="_blank" rel="noopener" className="ml-auto text-[13px] text-violet-400 hover:text-violet-300">Открыть таймер →</a>}
+        {locked && <a href="/" target="_blank" rel="opener" className="ml-auto text-[13px] text-violet-400 hover:text-violet-300">Открыть таймер →</a>}
       </div>
 
       {/* Financial fields */}

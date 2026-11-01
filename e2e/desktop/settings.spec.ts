@@ -13,6 +13,8 @@ test.describe('Settings - Desktop', () => {
     await expect(gear).toBeVisible({ timeout: 15000 });
     await expect(gear).toHaveAttribute('href', '/admin');
     await expect(gear).toHaveAttribute('target', '_blank');
+    // Chrome does not capture auxiliary tabs into the installed app, so this link must keep its opener.
+    await expect(gear).toHaveAttribute('rel', 'opener');
   });
 
   // E13: All settings are tabs of the admin area

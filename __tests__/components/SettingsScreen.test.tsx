@@ -71,13 +71,13 @@ describe('Admin settings tabs', () => {
 
 describe('Version and changelog', () => {
   test('current version is the first release in the history', () => {
-    expect(currentVersion()).toBe('6.7');
+    expect(currentVersion()).toBe('6.8');
   });
 
   test('version badge opens the release history', async () => {
     const user = userEvent.setup();
     render(<VersionBadge />);
-    await user.click(screen.getByRole('button', { name: 'v6.7' }));
+    await user.click(screen.getByRole('button', { name: 'v6.8' }));
     expect(screen.getByText('История версий')).toBeInTheDocument();
     expect(screen.getByText('v6.0')).toBeInTheDocument();
   });
