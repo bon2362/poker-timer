@@ -1,0 +1,39 @@
+import Link from 'next/link';
+import type { GameDetails } from '@/lib/games/queries';
+import { Avatar, Brand, PlaceBadge } from './Primitives';
+import { gameDate, gameTime, headingClass, number } from './format';
+import { PhotoGallery } from './PhotoGallery';
+
+export function GameDetail({ game, now = new Date() }: { game: GameDetails; now?: Date }) {
+  const { session, winner, players, bank, photos, images } = game;
+  const hero = images.find(image => image.kind === 'winner' && image.playerId === winner.playerId);
+  const age = now.getTime() - new Date(session.finishedAt ?? session.createdAt).getTime();
+  const recent = age >= 0 && age < 7 * 24 * 60 * 60 * 1000;
+  const structure = session.blindStructure;
+  return <>
+    <section className={`relative flex min-h-[520px] flex-col justify-end overflow-hidden pb-8 lg:min-h-[620px] lg:pb-12 ${!hero ? 'bg-radial-[at_50%_100%] from-[#3a2060] via-[#2a2040] to-[#1a1a1a]' : ''}`}>
+      {hero && <><img src={hero.url} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" /><div className="absolute inset-0 bg-linear-to-t from-[#1a1a1a] from-0% via-[#1a1a1a]/90 via-25% to-transparent to-80%" /></>}
+      <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[1120px] items-center justify-between gap-3 px-4 py-4 lg:px-12"><Link href="/games" className="flex min-h-11 items-center rounded-full bg-black/45 px-4 text-sm text-violet-300 hover:text-violet-200">← Все игры</Link><Brand /></div>
+      <div className={`relative mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-4 lg:px-12 ${!hero ? 'items-center text-center' : ''}`}>
+        {!hero && <div className="mb-3"><Avatar name={winner.name} url={winner.avatarUrl} large /></div>}
+        <p className={`${headingClass} text-[17px] italic text-[#eee] lg:text-[22px]`}>{gameDate(session.createdAt, true)}</p>
+        <span className="text-xs font-semibold uppercase tracking-[5px] text-violet-400">Победитель</span>
+        <h1 className="max-w-full break-words text-[44px] leading-[0.95] font-black tracking-[2px] uppercase lg:text-[88px]">{winner.name}</h1>
+        <p className="text-[30px] font-black tabular-nums text-yellow-400 lg:text-[44px]">{number(winner.payout ?? 0)} RSD</p>
+      </div>
+    </section>
+    <main className="mx-auto flex max-w-[1120px] flex-col gap-9 px-4 pb-16 lg:gap-14 lg:px-12">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">{[['Банк', `${number(bank)} RSD`], ['Игроков', players.length], ...(session.finishedAt ? [['Финал', `${session.finishedAtApproximate ? '~' : ''}${gameTime(session.finishedAt)}`]] : [])].map(([label, value]) => <div key={label} className="rounded-[10px] bg-[#242424] px-3.5 py-3"><div className="mb-1 text-[11px] tracking-widest text-[#8a8a8a] uppercase">{label}</div><div className="text-lg font-bold tabular-nums">{value}</div></div>)}</div>
+      <section><h2 className={`${headingClass} mb-5 text-2xl font-bold lg:text-3xl`}>Результаты</h2><div className="flex flex-col gap-1.5">{players.map(player => <div key={player.id} className={`grid min-h-14 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3.5 py-2.5 lg:grid-cols-[36px_minmax(0,1fr)_72px_72px_120px] ${player.finishPosition === 1 ? 'bg-[#2a2040]' : (player.finishPosition ?? Infinity) <= 3 ? 'bg-[#242424]' : ''}`}>
+        <PlaceBadge place={player.finishPosition} /><div className="min-w-0"><span className={`block truncate text-[15px] ${(player.finishPosition ?? Infinity) <= 3 ? 'font-bold text-white' : 'text-[#aaa]'}`}>{player.name}</span><span className="mt-1 block text-xs text-[#8a8a8a] lg:hidden">ребаев {player.rebuys} · {player.hasAddon ? 'аддон' : 'без аддона'}</span></div><span className="hidden text-sm tabular-nums text-[#aaa] lg:block">{player.rebuys}</span><span className="hidden text-sm text-[#aaa] lg:block">{player.hasAddon ? '✓' : '—'}</span><span className={`text-right text-sm font-bold tabular-nums lg:text-base ${player.finishPosition === 1 ? 'text-yellow-400' : player.payout ? 'text-white' : 'text-[#666]'}`}>{player.payout ? number(player.payout) : '—'}</span>
+      </div>)}</div><p className="mt-3 hidden text-right text-xs text-[#8a8a8a] lg:block">ребаи · аддон · выигрыш, RSD</p></section>
+      {photos.length > 0 ? <section><div className="mb-5 flex items-end justify-between gap-3"><h2 className={`${headingClass} text-2xl font-bold lg:text-3xl`}>Фото с вечера</h2><span className="text-sm text-[#8a8a8a]">{photos.length} фото</span></div><PhotoGallery photos={photos} date={gameDate(session.createdAt)} /></section> : recent ? <div className="flex gap-3 rounded-xl bg-[#242424] p-4"><span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#2a2040] text-violet-300">▧</span><div><p className="text-[15px] font-semibold">Фото с вечера появятся позже</p><p className="mt-1 text-[13px] leading-5 text-[#8a8a8a]">Организатор добавит их сюда в ближайшие дни.</p></div></div> : null}
+      {images.length > 0 && <section><h2 className={`${headingClass} mb-5 text-2xl font-bold lg:text-3xl`}>С экрана таймера</h2><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{images.map(image => <figure key={image.id} className="overflow-hidden rounded-xl bg-[#242424]"><img src={image.url} alt={`${image.name} — ${image.kind === 'winner' ? 'победитель' : 'вылет'}`} loading="lazy" className="aspect-video w-full object-cover" /><figcaption className="flex justify-between gap-2 px-4 py-3 text-sm"><span className="truncate font-semibold">{image.name}</span><span className={`shrink-0 ${image.finishPosition === 1 ? 'text-yellow-400' : image.finishPosition === 3 ? 'text-[#d08a4e]' : 'text-[#aaa]'}`}>{image.finishPosition} место</span></figcaption></figure>)}</div></section>}
+      <details className="group border-t border-[#2a2a2a]"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-semibold"><span>{structure?.blindLevels.length ? 'Условия и структура игры' : 'Условия игры'}</span><span className="text-xs font-normal text-violet-400 group-open:hidden">Показать ↓</span><span className="hidden text-xs font-normal text-violet-400 group-open:block">Свернуть ↑</span></summary>
+        <div className="grid grid-cols-2 gap-3 py-4 sm:grid-cols-3">{[['Бай-ин', `${number(session.buyIn)} RSD`], ['Стартовый стек', number(session.initialStack)], ['Ребай', session.rebuyCost ? `${number(session.rebuyCost)} RSD · ${number(session.rebuyChips)} фишек · ${session.maxRebuys ? `макс. ${session.maxRebuys}` : 'без лимита'}` : 'Нет'], ['Аддон', session.addonCost ? `${number(session.addonCost)} RSD · ${number(session.addonChips)} фишек` : 'Нет'], ['Призы', `${session.prizePcts.join(' / ')} %`], ['Столов', session.numberOfTables]].map(([label, value]) => <div key={label} className="rounded-lg bg-[#242424] p-3"><div className="mb-1 text-xs text-[#8a8a8a]">{label}</div><div className="text-sm tabular-nums">{value}</div></div>)}</div>
+        {!!structure?.blindLevels.length && <div className="pb-5"><p className="mb-3 text-[11px] tracking-wide text-[#8a8a8a] uppercase">Уровни блайндов · {structure.levelDuration} мин, перерыв {structure.breakDuration} мин каждые {structure.breakEvery} уровня</p><ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">{structure.blindLevels.map((level, index) => <li key={index} className="flex justify-between rounded-lg bg-[#242424] p-3 text-sm tabular-nums"><span className="text-[#8a8a8a]">{index + 1}</span><span>{number(level.sb)} / {number(level.bb)}</span></li>)}</ol></div>}
+      </details>
+      <Link href="/games" className="flex min-h-11 items-center text-sm text-violet-400 hover:text-violet-300">← Все игры</Link>
+    </main>
+  </>;
+}
