@@ -4,8 +4,8 @@ export function Avatar({ name, url, large = false }: { name: string; url: string
     {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : name.slice(0, 2).toUpperCase()}
   </span>;
 }
-export function PlaceBadge({ place }: { place: number | null }) {
+export function PlaceBadge({ place, small = false }: { place: number | null; small?: boolean }) {
   const colors = place === 1 ? 'bg-yellow-400 text-[#1a1a1a]' : place === 2 ? 'bg-zinc-300 text-[#1a1a1a]' : place === 3 ? 'bg-[#d08a4e] text-[#1a1a1a]' : 'border border-[#333] text-[#8a8a8a]';
-  return <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-extrabold tabular-nums ${colors}`}>{place ?? '—'}</span>;
+  return <span className={`flex ${small ? 'h-8 w-8 text-sm' : 'h-9 w-9'} shrink-0 items-center justify-center rounded-full font-extrabold tabular-nums ${colors}`}>{place ?? '—'}</span>;
 }
 export function Brand() { return <span className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-wider text-[#ccc]"><img src="/poker-timer-favicon/favicon.svg" width={26} height={26} alt="" />BSP · ПОКЕР</span>; }

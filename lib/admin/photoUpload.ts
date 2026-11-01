@@ -3,7 +3,7 @@ import { uploadToSignedPath } from '@/lib/supabase/signedUpload';
 import { adminFetch } from './client';
 export async function prepareImage(file: File, bucket: 'avatars' | 'slideshow', onProgress: (progress: number) => void) {
   if (/\.(heic|heif)$/i.test(file.name) || /heic|heif/i.test(file.type)) throw new Error('Не удалось загрузить: формат HEIC не поддерживается');
-  const [full, thumb] = await Promise.all([resizeContain(file, 1920, 1920, 0.82), resizeCover(file, 200, 0.76)]);
+  const [full, thumb] = await Promise.all([resizeContain(file, 1920, 1920, 0.82), resizeCover(file, bucket === 'slideshow' ? 640 : 200, 0.76)]);
   const { uploads } = await adminFetch('/api/admin/uploads/sign', 'POST', { bucket, files: [{ name: 'full.jpg' }, { name: 'thumb.jpg' }] });
   if (!Array.isArray(uploads) || uploads.length !== 2) throw new Error('Не удалось подготовить загрузку. Попробуйте ещё раз.');
   const progress = [0, 0];

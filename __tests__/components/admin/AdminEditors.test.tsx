@@ -70,6 +70,28 @@ test('photo deletion names both places and does nothing before confirmation', as
   expect(screen.getByText('Фото исчезнет и со страницы игры, и из карусели.')).toBeInTheDocument();
   expect(fetch).not.toHaveBeenCalled();
 });
+test('unassigned photo can only move to a chosen game and uses the protected endpoint', async () => {
+  (fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+  const game = { session: { id: 'target', createdAt: '2026-10-31T12:00:00Z' }, players: [{ playerId: 'p1', finishPosition: 1 }], names: { p1: 'Тестовый игрок' }, avatars: {}, photoCount: 0 } as never;
+  render(<PhotoGallery initialPhotos={[{ id: 'photo', session_id: null, path: 'full.jpg', thumb_path: null, taken_at: '2026-04-04T12:00:00Z', width: null, height: null }]} total={1} sessionId={null} games={[game]} monthCounts={{ 'апрель 2026': 12 }} />);
+  expect(screen.getByRole('heading', { name: 'апрель 2026' })).toBeInTheDocument();
+  expect(screen.getByText('12 фото')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Действия с фото' }));
+  fireEvent.click(screen.getByRole('button', { name: 'В игру…' }));
+  expect(screen.queryByRole('radio', { name: /Без игры/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Перенести' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('radio', { name: /31 октября 2026/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Перенести' }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/admin/photos/photo', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ sessionId: 'target' }) })));
+});
+test('failed upload can be retried from its own row', async () => {
+  const mocked = jest.mocked(uploadPhoto); mocked.mockRejectedValueOnce(new Error('Не удалось загрузить фото')).mockResolvedValue(undefined);
+  render(<PhotoUploader sessionId="game" onUploaded={jest.fn()} />);
+  fireEvent.change(screen.getByLabelText('Загрузить фото'), { target: { files: [new File(['x'], 'one.jpg', { type: 'image/jpeg' })] } });
+  fireEvent.click(await screen.findByRole('button', { name: 'Повторить: one.jpg' }));
+  await waitFor(() => expect(screen.getByText('готово')).toBeInTheDocument());
+  expect(mocked).toHaveBeenCalledTimes(2);
+});
 test('deleting a game requires confirmation and explains preservation of photos', () => {
   render(<DeleteGame id="game" date="31 октября 2026" />);
   fireEvent.click(screen.getByRole('button', { name: 'Удалить игру…' }));

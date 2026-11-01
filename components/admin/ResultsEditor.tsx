@@ -5,6 +5,7 @@ import { assignPayouts } from '@/lib/games/results';
 import { calcGameStats } from '@/lib/game';
 import { adminFetch } from '@/lib/admin/client';
 import { money } from '@/lib/admin/types';
+import { PlaceBadge } from '@/components/games/Primitives';
 import type { Session, SessionPlayer } from '@/types/game';
 export function ResultsEditor({ session, players, names }: { session: Session; players: SessionPlayer[]; names: Record<string, string> }) {
   const [draft, setDraft] = useState(players); const [saved, setSaved] = useState(players); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const router = useRouter();
@@ -23,7 +24,7 @@ export function ResultsEditor({ session, players, names }: { session: Session; p
     <div className="space-y-2">{[...draft].sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0)).map(player => {
       const name = names[player.playerId] ?? 'Игрок'; const payout = payouts.get(player.id) ?? 0; const previous = saved.find(p => p.id === player.id)?.payout ?? 0;
       return <div key={player.id} className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg bg-[#242424] px-3 py-2.5">
-        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${player.finishPosition === 1 ? 'bg-yellow-400 text-[#29220b]' : player.finishPosition === 2 ? 'bg-[#d1d5db] text-[#333]' : player.finishPosition === 3 ? 'bg-[#b98245] text-[#2a1e12]' : 'border border-[#444] text-[#666]'}`}>{player.finishPosition}</span><span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+        <PlaceBadge small place={player.finishPosition} /><span className="min-w-0 flex-1 truncate text-sm">{name}</span>
         <button aria-label={`Выше: ${name}`} className={control} disabled={busy || player.finishPosition === 1} onClick={() => move(player, -1)}>↑</button><button aria-label={`Ниже: ${name}`} className={control} disabled={busy || player.finishPosition === draft.length} onClick={() => move(player, 1)}>↓</button>
         <div className="flex w-full items-center gap-2 sm:w-auto"><span className="text-xs text-[#888]">Ребаи</span><button className={control} aria-label={`Убрать ребай: ${name}`} disabled={busy || player.rebuys === 0} onClick={() => edit(player.id, { rebuys: player.rebuys - 1 })}>−</button><span className="text-sm">{player.rebuys}</span><button className={control} aria-label={`Добавить ребай: ${name}`} disabled={busy || session.rebuyCost === 0 || (session.maxRebuys > 0 && player.rebuys >= Math.max(session.maxRebuys, saved.find(p => p.id === player.id)?.rebuys ?? 0))} onClick={() => edit(player.id, { rebuys: player.rebuys + 1 })}>+</button>
           <button aria-label={`Аддон: ${name}`} aria-pressed={player.hasAddon} className={`${control} ml-auto whitespace-nowrap ${player.hasAddon ? 'border-violet-700 bg-[#2a2040] text-violet-200' : 'text-[#888]'}`} disabled={busy || session.addonCost === 0} onClick={() => edit(player.id, { hasAddon: !player.hasAddon })}>{player.hasAddon ? '✓ Аддон' : 'Аддон —'}</button>

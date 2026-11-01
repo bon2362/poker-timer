@@ -59,7 +59,6 @@ export function PlayerForm({ player, onDone }: Props) {
         />
       )}
       <div className="flex flex-col gap-3 p-4 bg-[#242424] rounded-lg">
-        <p className="text-xs leading-relaxed text-violet-300">Будет показана в следующих играх, прошедшие не изменятся.</p>
         <input
           type="text"
           placeholder="Имя игрока"
