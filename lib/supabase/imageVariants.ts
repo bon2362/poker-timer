@@ -1,4 +1,5 @@
 import { getClient } from '@/supabase/client';
+import { resizeContain, resizeCover } from '@/lib/imageResize';
 
 const BUCKET = 'avatars';
 const FULL_MAX_WIDTH = 1920;
@@ -83,7 +84,7 @@ function drawPhotoBackground(ctx: CanvasRenderingContext2D, width: number, heigh
   ctx.fillRect(0, 0, width, height);
 }
 
-async function resizeContain(blob: Blob, maxWidth: number, maxHeight: number, quality: number): Promise<Blob> {
+async function legacyResizeContain(blob: Blob, maxWidth: number, maxHeight: number, quality: number): Promise<Blob> {
   const image = await loadImage(blob);
   const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight, 1);
   const width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -98,7 +99,7 @@ async function resizeContain(blob: Blob, maxWidth: number, maxHeight: number, qu
   return canvasToBlob(canvas, quality);
 }
 
-async function resizeCover(blob: Blob, size: number, quality: number): Promise<Blob> {
+async function legacyResizeCover(blob: Blob, size: number, quality: number): Promise<Blob> {
   const image = await loadImage(blob);
   const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
   const width = image.naturalWidth * scale;
@@ -199,4 +200,16 @@ export async function deleteSpecialImage(kind: SpecialImageKind, playerId: strin
   const client = getClient();
   if (!client) return;
   await client.storage.from(BUCKET).remove([path(kind, playerId), thumbPath(kind, playerId)]);
+}
+
+export async function getCurrentPlayerImage(playerId: string, kind: SpecialImageKind): Promise<{ id: string; url: string; thumbUrl: string } | null> {
+  const client = getClient();
+  if (!client) return null;
+  const { data } = await client.from('player_images').select('id,path,thumb_path').eq('player_id', playerId).eq('kind', kind).eq('is_current', true).maybeSingle();
+  if (!data) return null;
+  return {
+    id: data.id,
+    url: client.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl,
+    thumbUrl: client.storage.from(BUCKET).getPublicUrl(data.thumb_path ?? data.path).data.publicUrl,
+  };
 }
