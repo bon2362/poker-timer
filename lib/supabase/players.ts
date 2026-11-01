@@ -8,6 +8,7 @@ function toPlayer(row: Record<string, unknown>): Player {
     name: row.name as string,
     avatarUrl: (row.avatar_url as string | null) ?? null,
     createdAt: row.created_at as string,
+    archivedAt: (row.archived_at as string | null) ?? null,
   };
 }
 

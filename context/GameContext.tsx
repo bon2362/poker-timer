@@ -3,22 +3,8 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useRef, ReactNode } from 'react';
 import type { Player, Session, SessionPlayer, NewSessionData } from '@/types/game';
 import { fetchPlayers, createPlayer, updatePlayer as updatePlayerDB, deletePlayer as deletePlayerDB } from '@/lib/supabase/players';
-import { fetchActiveSession, createSession, updateSessionPlayer, finishSession, mergeTables } from '@/lib/supabase/sessions';
+import { fetchActiveSession, createSession, updateSessionPlayer, finishSession, mergeTables, toSessionPlayer } from '@/lib/supabase/sessions';
 import { getClient } from '@/supabase/client';
-
-function rowToSessionPlayer(row: Record<string, unknown>): SessionPlayer {
-  return {
-    id: row.id as string,
-    sessionId: row.session_id as string,
-    playerId: row.player_id as string,
-    rebuys: row.rebuys as number,
-    hasAddon: row.has_addon as boolean,
-    status: row.status as SessionPlayer['status'],
-    finishPosition: row.finish_position as number | null,
-    eliminatedAt: row.eliminated_at as string | null,
-    tableNumber: (row.table_number as number | null) ?? 1,
-  };
-}
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -174,7 +160,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'session_players' },
         (payload) => {
-          const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
+          const sp = toSessionPlayer(payload.new as Record<string, unknown>);
           dispatch({ type: 'ADD_SESSION_PLAYER', sessionPlayer: sp });
         }
       )
@@ -192,7 +178,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             sessionPlayers.filter(sp => sp.status === 'playing').length <= activeSession.mergeThreshold
           );
           if (waitingForMergeConfirmation) return;
-          const sp = rowToSessionPlayer(payload.new as Record<string, unknown>);
+          const sp = toSessionPlayer(payload.new as Record<string, unknown>);
           dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: sp });
           if (sp.status === 'winner') dispatch({ type: 'SHOW_WINNER' });
         }

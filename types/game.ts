@@ -7,7 +7,10 @@ export type Player = {
   name: string
   avatarUrl: string | null
   createdAt: string
+  archivedAt: string | null
 }
+
+export type BlindStructure = Pick<Config, 'levelDuration' | 'breakDuration' | 'breakEvery' | 'blindLevels'>
 
 export type Session = {
   id: string
@@ -25,6 +28,10 @@ export type Session = {
   tablesMergedAt: string | null
   status: SessionStatus
   createdAt: string
+  slug: string | null
+  finishedAt: string | null
+  finishedAtApproximate: boolean
+  blindStructure: BlindStructure | null
 }
 
 export type SessionPlayer = {
@@ -37,6 +44,9 @@ export type SessionPlayer = {
   finishPosition: number | null   // 1 = winner, 2 = runner-up, etc.
   eliminatedAt: string | null
   tableNumber: number
+  payout: number | null
+  loserImageId: string | null
+  winnerImageId: string | null
 }
 
 export type GameStats = {
@@ -46,4 +56,6 @@ export type GameStats = {
   payouts: number[]  // index 0 = 1st place payout
 }
 
-export type NewSessionData = Omit<Session, 'id' | 'createdAt' | 'status'>
+export type NewSessionData = Omit<Session, 'id' | 'createdAt' | 'status' | 'slug' | 'finishedAt' | 'finishedAtApproximate'>
+import type { Config } from './timer'
+

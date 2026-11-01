@@ -2,7 +2,7 @@
 import { getClient } from '@/supabase/client';
 import type { Session, SessionPlayer, NewSessionData } from '@/types/game';
 
-function toSession(row: Record<string, unknown>): Session {
+export function toSession(row: Record<string, unknown>): Session {
   return {
     id: row.id as string,
     buyIn: row.buy_in as number,
@@ -19,10 +19,14 @@ function toSession(row: Record<string, unknown>): Session {
     tablesMergedAt: (row.tables_merged_at as string | null) ?? null,
     status: row.status as Session['status'],
     createdAt: row.created_at as string,
+    slug: (row.slug as string | null) ?? null,
+    finishedAt: (row.finished_at as string | null) ?? null,
+    finishedAtApproximate: (row.finished_at_approximate as boolean | null) ?? false,
+    blindStructure: (row.blind_structure as Session['blindStructure']) ?? null,
   };
 }
 
-function toSessionPlayer(row: Record<string, unknown>): SessionPlayer {
+export function toSessionPlayer(row: Record<string, unknown>): SessionPlayer {
   return {
     id: row.id as string,
     sessionId: row.session_id as string,
@@ -33,6 +37,9 @@ function toSessionPlayer(row: Record<string, unknown>): SessionPlayer {
     finishPosition: row.finish_position as number | null,
     eliminatedAt: row.eliminated_at as string | null,
     tableNumber: (row.table_number as number | null) ?? 1,
+    payout: (row.payout as number | null) ?? null,
+    loserImageId: (row.loser_image_id as string | null) ?? null,
+    winnerImageId: (row.winner_image_id as string | null) ?? null,
   };
 }
 
@@ -79,6 +86,7 @@ export async function createSession(
       number_of_tables: data.numberOfTables,
       merge_threshold: data.mergeThreshold,
       tables_merged_at: data.tablesMergedAt,
+      blind_structure: data.blindStructure,
       status: 'active',
     })
     .select()

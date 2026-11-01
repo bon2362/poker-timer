@@ -35,6 +35,13 @@ const mockCreateSession = jest.fn();
 const mockUpdateSessionPlayer = jest.fn();
 const mockFinishSession = jest.fn();
 const mockMergeTables = jest.fn();
+const mockToSessionPlayer = jest.fn((row: Record<string, unknown>) => ({
+  id: row.id, sessionId: row.session_id, playerId: row.player_id,
+  rebuys: row.rebuys, hasAddon: row.has_addon, status: row.status,
+  finishPosition: row.finish_position, eliminatedAt: row.eliminated_at,
+  tableNumber: row.table_number ?? 1, payout: row.payout ?? null,
+  loserImageId: row.loser_image_id ?? null, winnerImageId: row.winner_image_id ?? null,
+}));
 
 jest.mock('@/lib/supabase/sessions', () => ({
   fetchActiveSession: (...args: unknown[]) => mockFetchActiveSession(...args),
@@ -42,6 +49,7 @@ jest.mock('@/lib/supabase/sessions', () => ({
   updateSessionPlayer: (...args: unknown[]) => mockUpdateSessionPlayer(...args),
   finishSession: (...args: unknown[]) => mockFinishSession(...args),
   mergeTables: (...args: unknown[]) => mockMergeTables(...args),
+  toSessionPlayer: (...args: [Record<string, unknown>]) => mockToSessionPlayer(...args),
 }));
 
 // localStorage mock
