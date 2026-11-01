@@ -1,4 +1,9 @@
 export const number = (value: number) => value.toLocaleString('ru-RU');
+export function plural(count: number, [one, few, many]: [string, string, string]): string {
+  const tens = count % 100; const units = count % 10;
+  const word = tens >= 11 && tens <= 14 ? many : units === 1 ? one : units >= 2 && units <= 4 ? few : many;
+  return `${count} ${word}`;
+}
 export function gameDate(iso: string, weekday = false): string {
   const date = new Date(iso);
   const formatted = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Belgrade', day: 'numeric', month: 'long', year: 'numeric' }).format(date).replace(' г.', '');

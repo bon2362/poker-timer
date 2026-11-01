@@ -42,7 +42,7 @@ BEGIN
     OR (SELECT count(DISTINCT (e->>'finishPosition')::integer) FROM jsonb_array_elements(p_players) e) <> participant_count
     OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_players) e WHERE (e->>'finishPosition')::integer NOT BETWEEN 1 AND participant_count)
     OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_players) e LEFT JOIN public.session_players sp ON sp.id = (e->>'id')::uuid AND sp.session_id = p_session_id WHERE sp.id IS NULL)
-    OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_players) e WHERE (game.max_rebuys > 0 AND (e->>'rebuys')::integer > game.max_rebuys) OR (game.rebuy_cost = 0 AND (e->>'rebuys')::integer > 0) OR (game.addon_cost = 0 AND (e->>'hasAddon')::boolean))
+    OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_players) e WHERE (game.max_rebuys > 0 AND (e->>'rebuys')::integer > game.max_rebuys AND (e->>'rebuys')::integer > (SELECT sp2.rebuys FROM public.session_players sp2 WHERE sp2.id = (e->>'id')::uuid)) OR (game.rebuy_cost = 0 AND (e->>'rebuys')::integer > 0) OR (game.addon_cost = 0 AND (e->>'hasAddon')::boolean))
   THEN RAISE EXCEPTION 'Invalid places, participants or rebuys' USING ERRCODE = '22023'; END IF;
   -- Works for both PostgreSQL ARRAY and JSON/JSONB prize_pcts.
   percentages := to_jsonb(game.prize_pcts);

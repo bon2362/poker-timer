@@ -19,6 +19,16 @@ test('rebuy controls cannot exceed maxRebuys and payouts update before save', ()
   expect(screen.getByRole('button', { name: 'Добавить ребай: Другой игрок' })).toBeDisabled();
   expect(screen.getByText(/3 000 → 4 000/)).toBeInTheDocument();
 });
+test('a stored rebuy count above the limit can be lowered and restored but not increased', () => {
+  const over = players.map((player, index) => index === 0 ? { ...player, rebuys: 2 } : player);
+  render(<ResultsEditor session={session} players={over} names={names} />);
+  const add = screen.getByRole('button', { name: 'Добавить ребай: Тестовый игрок' });
+  expect(add).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Убрать ребай: Тестовый игрок' }));
+  expect(add).toBeEnabled();
+  fireEvent.click(add);
+  expect(add).toBeDisabled();
+});
 test('results save uses the protected endpoint and shows a Russian error', async () => {
   (fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({ error: 'Вход истёк. Войдите снова.' }) });
   render(<ResultsEditor session={session} players={players} names={names} />);

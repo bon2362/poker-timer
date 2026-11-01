@@ -158,7 +158,7 @@ test.describe('Timer viewer - Desktop', () => {
   });
 });
 
-test('admin login page supports phone and desktop widths and returns to the timer', async ({ page, baseURL }, testInfo) => {
+test('admin login page supports phone and desktop widths and opens the admin area', async ({ page, baseURL }, testInfo) => {
   test.skip(!isLocalBaseURL(baseURL), 'Login test uses local fixture credentials only');
   await page.goto('/admin/login');
   for (const width of [375, 1280]) {
@@ -171,6 +171,5 @@ test('admin login page supports phone and desktop widths and returns to the time
   }
   await page.getByLabel('Пароль', { exact: true }).fill(TEST_ADMIN_PASSWORD);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page).toHaveURL(new URL('/', baseURL).href);
-  await expect(page.locator('button[title="Settings"]')).toBeVisible();
+  await expect(page).toHaveURL(new URL('/admin', baseURL).href);
 });
