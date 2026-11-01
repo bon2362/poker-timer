@@ -260,6 +260,15 @@ describe('SessionSetup', () => {
     expect(input).toBeInTheDocument();
   });
 
+  test('"Макс. ребаев" defaults to 0 for a new session', () => {
+    setupMocks();
+    render(<SessionSetup />);
+
+    const label = screen.getByText(/Макс\. ребаев/);
+    const input = label.closest('div')!.querySelector('input') as HTMLInputElement;
+    expect(input).toHaveValue('0');
+  });
+
   test('"Макс. ребаев" input is hidden when rebuyCost is set to 0', async () => {
     setupMocks();
     const user = userEvent.setup();
