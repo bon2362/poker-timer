@@ -1,6 +1,4 @@
 import { loginAsAdmin } from '../helpers/admin';
-import fs from 'node:fs';
-import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -11,25 +9,7 @@ let supabase: SupabaseClient | null = null;
 let players: TestPlayer[] = [];
 let sessionIds: string[] = [];
 
-function loadEnvLocal() {
-  const envPath = path.join(process.cwd(), '.env.local');
-  if (!fs.existsSync(envPath)) return;
-
-  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const separator = trimmed.indexOf('=');
-    if (separator === -1) continue;
-
-    const key = trimmed.slice(0, separator).trim();
-    const rawValue = trimmed.slice(separator + 1).trim();
-    if (process.env[key]) continue;
-    process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
-  }
-}
-
 function getSupabase() {
-  loadEnvLocal();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
@@ -40,9 +20,10 @@ function getSupabase() {
   return supabase;
 }
 
+// This suite finishes active games and deletes its own data, so it needs a separate test database
+// with open write rules. Never point it at production: E2E_ALLOW_DB_WRITES must be set by hand.
 function hasSupabaseEnv() {
-  loadEnvLocal();
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  return process.env.E2E_ALLOW_DB_WRITES === '1' && Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
 function isLocalBaseURL(baseURL: string | undefined) {
@@ -147,7 +128,7 @@ async function eliminatePlayer(page: Page, playerName: string) {
 test.describe.serial('Two-table mode - Desktop', () => {
   test.beforeEach(async ({ baseURL, page }) => {
     test.skip(!isLocalBaseURL(baseURL), 'Two-table E2E mutates session data and only runs against local/CI baseURL');
-    test.skip(!hasSupabaseEnv(), 'Two-table E2E requires Supabase URL and anon key for isolated test data');
+    test.skip(!hasSupabaseEnv(), 'Two-table E2E requires E2E_ALLOW_DB_WRITES=1 and a separate test database');
 
     await loginAsAdmin(page, baseURL);
     const client = getSupabase();
