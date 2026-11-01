@@ -112,12 +112,12 @@ describe('SettingsScreen — Tabs', () => {
 });
 
 describe('SettingsScreen — Changelog', () => {
-  test('shows v6.3 and keeps the October 31 release in history', async () => {
+  test('shows v6.4 and keeps the October 31 release in history', async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    expect(screen.getByText('v6.3')).toBeInTheDocument();
-    await user.click(screen.getByText('v6.3'));
+    expect(screen.getByText('v6.4')).toBeInTheDocument();
+    await user.click(screen.getByText('v6.4'));
 
     expect(screen.getByText('v6.0')).toBeInTheDocument();
 
