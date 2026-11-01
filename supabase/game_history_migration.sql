@@ -61,6 +61,9 @@ DROP POLICY IF EXISTS "anon read game photos" ON public.game_photos;
 CREATE POLICY "anon read game photos" ON public.game_photos
   FOR SELECT TO anon USING (true);
 
+GRANT SELECT ON public.player_images, public.game_photos TO anon;
+GRANT ALL PRIVILEGES ON public.player_images, public.game_photos TO service_role;
+
 COMMIT;
 
 -- Ожидаемый результат: перечислены все добавленные поля из таблиц приложения.
