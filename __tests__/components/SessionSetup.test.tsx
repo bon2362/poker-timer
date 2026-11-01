@@ -13,6 +13,8 @@ jest.mock('@/components/SessionSetup/PrizeConfig', () => ({
   ),
 }));
 
+const blindStructure = { levelDuration: 17, breakDuration: 8, breakEvery: 3, blindLevels: [{ sb: 30, bb: 60 }] };
+
 const mockPlayers: Player[] = [
   { id: 'p1', name: 'Alice', avatarUrl: null, createdAt: '' },
   { id: 'p2', name: 'Bob', avatarUrl: null, createdAt: '' },
@@ -48,7 +50,7 @@ function setupMocks(overrides: Partial<ReturnType<typeof useGame>> = {}) {
     startSession: mockStartSession,
     ...overrides,
   });
-  (useTimer as jest.Mock).mockReturnValue({ dispatch: mockTimerDispatch });
+  (useTimer as jest.Mock).mockReturnValue({ state: { config: { ...blindStructure, showPlayers: true } }, dispatch: mockTimerDispatch });
 
   return { mockStartSession, mockTimerDispatch };
 }
@@ -127,7 +129,7 @@ describe('SessionSetup', () => {
     await user.click(screen.getByRole('button', { name: '▶ Начать игру' }));
     await waitFor(() => expect(mockStartSession).toHaveBeenCalledTimes(1));
     expect(mockStartSession).toHaveBeenCalledWith(
-      expect.objectContaining({ numberOfTables: 1, mergeThreshold: 0, tablesMergedAt: null }),
+      expect.objectContaining({ numberOfTables: 1, mergeThreshold: 0, tablesMergedAt: null, blindStructure }),
       ['p1', 'p2'],
       { p1: 1, p2: 1 }
     );

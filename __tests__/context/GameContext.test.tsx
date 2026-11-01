@@ -52,6 +52,13 @@ jest.mock('@/lib/supabase/sessions', () => ({
   toSessionPlayer: (...args: [Record<string, unknown>]) => mockToSessionPlayer(...args),
 }));
 
+const mockCurrentImage = jest.fn().mockResolvedValue(null);
+jest.mock('@/lib/supabase/imageVariants', () => ({
+  getCurrentPlayerImage: (...args: unknown[]) => mockCurrentImage(...args),
+}));
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
 // localStorage mock
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -99,6 +106,8 @@ function renderWithProvider() {
 beforeEach(() => {
   jest.clearAllMocks();
   localStorageMock.clear();
+  mockFetch.mockReset();
+  mockCurrentImage.mockResolvedValue(null);
 
   // Reset mocks to their defaults
   mockFetchPlayers.mockResolvedValue([]);
@@ -268,6 +277,8 @@ describe('GameContext — extended actions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorageMock.clear();
+  mockFetch.mockReset();
+  mockCurrentImage.mockResolvedValue(null);
     gameCtxRef = null;
 
     const alice: Player = { id: 'p-1', name: 'Alice', avatarUrl: null, createdAt: '' };
@@ -368,7 +379,8 @@ describe('GameContext — extended actions', () => {
     expect(mockUpdateSessionPlayer).not.toHaveBeenCalled();
   });
 
-  test('13. eliminatePlayer calls updateSessionPlayer with status=eliminated', async () => {
+  test('13. eliminatePlayer captures current loser image', async () => {
+    mockCurrentImage.mockResolvedValue({ id: 'current-loser', url: '/loser', thumbUrl: '/thumb' });
     mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, status: 'eliminated', finishPosition: 1 });
 
     renderExtended();
@@ -379,38 +391,86 @@ describe('GameContext — extended actions', () => {
     });
 
     expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', expect.objectContaining({
-      status: 'eliminated',
+      status: 'eliminated', loserImageId: 'current-loser',
     }));
   });
 
-  test('14. declareWinner calls updateSessionPlayer and sets showWinner=true', async () => {
-    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, status: 'winner', finishPosition: 1 });
+  test('14. declareWinner uses server results and preserves other participants', async () => {
+    const eliminated = { ...mockSp, id: 'sp-2', playerId: 'p-2', status: 'eliminated', finishPosition: 2 };
+    mockFetchActiveSession.mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp, eliminated] }).mockResolvedValue(null);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ sessionPlayers: [{ ...mockSpRow, status: 'winner', finish_position: 1, payout: 1000, winner_image_id: 'winner-image' }] }) });
 
     renderExtended();
     await waitReady();
     expect(screen.getByTestId('show-winner')).toHaveTextContent('false');
 
     await act(async () => {
-      await gameCtxRef!.declareWinner('sp-1');
+      expect(await gameCtxRef!.declareWinner('sp-1')).toEqual({ ok: true });
     });
 
-    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { status: 'winner', finishPosition: 1 });
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/games/session-1/declare-winner', expect.objectContaining({ method: 'POST', body: JSON.stringify({ sessionPlayerId: 'sp-1' }) }));
+    expect(mockUpdateSessionPlayer).not.toHaveBeenCalled();
+    expect(gameCtxRef!.sessionPlayers).toHaveLength(2);
+    expect(gameCtxRef!.sessionPlayers[0]).toMatchObject({ payout: 1000, winnerImageId: 'winner-image' });
     expect(screen.getByTestId('show-winner')).toHaveTextContent('true');
   });
 
-  test('15. finishGame calls finishSession and clears active session', async () => {
-    mockFinishSession.mockResolvedValue(undefined);
+  test('15. finishGame uses server route and clears active session on success', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ slug: '2026-november-01' }) });
 
     renderExtended();
     await waitReady();
     expect(screen.getByTestId('session')).toHaveTextContent('session-1');
 
     await act(async () => {
-      await gameCtxRef!.finishGame();
+      expect(await gameCtxRef!.finishGame()).toEqual({ ok: true });
     });
 
-    expect(mockFinishSession).toHaveBeenCalledWith('session-1');
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/games/session-1/finish', expect.objectContaining({ method: 'POST' }));
+    expect(mockFinishSession).not.toHaveBeenCalled();
     expect(screen.getByTestId('session')).toHaveTextContent('none');
+  });
+
+
+  test('undoEliminate clears the captured loser image', async () => {
+    renderExtended(); await waitReady();
+    await act(async () => { await gameCtxRef!.undoEliminate('sp-1'); });
+    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', expect.objectContaining({ loserImageId: null }));
+  });
+
+  test.each(['declareWinner', 'finishGame'] as const)('%s keeps state on unauthorized and network failures', async action => {
+    renderExtended(); await waitReady();
+    const original = gameCtxRef!.sessionPlayers;
+    for (const networkError of [false, true]) {
+      if (networkError) mockFetch.mockRejectedValueOnce(new Error('offline'));
+      else mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ error: 'Unauthorized' }) });
+      await act(async () => {
+        const result = action === 'declareWinner' ? await gameCtxRef!.declareWinner('sp-1') : await gameCtxRef!.finishGame();
+        expect(result).toMatchObject({ ok: false, error: expect.any(String) });
+      });
+      expect(gameCtxRef!.activeSession).toEqual(mockSession);
+      expect(gameCtxRef!.sessionPlayers).toEqual(original);
+      expect(gameCtxRef!.showWinner).toBe(false);
+    }
+  });
+
+  test('startSession passes the supplied blind structure through to persistence', async () => {
+    const blindStructure = { levelDuration: 15, breakDuration: 7, breakEvery: 4, blindLevels: [{ sb: 20, bb: 40 }] };
+    renderExtended(); await waitReady();
+    await act(async () => { await gameCtxRef!.startSession({ ...mockSession, blindStructure }, ['p-1']); });
+    expect(mockCreateSession.mock.calls[0][0].blindStructure).toEqual(blindStructure);
+  });
+
+  test('declareWinner refreshes persisted payouts and finish time after successful save', async () => {
+    const winner = { ...mockSp, status: 'winner', finishPosition: 1, payout: 2000 };
+    const finishedAt = '2026-11-01T23:00:00Z';
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ sessionPlayers: [{ ...mockSpRow, status: 'winner', finish_position: 1 }] }) });
+    mockFetchActiveSession.mockResolvedValueOnce({ session: mockSession, sessionPlayers: [mockSp] })
+      .mockResolvedValue({ session: { ...mockSession, finishedAt }, sessionPlayers: [winner] });
+    renderExtended(); await waitReady();
+    await act(async () => { expect(await gameCtxRef!.declareWinner('sp-1')).toEqual({ ok: true }); });
+    expect(gameCtxRef!.activeSession?.finishedAt).toBe(finishedAt);
+    expect(gameCtxRef!.sessionPlayers[0].payout).toBe(2000);
   });
 
   test('16. Realtime INSERT session_players → session-player added to state', async () => {
@@ -479,6 +539,7 @@ describe('GameContext — extended actions', () => {
       status: 'playing',
       finishPosition: null,
       eliminatedAt: null,
+      loserImageId: null,
     });
   });
 
@@ -499,6 +560,7 @@ describe('GameContext — extended actions', () => {
       status: 'playing',
       finishPosition: null,
       eliminatedAt: null,
+      loserImageId: null,
       tableNumber: 1,
     });
   });

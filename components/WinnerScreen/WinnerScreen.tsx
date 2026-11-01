@@ -1,7 +1,7 @@
 // components/WinnerScreen/WinnerScreen.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { useGame } from '@/context/GameContext';
+import { useGame, type GameActionResult } from '@/context/GameContext';
 import { useTimer } from '@/context/TimerContext';
 import { calcGameStats } from '@/lib/game';
 import { Avatar } from '../PlayerManager/PlayerManager';
@@ -9,7 +9,7 @@ import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
 import { playWinnerFanfare } from '@/lib/audio';
 
 type Props = {
-  onFinishGame?: () => void | Promise<void>;
+  onFinishGame?: () => Promise<GameActionResult>;
 };
 
 export function WinnerScreen({ onFinishGame }: Props) {
@@ -18,17 +18,19 @@ export function WinnerScreen({ onFinishGame }: Props) {
   const [winnerImageUrl, setWinnerImageUrl] = useState<string | null>(null);
   const [imageReady, setImageReady] = useState(false);
 
-  const handleFinishGame = async () => {
-    if (onFinishGame) {
-      await onFinishGame();
-      return;
-    }
+  const [finishError, setFinishError] = useState<string | null>(null);
+  const [finishing, setFinishing] = useState(false);
 
-    if (!timerState.isPaused) {
+  const handleFinishGame = async () => {
+    setFinishError(null);
+    setFinishing(true);
+    if (!onFinishGame && !timerState.isPaused) {
       timerDispatch({ type: 'TOGGLE_PAUSE' });
     }
-    await finishGame();
-    timerDispatch({ type: 'OPEN_SETTINGS' });
+    const result = await (onFinishGame ? onFinishGame() : finishGame());
+    if (!result.ok) setFinishError(result.error || 'Не удалось завершить игру');
+    else if (!onFinishGame) timerDispatch({ type: 'OPEN_SETTINGS' });
+    setFinishing(false);
   };
 
   const winner = sessionPlayers.find(sp => sp.status === 'winner');
@@ -115,10 +117,12 @@ export function WinnerScreen({ onFinishGame }: Props) {
 
           <button
             onClick={handleFinishGame}
+            disabled={finishing}
             className="mt-2 bg-black/40 border border-white/20 text-white/60 rounded-xl px-8 py-3 text-[14px] cursor-pointer hover:border-white/40 hover:text-white/90 transition-colors backdrop-blur-sm"
           >
-            Завершить игру
+            {finishing ? 'Завершение…' : 'Завершить игру'}
           </button>
+          {finishError && <p role="alert" className="text-[14px] text-red-400">{finishError}</p>}
         </div>
       </div>
     );
@@ -168,10 +172,12 @@ export function WinnerScreen({ onFinishGame }: Props) {
 
         <button
           onClick={handleFinishGame}
+          disabled={finishing}
           className="mt-2 bg-[#1e1e1e] border border-[#333] text-[#888] rounded-xl px-8 py-3 text-[15px] cursor-pointer hover:border-[#555] hover:text-[#ccc] transition-colors"
         >
-          Завершить игру
+          {finishing ? 'Завершение…' : 'Завершить игру'}
         </button>
+        {finishError && <p role="alert" className="text-[14px] text-red-400">{finishError}</p>}
       </div>
     </div>
   );

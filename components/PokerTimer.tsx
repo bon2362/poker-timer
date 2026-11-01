@@ -38,6 +38,7 @@ export function PokerTimer() {
   const [loserOverlay, setLoserOverlay] = useState<LoserOverlayState | null>(null);
   const [finalSlideshowVisible, setFinalSlideshowVisible] = useState(false);
   const [mergeDialogDismissedAtCount, setMergeDialogDismissedAtCount] = useState<number | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const [mergeConfirming, setMergeConfirming] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalSlideshowDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -197,9 +198,15 @@ export function PokerTimer() {
     if (!state.isPaused) {
       dispatch({ type: 'TOGGLE_PAUSE' });
     }
-    await finishGame();
+    setFinishError(null);
+    const result = await finishGame();
+    if (!result.ok) {
+      setFinishError(result.error || 'Не удалось завершить игру');
+      return result;
+    }
     setFinalSlideshowVisible(false);
     dispatch({ type: 'OPEN_SETTINGS' });
+    return result;
   }, [dispatch, finishGame, state.isPaused]);
 
   const handleSaveSettings = useCallback((config: Config) => {
@@ -518,6 +525,10 @@ export function PokerTimer() {
 
       {/* Winner screen */}
       {showWinner && <WinnerScreen onFinishGame={handleFinishGame} />}
+
+      {finishError && finalSlideshowVisible && (
+        <p role="alert" className="fixed bottom-24 inset-x-4 z-[70] rounded-lg bg-black/90 p-3 text-center text-red-400">{finishError}</p>
+      )}
 
       {/* Final slideshow */}
       {showWinner && finalSlideshowVisible && (

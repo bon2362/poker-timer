@@ -175,3 +175,20 @@ describe('MobileAdminPanel two-table layout', () => {
     expect(screen.queryByRole('button', { name: '→ Стол 2' })).not.toBeInTheDocument();
   });
 });
+
+
+test('shows declare-winner error and allows retry', async () => {
+  setup({ ...baseSession, numberOfTables: 1 });
+  const game = mockUseGame();
+  game.sessionPlayers = [sp()];
+  game.declareWinner = jest.fn().mockResolvedValueOnce({ ok: false, error: 'Не удалось сохранить победителя' }).mockResolvedValueOnce({ ok: true });
+  const user = userEvent.setup();
+  render(<MobileAdminPanel onClose={jest.fn()} />);
+  await user.click(screen.getByRole('button', { name: /Alice/ }));
+  const button = screen.getByRole('button', { name: /Победитель/ });
+  await user.click(button);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить победителя');
+  expect(button).toBeEnabled();
+  await user.click(button);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

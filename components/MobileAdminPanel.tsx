@@ -24,6 +24,8 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
   } = useGame();
   const { startMinute } = useMinuteTimer();
   const [expanded, setExpanded] = useState(false);
+  const [winnerError, setWinnerError] = useState<string | null>(null);
+  const [declaringWinner, setDeclaringWinner] = useState(false);
   if (!activeSession) return null;
 
   const activePlayers = sessionPlayers.filter(p => p.status === 'playing');
@@ -110,10 +112,17 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
           <div className="flex gap-2">
             {isLastPlayer ? (
               <button
-                onClick={() => declareWinner(sp.id)}
+                disabled={declaringWinner}
+                onClick={async () => {
+                  setWinnerError(null);
+                  setDeclaringWinner(true);
+                  const result = await declareWinner(sp.id);
+                  if (!result.ok) setWinnerError(result.error || 'Не удалось сохранить победителя');
+                  setDeclaringWinner(false);
+                }}
                 className={`${btnBase} flex-1 py-3 text-[15px] bg-yellow-900 border-yellow-700 text-yellow-300 hover:bg-yellow-800`}
               >
-                🏆 Победитель
+                {declaringWinner ? 'Сохранение…' : '🏆 Победитель'}
               </button>
             ) : (
               <button
@@ -130,6 +139,7 @@ function PlayerAdminRow({ sp, player }: { sp: SessionPlayer; player: Player }) {
               ⏱ Минуту!
             </button>
           </div>
+          {winnerError && <p role="alert" className="text-[13px] text-red-400">{winnerError}</p>}
         </div>
       )}
     </div>

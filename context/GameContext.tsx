@@ -3,8 +3,9 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useRef, ReactNode } from 'react';
 import type { Player, Session, SessionPlayer, NewSessionData } from '@/types/game';
 import { fetchPlayers, createPlayer, updatePlayer as updatePlayerDB, deletePlayer as deletePlayerDB } from '@/lib/supabase/players';
-import { fetchActiveSession, createSession, updateSessionPlayer, finishSession, mergeTables, toSessionPlayer } from '@/lib/supabase/sessions';
+import { fetchActiveSession, createSession, updateSessionPlayer, mergeTables, toSessionPlayer } from '@/lib/supabase/sessions';
 import { getClient } from '@/supabase/client';
+import { getCurrentPlayerImage } from '@/lib/supabase/imageVariants';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
 // ── Context ────────────────────────────────────────────────────────────────
 
+export type GameActionResult = { ok: boolean; error?: string };
+
 type GameContextValue = {
   // state
   players: Player[];
@@ -97,8 +100,8 @@ type GameContextValue = {
   confirmMerge: () => Promise<void>;
   eliminatePlayer: (sessionPlayerId: string) => Promise<void>;
   undoEliminate: (sessionPlayerId: string) => Promise<void>;
-  declareWinner: (sessionPlayerId: string) => Promise<void>;
-  finishGame: () => Promise<void>;
+  declareWinner: (sessionPlayerId: string) => Promise<GameActionResult>;
+  finishGame: () => Promise<GameActionResult>;
   undoRebuy: (sessionPlayerId: string) => Promise<void>;
   undoAddon: (sessionPlayerId: string) => Promise<void>;
 };
@@ -285,32 +288,52 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [state.activeSession, state.sessionPlayers]);
 
   const eliminatePlayer = useCallback(async (sessionPlayerId: string) => {
+    const player = state.sessionPlayers.find(p => p.id === sessionPlayerId);
+    if (!player) return;
+    const image = await getCurrentPlayerImage(player.playerId, 'loser');
     const activePlayers = state.sessionPlayers.filter(p => p.status === 'playing');
     const position = activePlayers.length; // e.g. 4 active → this player finishes 4th
     const updated = await updateSessionPlayer(sessionPlayerId, {
       status: 'eliminated',
       finishPosition: position,
       eliminatedAt: new Date().toISOString(),
+      loserImageId: image?.id ?? null,
     });
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
   }, [state.sessionPlayers]);
 
-  const declareWinner = useCallback(async (sessionPlayerId: string) => {
-    const updated = await updateSessionPlayer(sessionPlayerId, {
-      status: 'winner',
-      finishPosition: 1,
-    });
-    if (updated) {
-      dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
-      dispatch({ type: 'SHOW_WINNER' });
+  const declareWinner = useCallback(async (sessionPlayerId: string): Promise<GameActionResult> => {
+    if (!state.activeSession) return { ok: false, error: 'Нет активной игры' };
+    try {
+      const response = await fetch(`/api/admin/games/${state.activeSession.id}/declare-winner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionPlayerId }),
+      });
+      const data = await response.json();
+      if (!response.ok) return { ok: false, error: data.error || 'Не удалось сохранить победителя' };
+      const returnedPlayers = data.sessionPlayers.map(toSessionPlayer) as SessionPlayer[];
+      const sessionPlayers = state.sessionPlayers.map(player => returnedPlayers.find(updated => updated.id === player.id) ?? player);
+      dispatch({ type: 'SET_SESSION', session: state.activeSession, sessionPlayers });
+      // Refresh payouts and finished_at, which are persisted separately by the route.
+      try {
+        const refreshed = await fetchActiveSession();
+        if (refreshed?.session.id === state.activeSession.id && refreshed.sessionPlayers.some(player => player.status === 'winner')) {
+          dispatch({ type: 'SET_SESSION', session: refreshed.session, sessionPlayers: refreshed.sessionPlayers });
+        }
+      } catch { /* The successful server result remains available if refresh fails. */ }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Не удалось сохранить победителя. Проверьте соединение и попробуйте ещё раз.' };
     }
-  }, []);
+  }, [state.activeSession, state.sessionPlayers]);
 
   const undoEliminate = useCallback(async (sessionPlayerId: string) => {
     const updated = await updateSessionPlayer(sessionPlayerId, {
       status: 'playing',
       finishPosition: null,
       eliminatedAt: null,
+      loserImageId: null,
       ...(state.activeSession?.tablesMergedAt ? { tableNumber: 1 } : {}),
     });
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
@@ -328,11 +351,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (updated) dispatch({ type: 'UPDATE_SESSION_PLAYER', sessionPlayer: updated });
   }, []);
 
-  const finishGame = useCallback(async () => {
-    if (!state.activeSession) return;
-    await finishSession(state.activeSession.id);
-    dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
-    dispatch({ type: 'HIDE_WINNER' });
+  const finishGame = useCallback(async (): Promise<GameActionResult> => {
+    if (!state.activeSession) return { ok: false, error: 'Нет активной игры' };
+    try {
+      const response = await fetch(`/api/admin/games/${state.activeSession.id}/finish`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json();
+        return { ok: false, error: data.error || 'Не удалось завершить игру' };
+      }
+      dispatch({ type: 'SET_SESSION', session: null, sessionPlayers: [] });
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Не удалось завершить игру. Проверьте соединение и попробуйте ещё раз.' };
+    }
   }, [state.activeSession]);
 
   return (

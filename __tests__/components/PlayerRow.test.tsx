@@ -131,3 +131,19 @@ describe('PlayerRow table movement', () => {
     expect(startMinute).toHaveBeenCalledWith('Ivan', 'player-1');
   });
 });
+
+
+test('shows declare-winner error and allows retry', async () => {
+  setup(baseSession);
+  const game = mockUseGame();
+  game.sessionPlayers = [sp()];
+  game.declareWinner = jest.fn().mockResolvedValueOnce({ ok: false, error: 'Не удалось сохранить победителя' }).mockResolvedValueOnce({ ok: true });
+  const user = userEvent.setup();
+  render(<PlayerRow sp={sp()} />);
+  const button = screen.getByRole('button', { name: /Объявить победителем/ });
+  await user.click(button);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить победителя');
+  expect(button).toBeEnabled();
+  await user.click(button);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

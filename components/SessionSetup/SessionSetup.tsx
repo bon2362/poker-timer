@@ -7,7 +7,7 @@ import type { NewSessionData } from '@/types/game';
 
 export function SessionSetup() {
   const { players, sessionPlayers, activeSession, startSession } = useGame();
-  const { dispatch: timerDispatch } = useTimer();
+  const { state: timerState, dispatch: timerDispatch } = useTimer();
 
   const [buyIn, setBuyIn] = useState(String(activeSession?.buyIn ?? 1000));
   const [initialStack, setInitialStack] = useState(String(activeSession?.initialStack ?? 2000));
@@ -96,6 +96,12 @@ export function SessionSetup() {
       numberOfTables,
       mergeThreshold: numberOfTables === 2 ? mergeThresholdNumber : 0,
       tablesMergedAt: null,
+      blindStructure: {
+        levelDuration: timerState.config.levelDuration,
+        breakDuration: timerState.config.breakDuration,
+        breakEvery: timerState.config.breakEvery,
+        blindLevels: timerState.config.blindLevels.map(level => ({ ...level })),
+      },
     };
 
     setStarting(true);

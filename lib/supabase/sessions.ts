@@ -107,7 +107,7 @@ export async function createSession(
 
 export async function updateSessionPlayer(
   id: string,
-  updates: Partial<Pick<SessionPlayer, 'rebuys' | 'hasAddon' | 'status' | 'finishPosition' | 'eliminatedAt' | 'tableNumber'>>
+  updates: Partial<Pick<SessionPlayer, 'rebuys' | 'hasAddon' | 'status' | 'finishPosition' | 'eliminatedAt' | 'tableNumber' | 'loserImageId'>>
 ): Promise<SessionPlayer | null> {
   const client = getClient();
   if (!client) return null;
@@ -118,6 +118,7 @@ export async function updateSessionPlayer(
   if (updates.finishPosition !== undefined) dbUpdates.finish_position = updates.finishPosition;
   if (updates.eliminatedAt !== undefined) dbUpdates.eliminated_at = updates.eliminatedAt;
   if (updates.tableNumber !== undefined) dbUpdates.table_number = updates.tableNumber;
+  if (updates.loserImageId !== undefined) dbUpdates.loser_image_id = updates.loserImageId;
   const { data, error } = await client
     .from('session_players')
     .update(dbUpdates)

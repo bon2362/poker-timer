@@ -18,6 +18,7 @@ export async function fetchPlayers(): Promise<Player[]> {
   const { data, error } = await client
     .from('players')
     .select('*')
+    .is('archived_at', null)
     .order('created_at');
   if (error) { console.error('fetchPlayers:', error); return []; }
   return (data ?? []).map(toPlayer);
@@ -54,6 +55,6 @@ export async function updatePlayer(id: string, updates: Partial<Pick<Player, 'na
 export async function deletePlayer(id: string): Promise<void> {
   const client = getClient();
   if (!client) return;
-  const { error } = await client.from('players').delete().eq('id', id);
+  const { error } = await client.from('players').update({ archived_at: new Date().toISOString() }).eq('id', id);
   if (error) console.error('deletePlayer:', error);
 }

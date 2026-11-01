@@ -18,6 +18,8 @@ export function PlayerRow({ sp }: Props) {
   } = useGame();
   const { startMinute } = useMinuteTimer();
   const [expanded, setExpanded] = useState(false);
+  const [winnerError, setWinnerError] = useState<string | null>(null);
+  const [declaringWinner, setDeclaringWinner] = useState(false);
   const [undoHover, setUndoHover] = useState(false);
   const player = players.find(p => p.id === sp.playerId);
   if (!player || !activeSession) return null;
@@ -188,11 +190,19 @@ export function PlayerRow({ sp }: Props) {
       {isLastPlayer && (
         <div className="pl-[48px]">
           <button
-            onClick={() => declareWinner(sp.id)}
+            disabled={declaringWinner}
+            onClick={async () => {
+              setWinnerError(null);
+              setDeclaringWinner(true);
+              const result = await declareWinner(sp.id);
+              if (!result.ok) setWinnerError(result.error || 'Не удалось сохранить победителя');
+              setDeclaringWinner(false);
+            }}
             className="text-[13px] bg-yellow-900 border border-yellow-600 text-yellow-300 rounded-lg px-4 py-2 cursor-pointer hover:bg-yellow-800 font-semibold"
           >
-            🏆 Объявить победителем
+            {declaringWinner ? 'Сохранение…' : '🏆 Объявить победителем'}
           </button>
+          {winnerError && <p role="alert" className="mt-2 text-[12px] text-red-400">{winnerError}</p>}
         </div>
       )}
     </div>
