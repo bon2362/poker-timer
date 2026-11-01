@@ -249,9 +249,9 @@ export function PokerTimer() {
   }, [dispatch, isOnBreak, state.config, toggleSong]);
 
   useEffect(() => {
-    if (!shouldPromptMerge) return;
+    if (!canControl || !shouldPromptMerge) return;
     dispatch({ type: 'PAUSE_TIMER' });
-  }, [dispatch, shouldPromptMerge]);
+  }, [canControl, dispatch, shouldPromptMerge]);
 
   useEffect(() => {
     if (!isTwoTableActive) {

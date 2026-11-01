@@ -127,6 +127,38 @@ test.each([false, true])('desktop viewer cannot use keyboard commands while chec
   expect(screen.queryByTitle('Settings')).not.toBeInTheDocument();
 });
 
+test.each([
+  { isAdmin: false, checking: false, shouldPause: false },
+  { isAdmin: false, checking: true, shouldPause: false },
+  { isAdmin: true, checking: true, shouldPause: false },
+  { isAdmin: true, checking: false, shouldPause: true },
+])('merge prompt pauses only for a verified admin: %j', async ({ isAdmin, checking, shouldPause }) => {
+  const { dispatch } = setup();
+  const game = (useGame as jest.Mock).getMockImplementation()!();
+  (useGame as jest.Mock).mockReturnValue({
+    ...game,
+    activeSession: { ...game.activeSession, numberOfTables: 2, mergeThreshold: 1, tablesMergedAt: null },
+    sessionPlayers: [{ ...game.sessionPlayers[0], status: 'playing', finishPosition: null }],
+    showWinner: false,
+  });
+  (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin, checking });
+
+  const { rerender } = render(<PokerTimer />);
+  await act(async () => {});
+
+  if (shouldPause) {
+    expect(dispatch).toHaveBeenCalledWith({ type: 'PAUSE_TIMER' });
+  } else {
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'PAUSE_TIMER' });
+  }
+
+  if (isAdmin && checking) {
+    (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin: true, checking: false });
+    rerender(<PokerTimer />);
+    expect(dispatch).toHaveBeenCalledWith({ type: 'PAUSE_TIMER' });
+  }
+});
+
 test('mobile viewer double tap opens password form, with no pause action', async () => {
   setup();
   (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin: false, checking: false, login: jest.fn() });
