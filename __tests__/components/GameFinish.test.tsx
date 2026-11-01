@@ -56,10 +56,9 @@ test.each(['standalone', 'timer'] as const)('%s keeps winner screen open and sho
   render(mode === 'standalone' ? <WinnerScreen /> : <PokerTimer />);
   await user.click(screen.getByRole('button', { name: 'Завершить игру' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось завершить игру');
-  expect(dispatch).not.toHaveBeenCalledWith({ type: 'OPEN_SETTINGS' });
   finishGame.mockResolvedValue({ ok: true });
   await user.click(screen.getByRole('button', { name: 'Завершить игру' }));
-  await waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: 'OPEN_SETTINGS' }));
+  await waitFor(() => expect(finishGame).toHaveBeenCalledTimes(2));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
@@ -72,8 +71,7 @@ test('timer exposes the finish error above the final slideshow and keeps it visi
     await act(async () => { screen.getByRole('button', { name: 'Завершить слайдшоу' }).click(); });
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось завершить игру');
     expect(screen.getByRole('button', { name: 'Завершить слайдшоу' })).toBeInTheDocument();
-    expect(dispatch).not.toHaveBeenCalledWith({ type: 'OPEN_SETTINGS' });
-  } finally { jest.useRealTimers(); }
+    } finally { jest.useRealTimers(); }
 });
 
 test('timer cycles photo records with their supplied dates during a break', async () => {

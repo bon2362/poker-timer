@@ -1,69 +1,50 @@
 import { loginAsAdmin } from '../helpers/admin';
 import { test, expect } from '@playwright/test';
 
-async function waitForSettingsEntryPoints(page: import('@playwright/test').Page) {
-  await page.goto('/');
-  await page.waitForLoadState('domcontentloaded');
-  await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 30000 });
-  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
-}
-
 test.describe('Settings - Desktop', () => {
   test.beforeEach(async ({ page, baseURL }) => {
     await loginAsAdmin(page, baseURL);
-    await waitForSettingsEntryPoints(page);
   });
 
-  // Helper: click the gear (Settings) button via JS to bypass the overlay (z-40)
-  async function openSettingsViaGear(page: import('@playwright/test').Page) {
-    await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
-    await page.evaluate(() => {
-      const btn = document.querySelector<HTMLButtonElement>('button[title="Settings"]');
-      btn?.click();
-    });
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible({ timeout: 10000 });
-  }
-
-  // E12: Can open settings via gear button
-  test('E12: navigate to settings via gear button', async ({ page }) => {
-    // The gear button is behind the "Игра не настроена" overlay (z-40).
-    // Use JS click to bypass the overlay's pointer-event interception.
-    await openSettingsViaGear(page);
-
-    // Settings screen shows "НАСТРОЙКИ" heading
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();
+  // E12: The gear keeps the timer running by opening the admin area in a new tab
+  test('E12: gear opens the admin area in a new tab', async ({ page }) => {
+    await page.goto('/');
+    const gear = page.locator('[title="Settings"]');
+    await expect(gear).toBeVisible({ timeout: 15000 });
+    await expect(gear).toHaveAttribute('href', '/admin');
+    await expect(gear).toHaveAttribute('target', '_blank');
   });
 
-  // E13: Can open settings via overlay button when present, or via gear during an active session.
-  test('E13: navigate to settings from current game state', async ({ page }) => {
-    const openSettingsBtn = page.getByRole('button', { name: 'Открыть настройки' });
-    if (await openSettingsBtn.isVisible()) {
-      await openSettingsBtn.click();
-    } else {
-      await openSettingsViaGear(page);
-    }
+  // E13: All settings are tabs of the admin area
+  test('E13: admin tabs lead to every settings section', async ({ page }) => {
+    await page.goto('/admin/tournament');
+    await expect(page.getByText('Блайнды', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: '▶ Начать игру' })).toBeVisible();
 
-    // Settings screen should appear
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible({ timeout: 10000 });
+    await page.getByRole('link', { name: 'Оформление' }).click();
+    await expect(page).toHaveURL(/\/admin\/display$/);
+    await expect(page.getByText('Слайдшоу на перерыве')).toBeVisible({ timeout: 15000 });
+
+    await page.getByRole('link', { name: 'Игроки' }).click();
+    await expect(page).toHaveURL(/\/admin\/players$/);
+
+    await page.getByRole('link', { name: 'CI/CD' }).click();
+    await expect(page).toHaveURL(/\/admin\/ci$/);
+    await expect(page.getByRole('button', { name: 'Обновить' })).toBeVisible();
   });
 
-  // E14: Settings screen has back button to return to timer
-  test('E14: can close settings and return to timer', async ({ page }) => {
-    // Open settings via JS click (bypasses overlay)
-    await openSettingsViaGear(page);
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();
-
-    // Close settings via the header back button and wait for the settings screen to unmount.
-    await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-        button => button.textContent?.includes('Назад')
-      );
-      btn?.click();
-    });
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).not.toBeVisible({ timeout: 10000 });
-
-    // Timer screen should be back
+  // E14: The admin area links back to the timer
+  test('E14: can return from the admin area to the timer', async ({ page }) => {
+    await page.goto('/admin/tournament');
+    await page.getByRole('link', { name: '← На сайт' }).click();
     await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('settings pages require login', async ({ page }) => {
+    await page.context().clearCookies();
+    for (const path of ['/admin/tournament', '/admin/display', '/admin/ci']) {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/admin\/login$/);
+    }
   });
 });

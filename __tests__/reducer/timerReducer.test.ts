@@ -29,7 +29,6 @@ function makeState(overrides: Partial<TimerState> = {}): TimerState {
     warnedOneMin: false,
     tractorMomentActive: false,
     config,
-    screen: 'timer',
     pendingSound: null,
     ...overrides,
   };
@@ -207,21 +206,6 @@ describe('RESTART', () => {
   });
 });
 
-describe('OPEN_SETTINGS / CLOSE_SETTINGS', () => {
-  test('OPEN_SETTINGS sets screen to settings and pauses', () => {
-    const state = makeState({ screen: 'timer', isPaused: false });
-    const next = timerReducer(state, { type: 'OPEN_SETTINGS' });
-    expect(next.screen).toBe('settings');
-    expect(next.isPaused).toBe(true);
-  });
-
-  test('CLOSE_SETTINGS sets screen to timer', () => {
-    const state = makeState({ screen: 'settings' });
-    const next = timerReducer(state, { type: 'CLOSE_SETTINGS' });
-    expect(next.screen).toBe('timer');
-  });
-});
-
 describe('SAVE_SETTINGS', () => {
   test('updates config and rebuilds stages', () => {
     const state = makeState();
@@ -230,7 +214,6 @@ describe('SAVE_SETTINGS', () => {
     expect(next.config.levelDuration).toBe(15);
     expect(next.stages[0].duration).toBe(900);
     expect(next.currentStage).toBe(0);
-    expect(next.screen).toBe('timer');
   });
 });
 
@@ -402,16 +385,6 @@ describe('TICK — advanceStage sounds', () => {
     const next = timerReducer(state, { type: 'TICK' });
     expect(next.currentStage).toBe(1);
     expect(next.pendingSound).toBe('blindsUp');
-  });
-});
-
-describe('OPEN_SETTINGS', () => {
-  test('when already paused: just changes screen without modifying elapsed time', () => {
-    const state = makeState({ isPaused: true, screen: 'timer', elapsedBeforePause: 100 });
-    const next = timerReducer(state, { type: 'OPEN_SETTINGS' });
-    expect(next.screen).toBe('settings');
-    expect(next.isPaused).toBe(true);
-    expect(next.elapsedBeforePause).toBe(100); // unchanged
   });
 });
 

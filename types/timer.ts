@@ -39,7 +39,6 @@ export type SoundEvent =
   | 'breakOver'
   | 'tick';
 
-export type Screen = 'timer' | 'settings';
 
 export type TimerState = {
   stages: Stage[];
@@ -52,7 +51,6 @@ export type TimerState = {
   warnedOneMin: boolean;
   tractorMomentActive: boolean;
   config: Config;
-  screen: Screen;
   pendingSound: SoundEvent | null;
 };
 
@@ -66,11 +64,9 @@ export type Action =
   | { type: 'RESET_STAGE' }
   | { type: 'GO_TO_LAST' }
   | { type: 'RESTART' }
-  | { type: 'OPEN_SETTINGS' }
   | { type: 'SAVE_SETTINGS'; config: Config }
   | { type: 'SAVE_DISPLAY_CONFIG'; config: Config }
   | { type: 'RESTORE_CONFIG'; config: Config; resetInitialTimer?: boolean }
-  | { type: 'CLOSE_SETTINGS' }
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }
   | { type: 'TOGGLE_GAME_PANEL' }

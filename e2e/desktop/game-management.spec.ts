@@ -5,17 +5,7 @@ async function waitForDesktopTimerScreen(page: import('@playwright/test').Page) 
   await page.goto('/');
   await page.waitForLoadState('domcontentloaded');
   await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
-  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
-}
-
-// Helper: open settings screen bypassing the "Игра не настроена" overlay (z-40, intercepts pointer events)
-async function openSettingsViaGear(page: import('@playwright/test').Page) {
-  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
-  await page.evaluate(() => {
-    const btn = document.querySelector<HTMLButtonElement>('button[title="Settings"]');
-    btn?.click();
-  });
-  await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('[title="Settings"]')).toBeVisible({ timeout: 15000 });
 }
 
 test.describe('Game Management - Desktop', () => {
@@ -33,21 +23,16 @@ test.describe('Game Management - Desktop', () => {
       await expect(
         page.locator('p', { hasText: 'Настройте игроков и параметры сессии перед стартом таймера' })
       ).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Открыть настройки' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Открыть настройки' })).toBeVisible();
     } else {
       await expect(page.locator('text=Round 1')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Открыть настройки' })).not.toBeVisible();
+      await expect(page.getByRole('link', { name: 'Открыть настройки' })).not.toBeVisible();
     }
   });
 
-  // E8: Settings → Игроки tab shows the player list
+  // E8: /admin/players shows the player list
   test('E8: settings player list section is visible', async ({ page }) => {
-    await openSettingsViaGear(page);
-
-    // Switch to the "Игроки" tab
-    const playersTab = page.getByRole('button', { name: 'Игроки' });
-    await expect(playersTab).toBeVisible();
-    await playersTab.click();
+    await page.goto('/admin/players');
 
     // Heading should contain "Игроки" and a count
     await expect(page.locator('text=/Игроки \\(\\d+\\)/')).toBeVisible({ timeout: 5000 });
@@ -63,15 +48,10 @@ test.describe('Game Management - Desktop', () => {
     }
   });
 
-  // E9: Settings → Турнир tab shows blinds table with SB/BB columns
+  // E9: /admin/tournament shows blinds table with SB/BB columns
   test('E9: settings tournament tab shows blinds configuration', async ({ page }) => {
-    await openSettingsViaGear(page);
-
-    // "Турнир" tab is the default/active tab
-    const tournamentTab = page.getByRole('button', { name: 'Турнир' });
-    await expect(tournamentTab).toBeVisible();
-    // Make sure we're on the Турнир tab (click in case another tab is active)
-    await tournamentTab.click();
+    await page.goto('/admin/tournament');
+    await expect(page.getByRole('link', { name: 'Турнир' })).toBeVisible();
 
     // Blinds section heading (exact match on the section label "Блайнды")
     await expect(page.getByText('Блайнды', { exact: true })).toBeVisible();

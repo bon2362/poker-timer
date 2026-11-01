@@ -66,7 +66,6 @@ function TestConsumer() {
     <div>
       <div data-testid="paused">{String(state.isPaused)}</div>
       <div data-testid="stage">{state.currentStage}</div>
-      <div data-testid="screen">{state.screen}</div>
       <div data-testid="timeLeft">{state.timeLeft}</div>
       <div data-testid="pendingSound">{state.pendingSound ?? 'null'}</div>
       <div data-testid="showCombos">{String(state.config.showCombos)}</div>
@@ -76,7 +75,6 @@ function TestConsumer() {
       <button onClick={() => dispatch({ type: 'PREV_STAGE' })}>prev</button>
       <button onClick={() => dispatch({ type: 'RESET_STAGE' })}>reset-stage</button>
       <button onClick={() => dispatch({ type: 'TOGGLE_COMBOS' })}>toggle-combos</button>
-      <button onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}>settings</button>
       <button onClick={() => dispatch({ type: 'RESTART' })}>restart</button>
     </div>
   );
@@ -108,7 +106,6 @@ describe('TimerContext', () => {
     renderWithProvider();
     await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
     expect(screen.getByTestId('stage')).toHaveTextContent('0');
-    expect(screen.getByTestId('screen')).toHaveTextContent('timer');
   });
 
   test('2. TOGGLE_PAUSE changes isPaused from true to false', async () => {
@@ -131,17 +128,6 @@ describe('TimerContext', () => {
     });
 
     expect(screen.getByTestId('stage')).toHaveTextContent('1');
-  });
-
-  test('4. OPEN_SETTINGS changes screen to settings', async () => {
-    renderWithProvider();
-    await waitFor(() => expect(screen.getByTestId('screen')).toHaveTextContent('timer'));
-
-    await act(async () => {
-      screen.getByText('settings').click();
-    });
-
-    expect(screen.getByTestId('screen')).toHaveTextContent('settings');
   });
 
   test('5. useTimer throws when used outside TimerProvider', () => {
@@ -189,7 +175,7 @@ describe('TimerContext', () => {
     await waitFor(() => expect(screen.getByTestId('pendingSound')).toHaveTextContent('null'));
   });
 
-  test('8. RESTART resets state: currentStage=0, isPaused=true, screen=timer', async () => {
+  test('8. RESTART resets state: currentStage=0, isPaused=true', async () => {
     renderWithProvider();
 
     // Navigate away first
@@ -198,11 +184,6 @@ describe('TimerContext', () => {
     });
     expect(screen.getByTestId('stage')).toHaveTextContent('1');
 
-    await act(async () => {
-      screen.getByText('settings').click();
-    });
-    expect(screen.getByTestId('screen')).toHaveTextContent('settings');
-
     // Now restart
     await act(async () => {
       screen.getByText('restart').click();
@@ -210,7 +191,6 @@ describe('TimerContext', () => {
 
     expect(screen.getByTestId('stage')).toHaveTextContent('0');
     expect(screen.getByTestId('paused')).toHaveTextContent('true');
-    expect(screen.getByTestId('screen')).toHaveTextContent('timer');
   });
 
   test('9. restoring from DB does not echo stale state back to Supabase', async () => {
@@ -469,5 +449,30 @@ describe('game start time', () => {
     await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
     await act(async () => { screen.getByText('toggle').click(); });
     expect(markSessionStarted).not.toHaveBeenCalled();
+  });
+});
+
+describe('admin connection', () => {
+  afterEach(() => { jest.mocked(fetchTimerState).mockResolvedValue(null); });
+
+  function ReadyConsumer() {
+    const { configReady } = useTimer();
+    return <div data-testid="ready">{String(configReady)}</div>;
+  }
+
+  test('reports when saved settings have loaded', async () => {
+    render(<TimerProvider><ReadyConsumer /></TimerProvider>);
+    expect(screen.getByTestId('ready')).toHaveTextContent('false');
+    await waitFor(() => expect(screen.getByTestId('ready')).toHaveTextContent('true'));
+  });
+
+  test('silent connection never plays timer sounds', async () => {
+    const { playSound } = jest.requireMock('@/lib/audio') as { playSound: jest.Mock };
+    playSound.mockClear();
+    render(<TimerProvider silent><TestConsumer /></TimerProvider>);
+    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
+    await act(async () => { screen.getByText('next').click(); });
+    await waitFor(() => expect(screen.getByTestId('pendingSound')).toHaveTextContent('null'));
+    expect(playSound).not.toHaveBeenCalled();
   });
 });

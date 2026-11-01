@@ -29,13 +29,8 @@ test.describe('Visual - Desktop', () => {
   });
 
   test('desktop settings screen', async ({ page }) => {
-    // Open settings via JS to bypass the "Игра не настроена" overlay (z-40)
-    await page.evaluate(() => {
-      const btn = document.querySelector<HTMLButtonElement>('button[title="Settings"]');
-      btn?.click();
-    });
-    await page.waitForSelector('h1', { timeout: 10000 });
-    await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible();
+    await page.goto('/admin/tournament');
+    await expect(page.getByText('Блайнды', { exact: true })).toBeVisible();
 
     await expect(page).toHaveScreenshot('desktop-settings.png', {
       maxDiffPixelRatio: 0.05,

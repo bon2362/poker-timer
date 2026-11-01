@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
 import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
@@ -13,6 +13,7 @@ import type { TimerState, Action } from '@/types/timer';
 type TimerContextValue = {
   state: TimerState;
   dispatch: React.Dispatch<Action>;
+  configReady: boolean;
 };
 
 type SyncSnapshot = Pick<TimerState, 'currentStage' | 'anchorTs' | 'elapsedBeforePause' | 'isPaused' | 'isOver' | 'warnedOneMin'>;
@@ -41,8 +42,9 @@ function syncSnapshotMatchesState(snapshot: SyncSnapshot, state: TimerState): bo
   );
 }
 
-export function TimerProvider({ children }: { children: ReactNode }) {
+export function TimerProvider({ children, silent = false }: { children: ReactNode; silent?: boolean }) {
   const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
+  const [configReady, setConfigReady] = useState(false);
   const { activeSession, loading: gameLoading } = useGame();
   const suppressUntilRef = useRef<number>(0);
   const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
@@ -85,6 +87,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   // Audio side effects
   useEffect(() => {
     if (!state.pendingSound) return;
+    if (silent) {
+      dispatch({ type: 'CLEAR_SOUND' });
+      return;
+    }
     const event = state.pendingSound;
     const now = Date.now();
     if (event === 'tick' && now < suppressUntilRef.current) {
@@ -94,7 +100,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (event !== 'tick') suppressUntilRef.current = now + 3500;
     playSound(event);
     dispatch({ type: 'CLEAR_SOUND' });
-  }, [state.pendingSound]);
+  }, [state.pendingSound, silent]);
 
   // --- Restore app config + timer state from DB on mount / session change ---
   useEffect(() => {
@@ -111,6 +117,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     Promise.all([fetchAppConfig(), fetchTimerState()]).then(([config, saved]) => {
       if (cancelled) return;
+      setConfigReady(true);
 
       if (!saved) {
         if (config) {
@@ -302,7 +309,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   }, [state.config]);
 
   return (
-    <TimerContext.Provider value={{ state, dispatch }}>
+    <TimerContext.Provider value={{ state, dispatch, configReady }}>
       {children}
     </TimerContext.Provider>
   );

@@ -8,7 +8,6 @@ import { BlindInfo } from './BlindInfo';
 import { TimerDisplay } from './TimerDisplay';
 import { Controls } from './Controls';
 import { CombosPanel } from './CombosPanel';
-import { SettingsScreen } from './SettingsScreen';
 import { GamePanel } from './GamePanel/GamePanel';
 import { WinnerScreen } from './WinnerScreen/WinnerScreen';
 import { SlideshowOverlay } from './SlideshowOverlay';
@@ -206,17 +205,8 @@ export function PokerTimer() {
       return result;
     }
     setFinalSlideshowVisible(false);
-    dispatch({ type: 'OPEN_SETTINGS' });
     return result;
   }, [dispatch, finishGame, state.isPaused]);
-
-  const handleSaveSettings = useCallback((config: Config) => {
-    dispatch({ type: 'SAVE_SETTINGS', config });
-  }, [dispatch]);
-
-  const handleSaveDisplayConfig = useCallback((config: Config) => {
-    dispatch({ type: 'SAVE_DISPLAY_CONFIG', config });
-  }, [dispatch]);
 
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
@@ -336,21 +326,6 @@ export function PokerTimer() {
     nextText = `${nextStage.sb} / ${nextStage.bb}`;
   }
 
-  if (canControl && state.screen === 'settings') {
-    return (
-      <SettingsScreen
-        config={state.config}
-        onSave={handleSaveSettings}
-        onDisplaySave={handleSaveDisplayConfig}
-        onClose={() => dispatch({ type: 'CLOSE_SETTINGS' })}
-        onJumpToEnd={() => {
-          dispatch({ type: 'JUMP_TO_END' });
-          dispatch({ type: 'CLOSE_SETTINGS' });
-        }}
-      />
-    );
-  }
-
   return (
     <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
       {/* Top bar */}
@@ -364,13 +339,15 @@ export function PokerTimer() {
           >
             ⛶
           </button>
-          {canControl ? <button
-            className="bg-transparent border-none text-[#383838] text-[20px] cursor-pointer p-1 w-8 hover:text-[#555] transition-colors"
-            onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
+          {canControl ? <a
+            href="/admin"
+            target="_blank"
+            rel="noopener"
+            className="bg-transparent border-none text-[#383838] text-[20px] cursor-pointer p-1 w-8 hover:text-[#555] transition-colors no-underline"
             title="Settings"
           >
             {'⚙\uFE0E'}
-          </button> : <button disabled={checking} onClick={() => setLoginOpen(true)} className="min-h-11 px-3 text-[14px] text-[#8a8a8a] cursor-pointer disabled:opacity-50">Войти в управление</button>}
+          </a> : <button disabled={checking} onClick={() => setLoginOpen(true)} className="min-h-11 px-3 text-[14px] text-[#8a8a8a] cursor-pointer disabled:opacity-50">Войти в управление</button>}
         </div>
       </div>
 
@@ -483,12 +460,14 @@ export function PokerTimer() {
             <div className="text-4xl mb-4">🃏</div>
             <h2 className="text-[18px] font-semibold text-[#ccc] mb-2">Игра не настроена</h2>
             <p className="text-[14px] text-[#666] mb-6">Настройте игроков и параметры сессии перед стартом таймера</p>
-            <button
-              className="bg-violet-700 text-white border-none rounded-lg px-6 py-3 text-[15px] font-semibold cursor-pointer hover:bg-violet-800 w-full"
-              onClick={() => dispatch({ type: 'OPEN_SETTINGS' })}
+            <a
+              href="/admin/tournament"
+              target="_blank"
+              rel="noopener"
+              className="inline-block no-underline bg-violet-700 text-white border-none rounded-lg px-6 py-3 text-[15px] font-semibold cursor-pointer hover:bg-violet-800 w-full"
             >
               Открыть настройки
-            </button>
+            </a>
           </div>
         </div>
       )}

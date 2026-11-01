@@ -1,13 +1,12 @@
 import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SettingsScreen } from '@/components/SettingsScreen';
+import { useState } from 'react';
+import { ChangelogModal, CiCdTab, currentVersion, DisplayTab, TournamentTab } from '@/components/SettingsScreen';
+import { VersionBadge } from '@/components/admin/VersionBadge';
+import type { Config } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 
 // Mock heavy sub-components that use contexts/Supabase
-jest.mock('@/components/PlayerManager/PlayerManager', () => ({
-  PlayerManager: () => <div data-testid="player-manager">PlayerManager</div>,
-}));
-
 jest.mock('@/components/SessionSetup/SessionSetup', () => ({
   SessionSetup: () => <div data-testid="session-setup">SessionSetup</div>,
 }));
@@ -33,122 +32,62 @@ jest.mock('@/context/TimerContext', () => ({
   useTimer: jest.fn(() => ({ dispatch: jest.fn(), state: {} })),
 }));
 
-function renderSettings(props: Partial<React.ComponentProps<typeof SettingsScreen>> = {}) {
-  const defaults = {
-    config: DEFAULT_CONFIG,
-    onSave: jest.fn(),
-    onDisplaySave: jest.fn(),
-    onClose: jest.fn(),
-  };
-  return render(<SettingsScreen {...defaults} {...props} />);
+type HarnessProps = { config: Config; onSave: (c: Config) => void; onDisplaySave: (c: Config) => void };
+// Same tab order as /admin: each tab is rendered by the real component.
+function Harness({ config, onSave, onDisplaySave }: HarnessProps) {
+  const [tab, setTab] = useState('tournament');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const open = (next: string) => { if (next === 'cicd' && tab === 'cicd') setRefreshKey(key => key + 1); else setTab(next); };
+  return <>
+    <button onClick={() => open('tournament')}>Турнир</button>
+    <button onClick={() => open('display')}>Оформление</button>
+    <button onClick={() => open('cicd')}>CI/CD</button>
+    {tab === 'tournament' && <TournamentTab config={config} onSave={onSave} />}
+    {tab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} />}
+    {tab === 'cicd' && <CiCdTab refreshKey={refreshKey} />}
+  </>;
+}
+function renderSettings(props: Partial<HarnessProps> = {}) {
+  return render(<Harness config={DEFAULT_CONFIG} onSave={jest.fn()} onDisplaySave={jest.fn()} {...props} />);
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('SettingsScreen — Header and navigation', () => {
-  test('renders "НАСТРОЙКИ" title', () => {
+describe('Admin settings tabs', () => {
+  test('"Турнир" tab shows tournament content by default', () => {
     renderSettings();
-    expect(screen.getByText('НАСТРОЙКИ')).toBeInTheDocument();
-  });
-
-  test('renders a version string matching vX.Y format', () => {
-    renderSettings();
-    expect(screen.getByText(/^v\d+\.\d+$/)).toBeInTheDocument();
-  });
-
-  test('clicking "← Назад" calls onClose', async () => {
-    const onClose = jest.fn();
-    const user = userEvent.setup();
-    renderSettings({ onClose });
-    await user.click(screen.getByRole('button', { name: '← Назад' }));
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  test('clicking "Готово" calls onClose', async () => {
-    const onClose = jest.fn();
-    const user = userEvent.setup();
-    renderSettings({ onClose });
-    await user.click(screen.getByRole('button', { name: 'Готово' }));
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  test('clicking "1:05" button calls onJumpToEnd', async () => {
-    const onJumpToEnd = jest.fn();
-    const user = userEvent.setup();
-    renderSettings({ onJumpToEnd });
-    await user.click(screen.getByRole('button', { name: '1:05' }));
-    expect(onJumpToEnd).toHaveBeenCalledTimes(1);
-  });
-
-  test('"1:05" button not rendered when onJumpToEnd not provided', () => {
-    renderSettings({ onJumpToEnd: undefined });
-    expect(screen.queryByRole('button', { name: '1:05' })).not.toBeInTheDocument();
-  });
-});
-
-describe('SettingsScreen — Tabs', () => {
-  test('"Турнир" tab is active by default and shows tournament content', () => {
-    renderSettings();
-    // Tournament tab should be active — session setup stub is rendered
-    expect(screen.getByTestId('session-setup')).toBeInTheDocument();
-  });
-
-  test('clicking "Игроки" tab renders PlayerManager', async () => {
-    const user = userEvent.setup();
-    renderSettings();
-    await user.click(screen.getByRole('button', { name: 'Игроки' }));
-    expect(screen.getByTestId('player-manager')).toBeInTheDocument();
+    expect(screen.getByText('Длительность уровня')).toBeInTheDocument();
   });
 
   test('clicking "Оформление" tab renders display settings section', async () => {
     const user = userEvent.setup();
     renderSettings();
     await user.click(screen.getByRole('button', { name: 'Оформление' }));
-    // Display tab shows Slideshow section label
-    expect(screen.getByText('Слайдшоу на перерыве')).toBeInTheDocument();
+    expect(await screen.findByText('Слайдшоу на перерыве')).toBeInTheDocument();
   });
 });
 
-describe('SettingsScreen — Changelog', () => {
-  test('shows v6.6 and keeps the October 31 release in history', async () => {
-    const user = userEvent.setup();
-    renderSettings();
-
-    expect(screen.getByText('v6.6')).toBeInTheDocument();
-    await user.click(screen.getByText('v6.6'));
-
-    expect(screen.getByText('v6.0')).toBeInTheDocument();
-
-    expect(screen.getByText("31 Oct '26")).toBeInTheDocument();
-    expect(screen.getByText(/Релиз к игре 31 октября/)).toBeInTheDocument();
+describe('Version and changelog', () => {
+  test('current version is the first release in the history', () => {
+    expect(currentVersion()).toBe('6.7');
   });
 
-  test('clicking version string opens changelog modal', async () => {
+  test('version badge opens the release history', async () => {
     const user = userEvent.setup();
-    renderSettings();
-    await user.click(screen.getByText(/^v\d+\.\d+$/));
+    render(<VersionBadge />);
+    await user.click(screen.getByRole('button', { name: 'v6.7' }));
     expect(screen.getByText('История версий')).toBeInTheDocument();
-  });
-
-  test('changelog modal shows "История версий" title', async () => {
-    const user = userEvent.setup();
-    renderSettings();
-    await user.click(screen.getByText(/^v\d+\.\d+$/));
-    expect(screen.getByRole('heading', { name: 'История версий' })).toBeInTheDocument();
+    expect(screen.getByText('v6.0')).toBeInTheDocument();
   });
 
   test('clicking "✕" in changelog closes it', async () => {
     const user = userEvent.setup();
-    renderSettings();
-    await user.click(screen.getByText(/^v\d+\.\d+$/));
-    // Changelog is open
-    const modal = screen.getByRole('heading', { name: 'История версий' }).closest('div')!;
-    // Close button is sibling of the heading inside the modal header row
-    const closeBtn = within(modal).getByRole('button', { name: '✕' });
-    await user.click(closeBtn);
-    expect(screen.queryByText('История версий')).not.toBeInTheDocument();
+    const onClose = jest.fn();
+    render(<ChangelogModal onClose={onClose} />);
+    await user.click(screen.getByRole('button', { name: '✕' }));
+    expect(onClose).toHaveBeenCalled();
   });
 });
 
@@ -320,14 +259,7 @@ describe('SettingsScreen — Tournament tab reset', () => {
       levelDuration: 99,
       blindLevels: [{ sb: 999, bb: 1998 }],
     };
-    render(
-      <SettingsScreen
-        config={modifiedConfig}
-        onSave={jest.fn()}
-        onDisplaySave={jest.fn()}
-        onClose={jest.fn()}
-      />
-    );
+    renderSettings({ config: modifiedConfig });
 
     // Modified config values are visible
     expect(screen.getAllByDisplayValue('999').length).toBeGreaterThan(0);

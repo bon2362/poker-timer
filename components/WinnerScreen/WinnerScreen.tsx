@@ -33,7 +33,6 @@ export function WinnerScreen({ onFinishGame }: Props) {
     }
     const result = await (onFinishGame ? onFinishGame() : finishGame());
     if (!result.ok) setFinishError(result.error || 'Не удалось завершить игру');
-    else if (!onFinishGame) timerDispatch({ type: 'OPEN_SETTINGS' });
     setFinishing(false);
   };
 

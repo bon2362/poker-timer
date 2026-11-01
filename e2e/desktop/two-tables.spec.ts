@@ -79,19 +79,8 @@ async function cleanupTestData() {
 }
 
 async function openSettings(page: Page) {
-  await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
-
-  const setupButton = page.getByRole('button', { name: 'Открыть настройки' });
-  if (await setupButton.isVisible()) {
-    await setupButton.click();
-  } else {
-    await page.evaluate(() => {
-      document.querySelector<HTMLButtonElement>('button[title="Settings"]')?.click();
-    });
-  }
-
-  await expect(page.locator('h1', { hasText: 'НАСТРОЙКИ' })).toBeVisible({ timeout: 10000 });
-  await page.getByRole('button', { name: 'Турнир' }).click();
+  await page.goto('/admin/tournament');
+  await expect(page.getByText('Блайнды', { exact: true })).toBeVisible({ timeout: 15000 });
 }
 
 async function startTwoTableSession(page: Page) {
@@ -109,6 +98,8 @@ async function startTwoTableSession(page: Page) {
 
   await page.locator('label', { hasText: 'Порог объединения' }).locator('..').locator('input').fill('4');
   await page.getByRole('button', { name: '▶ Начать игру' }).click();
+  await expect(page.getByRole('link', { name: 'Открыть таймер →' })).toBeVisible({ timeout: 15000 });
+  await page.goto('/');
 
   await expect(page.getByText('Стол 1 (3)')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Стол 2 (3)')).toBeVisible();

@@ -5,7 +5,6 @@ import type { Config, BlindLevel, SoundEvent } from '@/types/timer';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import { playSound } from '@/lib/audio';
 import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
-import { PlayerManager } from './PlayerManager/PlayerManager';
 import { SessionSetup } from './SessionSetup/SessionSetup';
 import { FinalGameSlideshowOverlay } from './FinalGameSlideshowOverlay';
 
@@ -14,6 +13,11 @@ type ChangelogEntry =
   | { divider: true; label: string };
 
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '6.7',
+    date: "02 Nov '26",
+    notes: 'Все настройки перенесены в админку: вкладки Игры, Игроки, Турнир, Оформление, CI/CD. Шестерёнка открывает их в новой вкладке, таймер продолжает работать. Запуск игры теперь тоже в админке.',
+  },
   {
     version: '6.6',
     date: "02 Nov '26",
@@ -422,7 +426,7 @@ const CHANGELOG: ChangelogEntry[] = [
   },
 ];
 
-function ChangelogModal({ onClose }: { onClose: () => void }) {
+export function ChangelogModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 w-[340px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
@@ -457,16 +461,6 @@ function ChangelogModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-type Tab = 'tournament' | 'players' | 'display' | 'cicd';
-
-type Props = {
-  config: Config;
-  onSave: (config: Config) => void;
-  onDisplaySave: (config: Config) => void;
-  onClose: () => void;
-  onJumpToEnd?: () => void;
-};
-
 type FormErrors = {
   levelDuration?: string;
   breakDuration?: string;
@@ -474,89 +468,13 @@ type FormErrors = {
   blinds?: string;
 };
 
-export function SettingsScreen({ config, onSave, onDisplaySave, onClose, onJumpToEnd }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('tournament');
-  const [showChangelog, setShowChangelog] = useState(false);
-  const [cicdRefreshKey, setCicdRefreshKey] = useState(0);
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'tournament', label: 'Турнир' },
-    { id: 'players',    label: 'Игроки' },
-    { id: 'display',    label: 'Оформление' },
-    { id: 'cicd',       label: 'CI/CD' },
-  ];
-
-  return (
-    <div className="flex flex-col h-screen bg-[#1a1a1a] text-white">
-      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
-
-      {/* Header */}
-      <div className="flex justify-between items-center px-6 py-4 border-b border-[#2a2a2a] shrink-0">
-        <div className="flex items-center gap-2">
-          <button className="text-violet-500 text-[14px] bg-transparent border-none cursor-pointer" onClick={onClose}>
-            ← Назад
-          </button>
-          {onJumpToEnd && (
-            <button
-              className="text-[#555] text-[11px] bg-transparent border border-[#333] rounded px-[7px] py-[3px] cursor-pointer hover:text-[#888] hover:border-[#555]"
-              onClick={onJumpToEnd}
-              title="Перемотать к последней минуте (для теста)"
-            >
-              1:05
-            </button>
-          )}
-        </div>
-        <div className="text-center">
-          <h1 className="text-[16px] font-semibold text-[#ccc] tracking-[1px]">НАСТРОЙКИ</h1>
-          <div className="text-[11px] text-[#444] mt-[2px] cursor-pointer" onClick={() => setShowChangelog(true)}>v{(CHANGELOG.find((e): e is Extract<ChangelogEntry, { version: string }> => !('divider' in e))?.version)}</div>
-        </div>
-        <button
-          className="bg-violet-700 text-white border-none rounded-lg px-[18px] py-[7px] text-[14px] font-semibold cursor-pointer hover:bg-violet-800"
-          onClick={onClose}
-        >
-          Готово
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-[#2a2a2a] shrink-0">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              if (tab.id === 'cicd' && activeTab === 'cicd') {
-                setCicdRefreshKey(k => k + 1);
-              } else {
-                setActiveTab(tab.id);
-              }
-            }}
-            className={`flex-1 py-3 text-[13px] font-medium border-none cursor-pointer transition-colors
-              ${activeTab === tab.id
-                ? 'text-violet-400 border-b-2 border-violet-500 bg-transparent'
-                : 'text-[#555] bg-transparent hover:text-[#888]'
-              }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        {activeTab === 'tournament' && (
-          <TournamentTab config={config} onSave={onSave} onClose={onClose} />
-        )}
-        {activeTab === 'players' && <PlayerManager />}
-        {activeTab === 'display' && <DisplayTab config={config} onDisplaySave={onDisplaySave} />}
-        {activeTab === 'cicd' && <CiCdTab refreshKey={cicdRefreshKey} />}
-      </div>
-    </div>
-  );
+export function currentVersion(): string {
+  return CHANGELOG.find((e): e is Extract<ChangelogEntry, { version: string }> => !('divider' in e))?.version ?? '';
 }
 
 // ── Tournament Tab ────────────────────────────────────────────────────────
 
-function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c: Config) => void; onClose: () => void }) {
+export function TournamentTab({ config, onSave }: { config: Config; onSave: (c: Config) => void }) {
   const [levelDuration, setLevelDuration] = useState(String(config.levelDuration));
   const [breakDuration, setBreakDuration] = useState(String(config.breakDuration));
   const [breakEvery, setBreakEvery] = useState(String(config.breakEvery));
@@ -621,7 +539,7 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
       {/* Time section */}
       <div>
         <div className="text-[11px] text-[#555] tracking-[2px] uppercase mb-[10px]">Время</div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           {timeFields.map(({ label, id, val, set, unit, err, fallback }) => (
             <div key={id} className="flex-1 bg-[#242424] rounded-lg p-[12px_14px]">
               <label className="block text-[11px] text-[#666] uppercase tracking-[1px] mb-[6px]">{label}</label>
@@ -715,7 +633,7 @@ function TournamentTab({ config, onSave, onClose }: { config: Config; onSave: (c
 
 // ── Display Tab ───────────────────────────────────────────────────────────
 
-function DisplayTab({ config, onDisplaySave }: { config: Config; onDisplaySave: (c: Config) => void }) {
+export function DisplayTab({ config, onDisplaySave }: { config: Config; onDisplaySave: (c: Config) => void }) {
   const [slideshowEnabled, setSlideshowEnabled] = useState(config.slideshowEnabled);
   const [slideshowSpeed, setSlideshowSpeed] = useState(String(config.slideshowSpeed ?? 5));
   const [photoCount, setPhotoCount] = useState<number | null>(null);
@@ -979,7 +897,7 @@ function buildShaColorMap(shas: (string | undefined | null)[]): Record<string, s
   return map;
 }
 
-function CiCdTab({ refreshKey }: { refreshKey: number }) {
+export function CiCdTab({ refreshKey }: { refreshKey: number }) {
   const [data, setData] = useState<CiStatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [sbUsage, setSbUsage] = useState<SupabaseUsageData | null>(null);

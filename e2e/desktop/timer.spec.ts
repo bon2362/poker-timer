@@ -6,7 +6,7 @@ async function waitForTimerApp(page: import('@playwright/test').Page) {
   // 'networkidle' is not used because Supabase Realtime keeps WebSocket connections open.
   await page.waitForLoadState('domcontentloaded');
   await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 30000 });
-  await expect(page.locator('button[title="Settings"]')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('[title="Settings"]')).toBeVisible({ timeout: 15000 });
 }
 
 test.describe('Timer - Desktop', () => {
@@ -106,7 +106,7 @@ test.describe('Timer - Desktop', () => {
   // E5: Settings button visible in top bar
   test('E5: settings button is accessible', async ({ page }) => {
     // The ⚙ button has title="Settings" — it is in the top-right corner
-    const settingsBtn = page.locator('button[title="Settings"]');
+    const settingsBtn = page.locator('[title="Settings"]');
     await expect(settingsBtn).toBeVisible({ timeout: 15000 });
   });
 
@@ -116,10 +116,10 @@ test.describe('Timer - Desktop', () => {
 
     if (await noSessionHeading.isVisible()) {
       await expect(noSessionHeading).toBeVisible({ timeout: 10000 });
-      await expect(page.getByRole('button', { name: 'Открыть настройки' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Открыть настройки' })).toBeVisible();
     } else {
       await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 10000 });
-      await expect(page.getByRole('button', { name: 'Открыть настройки' })).not.toBeVisible();
+      await expect(page.getByRole('link', { name: 'Открыть настройки' })).not.toBeVisible();
     }
   });
 });
@@ -129,7 +129,7 @@ test.describe('Timer viewer - Desktop', () => {
     await page.goto('/');
     await expect(page.getByText('Round 1', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Войти в управление' })).toBeEnabled();
-    await expect(page.locator('button[title="Settings"]')).toHaveCount(0);
+    await expect(page.locator('[title="Settings"]')).toHaveCount(0);
     await expect(page.locator('button[title="Следующий уровень"]')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /[▶⏸]/ })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Игра не настроена' })).toHaveCount(0);
@@ -148,13 +148,13 @@ test.describe('Timer viewer - Desktop', () => {
     await page.getByLabel('Пароль', { exact: true }).fill('wrong');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Неверный пароль');
-    await expect(page.locator('button[title="Settings"]')).toHaveCount(0);
+    await expect(page.locator('[title="Settings"]')).toHaveCount(0);
     await page.getByLabel('Пароль', { exact: true }).fill(TEST_ADMIN_PASSWORD);
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.locator('button[title="Settings"]')).toBeVisible();
+    await expect(page.locator('[title="Settings"]')).toBeVisible();
     await page.reload();
-    await expect(page.locator('button[title="Settings"]')).toBeVisible();
+    await expect(page.locator('[title="Settings"]')).toBeVisible();
   });
 });
 

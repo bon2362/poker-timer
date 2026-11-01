@@ -16,7 +16,6 @@ export function createInitialState(): TimerState {
     warnedOneMin: false,
     tractorMomentActive: false,
     config,
-    screen: 'timer',
     pendingSound: null,
   };
 }
