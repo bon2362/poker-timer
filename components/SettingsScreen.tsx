@@ -15,6 +15,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '6.5',
+    date: "01 Nov '26",
+    notes: 'Страница игры: картинки в блоке «С экрана таймера» идут по занятым местам.',
+  },
+  {
     version: '6.4',
     date: "01 Nov '26",
     notes: 'Превью ссылки на игру: фото больше не растягивается.',

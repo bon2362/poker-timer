@@ -46,6 +46,13 @@ test('returns an empty catalogue without database configuration', async () => {
   (getClient as jest.Mock).mockReturnValue(null);
   expect(await listFinishedGames()).toEqual([]);
 });
+test('timer images follow finish places, winner first', async () => {
+  const row = game('ordered', '2026-10-31T12:00:00Z');
+  const entry = (id: string, place: number, kind: 'winner' | 'loser') => ({ ...participant, id, session_id: row.id, player_id: id, status: kind === 'winner' ? 'winner' : 'eliminated', finish_position: place, players: { ...player, id, name: id }, [`${kind}_image`]: { id: `image-${place}`, path: `${id}.jpg`, thumb_path: null } });
+  rows = [{ ...row, session_players: [entry('c', 3, 'loser'), entry('a', 1, 'winner'), entry('j', 10, 'loser'), entry('b', 2, 'loser')] } as unknown as ReturnType<typeof game>];
+  const details = await getGameBySlug('ordered');
+  expect(details?.images.map(image => image.finishPosition)).toEqual([1, 2, 3, 10]);
+});
 test('uses saved images and photo thumbnails, with full-photo fallback and chronological order', async () => {
   const row = game('photo-game', '2026-10-31T12:00:00Z');
   const fixture = { ...row, session_players: [{ ...participant, session_id: row.id, winner_image: { id: 'historic-image', path: 'special/winner/old.jpg', thumb_path: 'special/winner/old-thumb.jpg' } }], game_photos: [

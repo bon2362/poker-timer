@@ -51,6 +51,7 @@ async function readGames(slug?: string): Promise<GameDetails[]> {
             url: url('avatars', image.path as string), thumbUrl: url('avatars', (image.thumb_path || image.path) as string) });
         }
       }
+      images.sort((a, b) => (a.finishPosition ?? Infinity) - (b.finishPosition ?? Infinity));
       games.push({ session, players, winner, photos, images, bank: players.reduce((sum, player) => sum + calcPlayerCost(session, player), 0) });
     }
     if (!data || data.length < PAGE_SIZE) return games;
