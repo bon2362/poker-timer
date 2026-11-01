@@ -112,12 +112,12 @@ describe('SettingsScreen — Tabs', () => {
 });
 
 describe('SettingsScreen — Changelog', () => {
-  test('shows v6.1 and keeps the October 31 release in history', async () => {
+  test('shows v6.2 and keeps the October 31 release in history', async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    expect(screen.getByText('v6.1')).toBeInTheDocument();
-    await user.click(screen.getByText('v6.1'));
+    expect(screen.getByText('v6.2')).toBeInTheDocument();
+    await user.click(screen.getByText('v6.2'));
 
     expect(screen.getByText('v6.0')).toBeInTheDocument();
 
@@ -297,7 +297,7 @@ describe('SettingsScreen — Display tab', () => {
     listSlideshowPhotos.mockResolvedValue(['https://example.com/a.jpg']);
     await openDisplayTab();
     expect(await screen.findByText('1')).toBeInTheDocument();
-    expect(screen.getByText('Новые фото добавляются через карточку игры')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Игры и фото →' })).toHaveAttribute('href', '/admin');
     expect(screen.queryByRole('button', { name: '+ Добавить фото' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Удалить все' })).not.toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).toBeNull();
