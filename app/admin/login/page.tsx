@@ -10,7 +10,7 @@ export default function AdminLoginPage() {
   return (
     <AdminAuthProvider>
       <main className={`${ptSerif.variable} min-h-[100dvh] h-[100dvh] overflow-y-auto bg-[#1a1a1a] flex items-center justify-center p-4 lg:px-12`}>
-        <AdminLoginForm redirectTo="/" />
+        <AdminLoginForm redirectTo="/admin" />
       </main>
     </AdminAuthProvider>
   );

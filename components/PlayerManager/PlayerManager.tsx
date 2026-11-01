@@ -9,23 +9,11 @@ import type { Player } from '@/types/game';
 
 function Avatar({ player, size = 40 }: { player: Player; size?: number }) {
   const initials = player.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const colors = ['#5b21b6','#1d4ed8','#065f46','#92400e','#7f1d1d'];
+  const colors = ['bg-violet-800', 'bg-blue-700', 'bg-emerald-800', 'bg-amber-800', 'bg-red-900'];
   const color = colors[player.name.charCodeAt(0) % colors.length];
-  return player.avatarUrl ? (
-    <img
-      src={player.avatarUrl}
-      alt={player.name}
-      className="rounded-full object-cover shrink-0"
-      style={{ width: size, height: size }}
-    />
-  ) : (
-    <div
-      className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
-      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.35 }}
-    >
-      {initials}
-    </div>
-  );
+  const sizes: Record<number, string> = { 24: 'w-6 h-6 text-[8px]', 28: 'w-7 h-7 text-[10px]', 32: 'w-8 h-8 text-[11px]', 36: 'w-9 h-9 text-[13px]', 40: 'w-10 h-10 text-sm', 44: 'w-11 h-11 text-[15px]', 80: 'w-20 h-20 text-[28px]', 120: 'w-[120px] h-[120px] text-[42px]', 160: 'w-40 h-40 text-[56px]' };
+  const sizeClass = sizes[size] ?? sizes[40];
+  return player.avatarUrl ? <img src={player.avatarUrl} alt={player.name} className={`rounded-full object-cover shrink-0 ${sizeClass}`} /> : <div className={`rounded-full flex items-center justify-center text-white font-bold shrink-0 ${color} ${sizeClass}`}>{initials}</div>;
 }
 
 export { Avatar };
@@ -50,6 +38,7 @@ function PlayerImageCell({
 }: PlayerImageCellProps) {
   const [imageUrl, setImageUrl] = useState<string | null | 'loading'>('loading');
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lazy-load on first render
@@ -65,24 +54,27 @@ function PlayerImageCell({
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    const url = await uploadImage(player.id, file);
-    setImageUrl(url);
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setUploading(true); setError('');
+    try {
+      const url = await uploadImage(player.id, file);
+      if (!url) throw new Error('Upload failed');
+      setImageUrl(url);
+    } catch { setError('Не удалось загрузить изображение. Попробуйте ещё раз.'); }
+    finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   }
 
   async function handleDelete(ev: React.MouseEvent) {
     ev.stopPropagation();
     if (!confirm(`Удалить изображение ${kindLabel} для ${player.name}?`)) return;
-    await deleteImage(player.id);
-    setImageUrl(null);
+    setError('');
+    try { await deleteImage(player.id); setImageUrl(null); }
+    catch { setError('Не удалось удалить изображение. Попробуйте ещё раз.'); }
   }
 
   if (imageUrl === 'loading') return null;
 
   return (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex flex-wrap items-center gap-1 shrink-0">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
 
       {/* Thumbnail or upload button */}
@@ -90,8 +82,8 @@ function PlayerImageCell({
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
         title={imageUrl ? `Заменить изображение ${kindLabel}` : `Загрузить изображение ${kindLabel}`}
-        className="relative overflow-hidden rounded border border-[#333] cursor-pointer hover:border-violet-500 transition-colors disabled:opacity-50 shrink-0"
-        style={{ width: 56, height: 32 }}
+        className="w-14 h-8 relative overflow-hidden rounded border border-[#333] cursor-pointer hover:border-violet-500 transition-colors disabled:opacity-50 shrink-0"
+
       >
         {imageUrl ? (
           <img src={imageUrl} alt="" className="w-full h-full object-cover" />
@@ -102,6 +94,7 @@ function PlayerImageCell({
         )}
       </button>
 
+      {error && <p role="alert" className="max-w-40 text-xs text-red-400">{error}</p>}
       {/* Delete button — only when image exists */}
       {imageUrl && (
         <button

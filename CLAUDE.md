@@ -8,7 +8,7 @@
 
 ## Архитектура
 
-Next.js 15 App Router + TypeScript + Tailwind CSS + Supabase Realtime.
+Next.js 16 App Router + TypeScript + Tailwind CSS + Supabase Realtime.
 Настройки хранятся в `localStorage` (ключ `pokerTimerConfig`).
 Компоненты в `components/`, логика в `lib/` и `reducer/`, типы в `types/`.
 
@@ -31,7 +31,7 @@ gh issue close <N> --repo bon2362/poker-timer
 
 ## Версионирование
 
-Текущая версия: **6.1**
+Текущая версия: **6.2**
 
 Версия отображается в шапке экрана настроек (`components/SettingsScreen.tsx`).
 

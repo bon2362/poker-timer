@@ -1,0 +1,2 @@
+'use client';
+export default function AdminError({ reset }: { reset(): void }) { return <div className="mx-auto max-w-md p-6 text-center"><h1 className="text-lg">Не удалось загрузить раздел</h1><p className="my-4 text-sm text-[#aaa]">Проверьте соединение и попробуйте ещё раз.</p><button onClick={reset} className="min-h-11 rounded-lg bg-violet-700 px-4 text-sm">Повторить</button><a href="/admin" className="mt-4 block text-sm text-violet-400">← Игры</a></div>; }
