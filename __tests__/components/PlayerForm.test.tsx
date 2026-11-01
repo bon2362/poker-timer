@@ -179,7 +179,7 @@ describe('PlayerForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Crop Save' }));
 
-    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith(mockPlayer.id, expect.any(Blob)));
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith(mockPlayer.id, expect.any(Blob), expect.any(Function)));
     await waitFor(() => expect(mockUpdatePlayer).toHaveBeenCalledWith(mockPlayer.id, { avatarUrl: 'https://example.com/new-avatar.jpg' }));
   });
 
@@ -200,4 +200,23 @@ describe('PlayerForm', () => {
     await user.click(screen.getByRole('button', { name: 'Crop Cancel' }));
     expect(screen.queryByTestId('avatar-cropper')).not.toBeInTheDocument();
   });
+});
+
+test('shows actual avatar upload progress and keeps the form open after failure', async () => {
+  setupMocks();
+  const { uploadAvatar } = jest.requireMock('@/lib/supabase/storage');
+  let complete: (result: null) => void = () => {};
+  uploadAvatar.mockImplementation((_id: string, _blob: Blob, progress: (percent: number) => void) => {
+    progress?.(37);
+    return new Promise<null>(resolve => { complete = resolve; });
+  });
+  render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [new File(['photo'], 'avatar.jpg')] } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Crop Save' })); });
+  expect(screen.getByRole('progressbar', { name: 'Загрузка аватарки' })).toHaveAttribute('value', '37');
+  expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
+  await act(async () => complete(null));
+  expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить аватарку');
+  expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
 });

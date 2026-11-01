@@ -1,215 +1,60 @@
 import { getClient } from '@/supabase/client';
 import { resizeContain, resizeCover } from '@/lib/imageResize';
-
-const BUCKET = 'avatars';
-const FULL_MAX_WIDTH = 1920;
-const FULL_MAX_HEIGHT = 1920;
-const THUMB_SIZE = 200;
-const MAX_OPTIMIZED_FULL_SIZE = 1_000_000;
+import { uploadToSignedPath } from './signedUpload';
 
 type SpecialImageKind = 'winner' | 'loser';
-type StorageObject = {
-  name: string;
-  metadata?: {
-    size?: number;
-    contentLength?: number;
-    mimetype?: string;
-  } | null;
-};
-
-const pendingBackfills = new Map<string, Promise<void>>();
-
-function path(kind: SpecialImageKind, playerId: string) {
-  return `${kind}-${playerId}.jpg`;
-}
-
-function thumbPath(kind: SpecialImageKind, playerId: string) {
-  return `${kind}-${playerId}-thumb.jpg`;
-}
-
-function cacheBust(url: string) {
-  return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
-}
-
-async function findFile(filePath: string): Promise<StorageObject | null> {
-  const client = getClient();
-  if (!client) return null;
-  const { data } = await client.storage.from(BUCKET).list('', { search: filePath });
-  return (data?.find(file => file.name === filePath) as StorageObject | undefined) ?? null;
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-  return Boolean(await findFile(filePath));
-}
-
-function needsFullOptimization(file: StorageObject): boolean {
-  const size = file.metadata?.size ?? file.metadata?.contentLength ?? 0;
-  const mimetype = file.metadata?.mimetype?.toLowerCase() ?? '';
-  return mimetype !== 'image/jpeg' || size > MAX_OPTIMIZED_FULL_SIZE;
-}
-
-function publicUrl(filePath: string, bustCache = false): string | null {
-  const client = getClient();
-  if (!client) return null;
-  const url = client.storage.from(BUCKET).getPublicUrl(filePath).data.publicUrl;
-  return bustCache ? cacheBust(url) : url;
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => {
-      if (blob) resolve(blob);
-      else reject(new Error('Unable to export image variant'));
-    }, 'image/jpeg', quality);
-  });
-}
-
-async function loadImage(blob: Blob): Promise<HTMLImageElement> {
-  const url = URL.createObjectURL(blob);
-  try {
-    const image = new Image();
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('Unable to load image for resizing'));
-      image.src = url;
-    });
-    return image;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-function drawPhotoBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
-}
-
-async function legacyResizeContain(blob: Blob, maxWidth: number, maxHeight: number, quality: number): Promise<Blob> {
-  const image = await loadImage(blob);
-  const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight, 1);
-  const width = Math.max(1, Math.round(image.naturalWidth * scale));
-  const height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas is unavailable');
-  drawPhotoBackground(ctx, width, height);
-  ctx.drawImage(image, 0, 0, width, height);
-  return canvasToBlob(canvas, quality);
-}
-
-async function legacyResizeCover(blob: Blob, size: number, quality: number): Promise<Blob> {
-  const image = await loadImage(blob);
-  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  const x = (size - width) / 2;
-  const y = (size - height) / 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas is unavailable');
-  drawPhotoBackground(ctx, size, size);
-  ctx.drawImage(image, x, y, width, height);
-  return canvasToBlob(canvas, quality);
-}
-
-async function uploadBlob(filePath: string, blob: Blob): Promise<boolean> {
-  const client = getClient();
-  if (!client) return false;
-  const { error } = await client.storage.from(BUCKET).upload(filePath, blob, {
-    cacheControl: '3600',
-    contentType: 'image/jpeg',
-    upsert: true,
-  });
-  if (error) {
-    console.error('uploadImageVariant:', error);
-    return false;
-  }
-  return true;
-}
-
-async function createVariantsFromBlob(kind: SpecialImageKind, playerId: string, source: Blob): Promise<boolean> {
-  if (typeof document === 'undefined') return false;
-
-  const [full, thumb] = await Promise.all([
-    resizeContain(source, FULL_MAX_WIDTH, FULL_MAX_HEIGHT, 0.82),
-    resizeCover(source, THUMB_SIZE, 0.76),
-  ]);
-
-  const [fullUploaded, thumbUploaded] = await Promise.all([
-    uploadBlob(path(kind, playerId), full),
-    uploadBlob(thumbPath(kind, playerId), thumb),
-  ]);
-
-  return fullUploaded && thumbUploaded;
-}
-
-async function backfillVariants(kind: SpecialImageKind, playerId: string): Promise<void> {
-  const originalUrl = publicUrl(path(kind, playerId), true);
-  if (!originalUrl) return;
-
-  const response = await fetch(originalUrl);
-  if (!response.ok) return;
-
-  await createVariantsFromBlob(kind, playerId, await response.blob());
-}
-
-async function ensureVariants(kind: SpecialImageKind, playerId: string): Promise<void> {
-  const fullPath = path(kind, playerId);
-  const derivedThumbPath = thumbPath(kind, playerId);
-  const fullFile = await findFile(fullPath);
-  if (!fullFile) return;
-  const hasThumb = await fileExists(derivedThumbPath);
-  if (hasThumb && !needsFullOptimization(fullFile)) return;
-  if (typeof document === 'undefined') return;
-
-  const key = `${kind}:${playerId}`;
-  const pending = pendingBackfills.get(key);
-  if (pending) return pending;
-
-  const next = backfillVariants(kind, playerId)
-    .catch(error => console.error('backfillImageVariants:', error))
-    .finally(() => pendingBackfills.delete(key));
-  pendingBackfills.set(key, next);
-  return next;
-}
-
-export async function getSpecialImageUrl(kind: SpecialImageKind, playerId: string): Promise<string | null> {
-  if (!(await fileExists(path(kind, playerId)))) return null;
-  await ensureVariants(kind, playerId);
-  return publicUrl(path(kind, playerId), true);
-}
-
-export async function getSpecialThumbUrl(kind: SpecialImageKind, playerId: string): Promise<string | null> {
-  if (!(await fileExists(path(kind, playerId)))) return null;
-  await ensureVariants(kind, playerId);
-  const derivedThumbPath = thumbPath(kind, playerId);
-  return publicUrl(await fileExists(derivedThumbPath) ? derivedThumbPath : path(kind, playerId), true);
-}
-
-export async function uploadSpecialImage(kind: SpecialImageKind, playerId: string, file: File): Promise<string | null> {
-  const uploaded = await createVariantsFromBlob(kind, playerId, file);
-  if (!uploaded) return null;
-  return publicUrl(path(kind, playerId), true);
-}
-
-export async function deleteSpecialImage(kind: SpecialImageKind, playerId: string): Promise<void> {
-  const client = getClient();
-  if (!client) return;
-  await client.storage.from(BUCKET).remove([path(kind, playerId), thumbPath(kind, playerId)]);
-}
+const BUCKET = 'avatars';
 
 export async function getCurrentPlayerImage(playerId: string, kind: SpecialImageKind): Promise<{ id: string; url: string; thumbUrl: string } | null> {
   const client = getClient();
   if (!client) return null;
-  const { data } = await client.from('player_images').select('id,path,thumb_path').eq('player_id', playerId).eq('kind', kind).eq('is_current', true).maybeSingle();
-  if (!data) return null;
+  const { data, error } = await client.from('player_images').select('id,path,thumb_path').eq('player_id', playerId).eq('kind', kind).eq('is_current', true).maybeSingle();
+  if (error || !data) return null;
   return {
     id: data.id,
     url: client.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl,
     thumbUrl: client.storage.from(BUCKET).getPublicUrl(data.thumb_path ?? data.path).data.publicUrl,
   };
+}
+
+export async function getSpecialImageUrl(kind: SpecialImageKind, playerId: string): Promise<string | null> {
+  return (await getCurrentPlayerImage(playerId, kind))?.url ?? null;
+}
+
+export async function getSpecialThumbUrl(kind: SpecialImageKind, playerId: string): Promise<string | null> {
+  return (await getCurrentPlayerImage(playerId, kind))?.thumbUrl ?? null;
+}
+
+export async function uploadSpecialImage(kind: SpecialImageKind, playerId: string, file: File): Promise<string | null> {
+  const client = getClient();
+  if (!client) return null;
+  const [full, thumb] = await Promise.all([
+    resizeContain(file, 1920, 1920, 0.82),
+    resizeCover(file, 200, 0.76),
+  ]);
+  const signed = await fetch('/api/admin/uploads/sign', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ bucket: BUCKET, playerId, kind, files: [{ name: 'full.jpg' }, { name: 'thumb.jpg' }] }),
+  });
+  if (!signed.ok) return null;
+  const { uploads } = await signed.json();
+  if (!Array.isArray(uploads) || uploads.length !== 2) return null;
+  const uploaded = await Promise.all([
+    uploadToSignedPath(BUCKET, uploads[0].path, uploads[0].token, full),
+    uploadToSignedPath(BUCKET, uploads[1].path, uploads[1].token, thumb),
+  ]);
+  if (uploaded.some(success => !success)) return null;
+  const saved = await fetch('/api/admin/player-images', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ playerId, kind, path: uploads[0].path, thumbPath: uploads[1].path }),
+  });
+  return saved.ok ? client.storage.from(BUCKET).getPublicUrl(uploads[0].path).data.publicUrl : null;
+}
+
+export async function deleteSpecialImage(kind: SpecialImageKind, playerId: string): Promise<void> {
+  const response = await fetch('/api/admin/player-images', {
+    method: 'DELETE', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ playerId, kind }),
+  });
+  if (!response.ok) throw new Error('Could not delete image');
 }

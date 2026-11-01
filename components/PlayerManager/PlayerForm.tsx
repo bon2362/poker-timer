@@ -16,10 +16,12 @@ export function PlayerForm({ player, onDone }: Props) {
   const [name, setName] = useState(player?.name ?? '');
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim() || saving || uploadProgress !== null) return;
     setSaving(true);
     if (player) {
       await updatePlayer(player.id, { name: name.trim() });
@@ -32,10 +34,19 @@ export function PlayerForm({ player, onDone }: Props) {
   }
 
   async function handleCropSave(blob: Blob) {
-    if (!player) return;
-    const url = await uploadAvatar(player.id, blob);
-    if (url) await updatePlayer(player.id, { avatarUrl: url });
+    if (!player || uploadProgress !== null) return;
     setCropFile(null);
+    setUploadError(null);
+    setUploadProgress(0);
+    try {
+      const url = await uploadAvatar(player.id, blob, setUploadProgress);
+      if (!url) throw new Error('Upload failed');
+      await updatePlayer(player.id, { avatarUrl: url });
+    } catch {
+      setUploadError('Не удалось загрузить аватарку. Попробуйте ещё раз.');
+    } finally {
+      setUploadProgress(null);
+    }
   }
 
   return (
@@ -68,22 +79,31 @@ export function PlayerForm({ player, onDone }: Props) {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
+              disabled={uploadProgress !== null}
               className="bg-transparent border border-[#444] text-[#888] rounded-lg px-3 py-2 text-[13px] cursor-pointer hover:border-violet-600 hover:text-violet-400"
             >
               📷 {player.avatarUrl ? 'Заменить аватарку' : 'Загрузить аватарку'}
             </button>
           </>
         )}
+        {uploadProgress !== null && (
+          <div role="status" className="text-[13px] text-[#aaa]">
+            Загрузка аватарки: {uploadProgress}%
+            <progress aria-label="Загрузка аватарки" max={100} value={uploadProgress} className="w-full" />
+          </div>
+        )}
+        {uploadError && <p role="alert" className="text-[13px] text-red-400">{uploadError}</p>}
         <div className="flex gap-2">
           <button
             onClick={onDone}
+            disabled={uploadProgress !== null}
             className="flex-1 bg-transparent border border-[#333] text-[#666] rounded-lg py-2 text-[13px] cursor-pointer hover:border-[#555]"
           >
             Отмена
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !name.trim()}
+            disabled={saving || uploadProgress !== null || !name.trim()}
             className="flex-1 bg-violet-700 text-white border-none rounded-lg py-2 text-[13px] font-semibold cursor-pointer hover:bg-violet-800 disabled:opacity-50"
           >
             {saving ? 'Сохраняем...' : player ? 'Сохранить' : 'Добавить'}
