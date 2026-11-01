@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTimer } from '@/context/TimerContext';
 import { useGame } from '@/context/GameContext';
 import { BlindInfo } from './BlindInfo';
@@ -18,7 +18,7 @@ import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
 import { playOneShot } from '@/lib/audio';
 import { shouldShowSidePanels } from '@/lib/timer';
-import { listSlideshowPhotos } from '@/lib/supabase/slideshow';
+import { listSlideshowItems, type SlideshowItem } from '@/lib/supabase/slideshow';
 import { getLoserImageUrl } from '@/lib/supabase/loserImage';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
 import type { Config } from '@/types/timer';
@@ -47,8 +47,9 @@ export function PokerTimer() {
   const eliminatedSessionPlayerIdsRef = useRef<Set<string>>(new Set());
 
   // Slideshow state
-  const [slideshowUrls, setSlideshowUrls] = useState<string[]>([]);
-  const [slideshowCurrentUrl, setSlideshowCurrentUrl] = useState<string | null>(null);
+  const [slideshowItems, setSlideshowItems] = useState<SlideshowItem[]>([]);
+  const slideshowUrls = useMemo(() => slideshowItems.map(item => item.url), [slideshowItems]);
+  const [slideshowCurrentItem, setSlideshowCurrentItem] = useState<SlideshowItem | null>(null);
   const slideshowTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slideshowIndexRef = useRef(0);
   const slideshowShuffledRef = useRef<number[]>([]);
@@ -158,9 +159,9 @@ export function PokerTimer() {
 
   // Load slideshow photos on mount and preload them into browser cache
   useEffect(() => {
-    listSlideshowPhotos().then(urls => {
-      setSlideshowUrls(urls);
-      urls.forEach(url => { const img = new Image(); img.src = url; });
+    listSlideshowItems().then(items => {
+      setSlideshowItems(items);
+      items.forEach(({ url }) => { const img = new Image(); img.src = url; });
     });
   }, []);
 
@@ -178,8 +179,8 @@ export function PokerTimer() {
   }, [activeSession, players]);
 
   async function handleSlideshowChanged() {
-    const urls = await listSlideshowPhotos();
-    setSlideshowUrls(urls);
+    const items = await listSlideshowItems();
+    setSlideshowItems(items);
   }
 
   const toggleFullscreen = useCallback(() => {
@@ -220,7 +221,7 @@ export function PokerTimer() {
   const stage = state.stages[state.currentStage];
   const isWarning = state.timeLeft <= 60 && state.timeLeft >= 0 && stage.type !== 'break';
   const isOnBreak = !state.isOver && stage?.type === 'break';
-  const showBreakMediaOverlay = isOnBreak && (Boolean(slideshowCurrentUrl) || state.config.breakSongEnabled);
+  const showBreakMediaOverlay = isOnBreak && (Boolean(slideshowCurrentItem) || state.config.breakSongEnabled);
   const isTwoTableActive = activeSession?.numberOfTables === 2 && !activeSession.tablesMergedAt;
   const activePlayersCount = sessionPlayers.filter(sp => sp.status === 'playing').length;
   const shouldPromptMerge = Boolean(
@@ -296,34 +297,33 @@ export function PokerTimer() {
 
   // Slideshow start/stop
   useEffect(() => {
-    const urls = slideshowUrls;
-    const shouldStart = isOnBreak && state.config.slideshowEnabled && urls.length > 0;
+    const items = slideshowItems;
+    const shouldStart = isOnBreak && state.config.slideshowEnabled && items.length > 0;
 
     if (!shouldStart) {
       if (slideshowTimerRef.current) { clearInterval(slideshowTimerRef.current); slideshowTimerRef.current = null; }
-      setSlideshowCurrentUrl(null);
+      setSlideshowCurrentItem(null);
       return;
     }
 
     // Fisher-Yates shuffle
-    const idxs = urls.map((_, i) => i);
+    const idxs = items.map((_, i) => i);
     for (let i = idxs.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
     }
     slideshowShuffledRef.current = idxs;
     slideshowIndexRef.current = 0;
-    setSlideshowCurrentUrl(urls[idxs[0]]);
+    setSlideshowCurrentItem(items[idxs[0]]);
 
     const speed = Math.max(1, state.config.slideshowSpeed || 5) * 1000;
     slideshowTimerRef.current = setInterval(() => {
       slideshowIndexRef.current = (slideshowIndexRef.current + 1) % slideshowShuffledRef.current.length;
-      setSlideshowCurrentUrl(urls[slideshowShuffledRef.current[slideshowIndexRef.current]]);
+      setSlideshowCurrentItem(items[slideshowShuffledRef.current[slideshowIndexRef.current]]);
     }, speed);
 
     return () => { if (slideshowTimerRef.current) clearInterval(slideshowTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnBreak, state.config.slideshowEnabled, slideshowUrls.length]);
+  }, [isOnBreak, state.config.slideshowEnabled, state.config.slideshowSpeed, slideshowItems]);
 
   // Next blind info (last stage has no "next" — level is infinite)
   const nextStage = state.stages[state.currentStage + 1];
@@ -407,7 +407,8 @@ export function PokerTimer() {
       {/* Slideshow / lyrics overlay — shown during breaks when media is enabled */}
       {showBreakMediaOverlay && (
         <SlideshowOverlay
-          url={slideshowCurrentUrl}
+          url={slideshowCurrentItem?.url}
+          date={slideshowCurrentItem?.date}
           timeLeft={state.timeLeft}
           songTime={isOnBreak && state.config.breakSongEnabled ? songTime : undefined}
           showLyrics={isOnBreak && state.config.breakSongEnabled}

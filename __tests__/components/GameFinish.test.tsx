@@ -5,6 +5,7 @@ import { PokerTimer } from '@/components/PokerTimer';
 import { useGame } from '@/context/GameContext';
 import { useTimer } from '@/context/TimerContext';
 import { DEFAULT_CONFIG } from '@/lib/storage';
+import { listSlideshowItems } from '@/lib/supabase/slideshow';
 
 jest.mock('@/context/GameContext', () => ({ useGame: jest.fn() }));
 jest.mock('@/context/TimerContext', () => ({ useTimer: jest.fn() }));
@@ -12,7 +13,10 @@ jest.mock('@/components/PlayerManager/PlayerManager', () => ({ Avatar: () => nul
 jest.mock('@/lib/audio', () => ({ playWinnerFanfare: () => ({ stop: jest.fn() }), playOneShot: jest.fn() }));
 jest.mock('@/lib/supabase/winnerImage', () => ({ getWinnerImageUrl: jest.fn().mockResolvedValue(null) }));
 jest.mock('@/lib/supabase/loserImage', () => ({ getLoserImageUrl: jest.fn().mockResolvedValue(null) }));
-jest.mock('@/lib/supabase/slideshow', () => ({ listSlideshowPhotos: jest.fn().mockResolvedValue([]) }));
+jest.mock('@/lib/supabase/slideshow', () => ({
+  listSlideshowPhotos: jest.fn().mockResolvedValue([]),
+  listSlideshowItems: jest.fn().mockResolvedValue([]),
+}));
 jest.mock('@/components/BreakSongPlayer', () => ({ useBreakSong: () => ({ songPaused: true, toggleSong: jest.fn(), songTime: 0 }) }));
 jest.mock('@/components/BlindInfo', () => ({ BlindInfo: () => null }));
 jest.mock('@/components/TimerDisplay', () => ({ TimerDisplay: () => null }));
@@ -20,7 +24,6 @@ jest.mock('@/components/Controls', () => ({ Controls: () => null }));
 jest.mock('@/components/CombosPanel', () => ({ CombosPanel: () => null }));
 jest.mock('@/components/SettingsScreen', () => ({ SettingsScreen: () => null }));
 jest.mock('@/components/GamePanel/GamePanel', () => ({ GamePanel: () => null }));
-jest.mock('@/components/SlideshowOverlay', () => ({ SlideshowOverlay: () => null }));
 jest.mock('@/components/TractorOverlay', () => ({ __esModule: true, default: () => null }));
 jest.mock('@/components/MinuteTimerOverlay', () => ({ MinuteTimerOverlay: () => null }));
 jest.mock('@/components/LoserImageOverlay', () => ({ LoserImageOverlay: () => null }));
@@ -64,4 +67,34 @@ test('timer exposes the finish error above the final slideshow and keeps it visi
     expect(screen.getByRole('button', { name: 'Завершить слайдшоу' })).toBeInTheDocument();
     expect(dispatch).not.toHaveBeenCalledWith({ type: 'OPEN_SETTINGS' });
   } finally { jest.useRealTimers(); }
+});
+
+test('timer cycles photo records with their supplied dates during a break', async () => {
+  jest.useFakeTimers();
+  const random = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+  try {
+    setup();
+    (useGame as jest.Mock).mockReturnValue({ activeSession: { id: 's1' }, sessionPlayers: [], players: [], showWinner: false, loading: false });
+    (useTimer as jest.Mock).mockReturnValue({ state: {
+      config: { ...DEFAULT_CONFIG, slideshowEnabled: true, slideshowSpeed: 5, breakSongEnabled: false },
+      currentStage: 0, timeLeft: 60, isPaused: false,
+      stages: [{ type: 'break', duration: 300 }],
+    }, dispatch: jest.fn() });
+    (listSlideshowItems as jest.Mock).mockResolvedValue([
+      { url: 'https://example.com/a.jpg', date: '01.11.2026' },
+      { url: 'https://example.com/b.jpg', date: '10.05.2026' },
+    ]);
+    render(<PokerTimer />);
+    await act(async () => {});
+    expect(screen.getByText('01.11.2026')).toBeInTheDocument();
+    expect(document.querySelector('img[src="https://example.com/a.jpg"]')).toBeInTheDocument();
+    act(() => { jest.advanceTimersByTime(5000); });
+    expect(screen.getByText('10.05.2026')).toBeInTheDocument();
+    expect(screen.queryByText('01.11.2026')).not.toBeInTheDocument();
+    expect(document.querySelector('img[src="https://example.com/b.jpg"]')).toBeInTheDocument();
+  } finally {
+    (listSlideshowItems as jest.Mock).mockResolvedValue([]);
+    random.mockRestore();
+    jest.useRealTimers();
+  }
 });

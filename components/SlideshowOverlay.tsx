@@ -6,21 +6,11 @@ import { getCurrentFinalSongLyric, getNextFinalSongLyric } from './FinalGameSlid
 
 type Props = {
   url?: string | null;
+  date?: string | null;
   timeLeft: number;
   songTime?: number;
   showLyrics?: boolean;
 };
-
-function parseDateFromUrl(url: string): string | null {
-  const filename = decodeURIComponent(url.split('/').pop()?.split('?')[0] ?? '');
-  const match = filename.match(/(\d{2})-(\d{2})-(\d{4})/);
-  if (!match) return null;
-  const [, day, month, year] = match;
-  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  const monthName = months[parseInt(month, 10) - 1];
-  if (!monthName) return null;
-  return `${parseInt(day, 10)} ${monthName} ${year}`;
-}
 
 type SlotProps = { src: string; visible: boolean };
 
@@ -46,7 +36,7 @@ function Slot({ src, visible }: SlotProps) {
   );
 }
 
-export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props) {
+export function SlideshowOverlay({ url, date, timeLeft, songTime, showLyrics }: Props) {
   // Cross-fade: два слота, чередуем какой сверху
   const [imgA, setImgA] = useState(url ?? '');
   const [imgB, setImgB] = useState('');
@@ -72,8 +62,6 @@ export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props)
     }
   }, [url]);
 
-  const activeUrl = showB ? imgB : imgA;
-  const date = activeUrl ? parseDateFromUrl(activeUrl) : null;
   const timerStyle = {
     fontSize: 'clamp(48px, 8vw, 96px)',
     textShadow: '0 2px 24px rgba(0,0,0,0.9)',
@@ -109,7 +97,7 @@ export function SlideshowOverlay({ url, timeLeft, songTime, showLyrics }: Props)
       </div>
 
       {/* Date — bottom right */}
-      {date && (
+      {url && date && (
         <div className="absolute bottom-6 right-6 pointer-events-none select-none">
           <div
             className="font-black text-white/60 tracking-[-1px]"
