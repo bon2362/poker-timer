@@ -66,17 +66,16 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
 
   // A fixed-height box keeps the main row in place: hover rows grow downwards into the reserved space.
   // 141px = the strip with the progress and next-track rows; the empty part lets clicks through.
-  const position = `pointer-events-none fixed bottom-7 z-[70] h-[141px] transition-[left] duration-500 ${panelOpen ? 'left-[388px]' : 'left-7'}`;
+  const left = panelOpen ? 'left-[388px]' : 'left-7';
+  const position = `pointer-events-none fixed bottom-7 z-[70] h-[141px] transition-[left] duration-500 ${left}`;
   const strip = 'flex max-w-[calc(100vw-56px)] rounded-xl bg-black/40 pr-[18px] animate-fade-in';
 
   if (!showControls) {
     return (
-      <div className={position}>
-        {/* Centred on the strip's main row so the track name doesn't jump when the controls appear. */}
-        <div className="pointer-events-auto mt-[18px] flex max-w-[45vw] items-center gap-2.5 p-1 text-[17px] text-[#5a5a5a]">
-          <SpotifyEqualizer playing={isPlaying && isActiveHere} />
-          <span className="truncate">{nowPlaying}</span>
-        </div>
+      // On one line with the timer buttons and the clock: their centres sit 40px above the bottom edge.
+      <div className={`fixed bottom-[22px] z-[70] flex h-9 max-w-[45vw] items-center gap-2.5 px-1 text-[17px] text-[#5a5a5a] transition-[left] duration-500 ${left}`}>
+        <SpotifyEqualizer playing={isPlaying && isActiveHere} />
+        <span className="truncate">{nowPlaying}</span>
       </div>
     );
   }

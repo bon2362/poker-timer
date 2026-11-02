@@ -569,7 +569,7 @@ function ClockDisplay() {
     return () => { clearTimeout(timeoutId); clearInterval(intervalId); };
   }, []);
   return (
-    <div className="fixed bottom-[18px] right-7 text-[28px] font-bold text-[#444] tabular-nums tracking-[2px] pointer-events-none">
+    <div className="fixed bottom-[22px] right-7 h-9 text-[28px] leading-9 font-bold text-[#444] tabular-nums tracking-[2px] pointer-events-none">
       {clock}
     </div>
   );
