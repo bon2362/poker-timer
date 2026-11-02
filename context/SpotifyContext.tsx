@@ -4,6 +4,7 @@ import { clearTokens, getSpotifyClientId, SPOTIFY_AUTH_KEY, getValidAccessToken,
 import { playContext, searchPlaylists, SpotifyApiError, type SpotifyPlaylistItem } from '@/lib/spotify/api';
 import { loadLastPlaylist, loadVolume, saveLastPlaylist, saveVolume } from '@/lib/spotify/storage';
 import { AutoPauseController, type SiteAudioId } from '@/lib/spotify/autoPause';
+import type { SpotifyProgress } from '@/lib/spotify/progress';
 
 const SDK_URL = 'https://sdk.scdn.co/spotify-player.js';
 const PLAYER_NAME = 'Poker Timer';
@@ -16,6 +17,8 @@ export type SpotifyContextValue = {
   errorMessage: string | null;
   notice: string | null;
   track: SpotifyTrack | null;
+  nextTrack: SpotifyTrack | null;
+  progress: SpotifyProgress | null;
   isPlaying: boolean;
   isActiveHere: boolean;
   playingElsewhere: boolean;
@@ -27,6 +30,7 @@ export type SpotifyContextValue = {
   togglePlay(): Promise<void>;
   next(): Promise<void>;
   previous(): Promise<void>;
+  seek(positionMs: number): Promise<void>;
   setVolume(v: number): void;
   playPlaylist(p: SpotifyPlaylistItem): Promise<void>;
   search(q: string): Promise<SpotifyPlaylistItem[]>;
@@ -52,6 +56,11 @@ function loadSdk(): Promise<void> {
   return sdkPromise;
 }
 
+function toTrack(t: Spotify.Track | null | undefined): SpotifyTrack | null {
+  if (!t) return null;
+  return { name: t.name, artists: t.artists.map(a => a.name).join(', '), imageUrl: t.album.images[0]?.url ?? null };
+}
+
 function apiErrorMessage(e: unknown): string {
   if (e instanceof SpotifyApiError) {
     if (e.status === 401) return 'Подключите Spotify заново';
@@ -67,6 +76,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [track, setTrack] = useState<SpotifyTrack | null>(null);
+  const [nextTrack, setNextTrack] = useState<SpotifyTrack | null>(null);
+  const [progress, setProgress] = useState<SpotifyProgress | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isActiveHere, setIsActiveHere] = useState(false);
   const [playingElsewhere, setPlayingElsewhere] = useState(false);
@@ -134,6 +145,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
         isPlayingRef.current = false;
         setIsActiveHere(false);
         setIsPlaying(false);
+        setNextTrack(null);
+        setProgress(null);
         return;
       }
       isActiveRef.current = true;
@@ -141,12 +154,9 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       setIsActiveHere(true);
       setIsPlaying(!state.paused);
       setPlayingElsewhere(false);
-      const current = state.track_window.current_track;
-      setTrack(current ? {
-        name: current.name,
-        artists: current.artists.map(a => a.name).join(', '),
-        imageUrl: current.album.images[0]?.url ?? null,
-      } : null);
+      setTrack(toTrack(state.track_window.current_track));
+      setNextTrack(toTrack(state.track_window.next_tracks[0]));
+      setProgress({ position: state.position, duration: state.duration, at: Date.now() });
     });
     player.addListener('initialization_error', () => fail('Браузер не поддерживает плеер Spotify'));
     player.addListener('authentication_error', () => { clearTokens(); fail('Подключите Spotify заново'); });
@@ -235,6 +245,14 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const next = useCallback(async () => { await playerRef.current?.nextTrack(); }, []);
   const previous = useCallback(async () => { await playerRef.current?.previousTrack(); }, []);
 
+  // Moves the shown position right away; Spotify confirms with the next state change.
+  const seek = useCallback(async (positionMs: number) => {
+    const player = playerRef.current;
+    if (!player || !isActiveRef.current) return;
+    setProgress(p => p && { ...p, position: positionMs, at: Date.now() });
+    await player.seek(positionMs);
+  }, []);
+
   const setVolume = useCallback((v: number) => {
     setVolumeState(v);
     saveVolume(v);
@@ -262,6 +280,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false);
     setPlayingElsewhere(false);
     setTrack(null);
+    setNextTrack(null);
+    setProgress(null);
     setErrorMessage(null);
     setStatus('disconnected');
   }, []);
@@ -286,11 +306,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SpotifyContextValue>(() => ({
-    status, errorMessage, notice, track, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, setVolume, playPlaylist, search, holdSiteAudio, releaseSiteAudio,
+    status, errorMessage, notice, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
+    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, holdSiteAudio, releaseSiteAudio,
   }), [
-    status, errorMessage, notice, track, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, setVolume, playPlaylist, search, holdSiteAudio, releaseSiteAudio,
+    status, errorMessage, notice, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
+    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, holdSiteAudio, releaseSiteAudio,
   ]);
 
   return <SpotifyContext.Provider value={value}>{children}</SpotifyContext.Provider>;

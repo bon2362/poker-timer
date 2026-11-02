@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSpotify } from '@/context/SpotifyContext';
 import { SpotifySearchDialog } from './SpotifySearchDialog';
 import { SpotifyEqualizer } from './SpotifyEqualizer';
 import type { SpotifyPlaylistItem } from '@/lib/spotify/api';
+import { currentPosition, formatTrackTime } from '@/lib/spotify/progress';
 
 type Props = {
   canControl: boolean;
@@ -23,11 +24,23 @@ const THUMB_HALF = 7;
 export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPlayDuringBreakSong }: Props) {
   const spotify = useSpotify();
   const [searchOpen, setSearchOpen] = useState(false);
+  // Hovering keeps the player open and adds the track time and the next track.
+  const [hovered, setHovered] = useState(false);
+  const [scrubMs, setScrubMs] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const ticking = Boolean(hovered && spotify?.isPlaying && spotify.progress);
+  useEffect(() => {
+    if (!ticking) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [ticking]);
 
   if (!spotify || spotify.status === 'disabled') return null;
 
-  const { status, track, isPlaying, isActiveHere, playingElsewhere, activeHolds, lastPlaylist, volume, errorMessage, notice } = spotify;
-  const showControls = canControl && controlsVisible;
+  const { status, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, activeHolds, lastPlaylist, volume, errorMessage, notice } = spotify;
+  const scrubbing = scrubMs !== null;
+  const showControls = canControl && (controlsVisible || hovered || scrubbing);
   const onlyBreakSong = activeHolds.length > 0 && activeHolds.every(id => id === 'breakSong');
   const playBlocked = activeHolds.length > 0 && !onlyBreakSong;
   const hereTrack = track && isActiveHere ? track : null;
@@ -52,7 +65,7 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
   if (!showControls && !nowPlaying) return null;
 
   const position = `fixed bottom-7 z-[70] flex flex-col items-start gap-1.5 transition-[left] duration-500 ${panelOpen ? 'left-[388px]' : 'left-7'}`;
-  const strip = 'flex max-w-[calc(100vw-56px)] items-center gap-4 rounded-xl bg-black/40 py-2 pl-2 pr-[18px] animate-fade-in';
+  const strip = 'flex max-w-[calc(100vw-56px)] rounded-xl bg-black/40 pr-[18px] animate-fade-in';
 
   if (!showControls) {
     return (
@@ -68,12 +81,22 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
   const title = hereTrack?.name ?? (playingElsewhere ? 'Музыка играет на другом устройстве' : lastPlaylist?.name ?? 'Spotify');
   const subtitle = hereTrack?.artists ?? (playingElsewhere ? null : lastPlaylist ? 'Плейлист' : 'Выберите музыку в поиске');
   const volumeFill = THUMB_HALF + volume * (VOLUME_TRACK - 2 * THUMB_HALF);
+  const expanded = (hovered || scrubbing) && Boolean(hereTrack && progress);
+  const shownPosition = scrubMs ?? (progress ? currentPosition(progress, isPlaying, now) : 0);
+  const progressPercent = progress && progress.duration > 0 ? (shownPosition / progress.duration) * 100 : 0;
+
+  const commitScrub = () => {
+    if (scrubMs === null) return;
+    spotify.seek(scrubMs);
+    setScrubMs(null);
+  };
 
   return (
     <>
-      <div className={position}>
+      <div className={position} onMouseEnter={() => { setNow(Date.now()); setHovered(true); }} onMouseLeave={() => setHovered(false)}>
         {status === 'ready' ? (
-          <div className={strip}>
+          <div className={`${strip} flex-col gap-2.5 pl-2 pt-2 ${expanded ? 'pb-3 outline outline-[#2e2e2e]' : 'pb-2'}`}>
+          <div className="flex items-center gap-4">
             {hereTrack?.imageUrl
               ? <img src={hereTrack.imageUrl} alt="" className="h-[52px] w-[52px] shrink-0 rounded-md object-cover" />
               : <div className="h-[52px] w-[52px] shrink-0 rounded-md bg-[#2a2a2a]" />}
@@ -121,8 +144,47 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
               {playBlocked && !isPlaying && <span className="text-[13px] text-[#777]">Музыка продолжится сама</span>}
             </div>
           </div>
+
+          {expanded && progress && (
+            <div className="flex items-center gap-3 pl-1 animate-fade-in">
+              <span className={`w-9 shrink-0 text-right text-[13px] tabular-nums ${scrubbing ? 'text-[#eee]' : 'text-[#888]'}`}>{formatTrackTime(shownPosition)}</span>
+              <div className="relative h-4 flex-1">
+                <div className={`pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full bg-[#333] ${scrubbing ? 'h-1.5' : 'h-1'}`} />
+                {/* The thumb's centre runs from 8px to width − 8px, so the fill is an 8px cap plus a share of the middle. */}
+                <div className={`pointer-events-none absolute left-0 top-1/2 w-2 -translate-y-1/2 rounded-l-full ${scrubbing ? 'h-1.5 bg-[#1db954]' : 'h-1 bg-[#999]'}`} />
+                <svg className={`pointer-events-none absolute inset-x-2 top-1/2 w-[calc(100%-16px)] -translate-y-1/2 ${scrubbing ? 'h-1.5 fill-[#1db954]' : 'h-1 fill-[#999]'}`} aria-hidden="true">
+                  <rect width={`${progressPercent}%`} height="100%" />
+                </svg>
+                <input
+                  type="range"
+                  min={0}
+                  max={progress.duration}
+                  step={1000}
+                  value={shownPosition}
+                  onChange={e => setScrubMs(Number(e.target.value))}
+                  onPointerUp={commitScrub}
+                  onKeyUp={commitScrub}
+                  onBlur={commitScrub}
+                  aria-label="Перемотка трека"
+                  className="absolute inset-0 m-0 h-4 w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:opacity-0 active:[&::-moz-range-thumb]:opacity-100 hover:[&::-moz-range-thumb]:opacity-100 [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:opacity-0 [&::-webkit-slider-thumb]:shadow-[0_2px_6px_rgba(0,0,0,.5)] active:[&::-webkit-slider-thumb]:opacity-100 hover:[&::-webkit-slider-thumb]:opacity-100"
+                />
+              </div>
+              <span className="w-9 shrink-0 text-[13px] tabular-nums text-[#666]">{formatTrackTime(progress.duration)}</span>
+            </div>
+          )}
+
+          {expanded && nextTrack && (
+            <div className="flex items-center gap-2.5 border-t border-[#2a2a2a] pl-1 pt-2 animate-fade-in">
+              <span className="text-[12px] tracking-[2px] text-[#666]">СЛЕДУЮЩИЙ</span>
+              {nextTrack.imageUrl
+                ? <img src={nextTrack.imageUrl} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
+                : <div className="h-6 w-6 shrink-0 rounded bg-[#2a2a2a]" />}
+              <span className="max-w-[360px] truncate text-[14px] text-[#aaa]">{nextTrack.artists} — {nextTrack.name}</span>
+            </div>
+          )}
+          </div>
         ) : (
-          <div className={`${strip} gap-2.5 py-3 pl-4`}>
+          <div className={`${strip} items-center gap-2.5 py-3 pl-4`}>
             <SpotifyEqualizer playing={false} />
             {status === 'disconnected' && <button className={textButton} onClick={spotify.connect}>Подключить Spotify</button>}
             {status === 'connecting' && <span className="text-[15px] text-[#777]">Подключаем Spotify…</span>}
