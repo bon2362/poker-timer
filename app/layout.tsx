@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: 'Poker Timer',
   description: 'Poker tournament timer',
   manifest: '/manifest.webmanifest',
+  robots: { index: false, follow: false },
   icons: {
     icon: [
       { url: '/poker-timer-favicon/favicon.svg', type: 'image/svg+xml' },
