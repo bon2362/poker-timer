@@ -1,20 +1,27 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-const isCI = !!process.env.CI;
-const localBaseURL = 'http://127.0.0.1:3000';
+const localBaseURL = 'http://127.0.0.1:3100';
+// Keys of the test Supabase project (poker-timer-test). In CI they come from GitHub secrets.
+if (existsSync('.env.test.local')) process.loadEnvFile('.env.test.local');
+// Set PLAYWRIGHT_BASE_URL only to run the unauthenticated smoke checks against a deployed site.
+const remoteBaseURL = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   timeout: 45000,
   retries: 2,
-  workers: isCI ? 1 : undefined,
+  // One worker: the tests share one test database and the same timer.
+  workers: 1,
   use: {
-    baseURL: isCI ? localBaseURL : process.env.PLAYWRIGHT_BASE_URL ?? 'https://bsptimer.online',
+    baseURL: remoteBaseURL ?? localBaseURL,
     trace: 'on-first-retry',
   },
-  webServer: isCI
-    ? {
-        command: 'npm run dev -- --hostname 127.0.0.1 --port 3000',
+  webServer: remoteBaseURL
+    ? undefined
+    : {
+        command: 'npm run dev -- --hostname 127.0.0.1 --port 3100',
         url: localBaseURL,
         reuseExistingServer: false,
         timeout: 120000,
@@ -23,9 +30,12 @@ export default defineConfig({
           ADMIN_PASSWORD: 'local-e2e-admin-password',
           ADMIN_SESSION_SECRET: 'local-e2e-session-secret-not-for-production',
           NEXT_PUBLIC_SESSION_ID: 'ci-e2e',
+          // Empty values stop Next from falling back to the production keys in .env.local.
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
         },
-      }
-    : undefined,
+      },
   projects: [
     {
       name: 'desktop',
