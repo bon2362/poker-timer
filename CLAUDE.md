@@ -14,7 +14,7 @@ Next.js 16 App Router + TypeScript + Tailwind CSS + Supabase Realtime.
 
 ## Деплой
 
-Автоматический: каждый `git push` в `main` → Vercel деплоит сам. CLI не нужен.
+Автоматический: каждый `git push` в `main` → GitHub Actions (`.github/workflows/test.yml`) прогоняет юнит-тесты и деплоит через `vercel deploy --prod`. Деплои из Git-интеграции Vercel отменяются сразу (Ignored Build Step = `exit 0`) — это нормально. Вручную CLI не нужен.
 
 ## Бэклог
 
