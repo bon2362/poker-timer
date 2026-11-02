@@ -18,14 +18,14 @@ const game: GameDetails = {
   players: [], winner: { id: 'sp', playerId: 'p', sessionId: 'game', name: 'Алекс', avatarUrl: null, rebuys: 0, hasAddon: false, status: 'winner', finishPosition: 1, payout: 1000, eliminatedAt: null, tableNumber: 1 },
   bank: 1000, photos: [], images: [],
 };
-test('old game hides missing photos, saved pictures and blinds, and marks approximate game length', () => {
+test('old game hides missing photos, saved pictures and blinds, and shows game length without an approximate mark', () => {
   render(<GameDetail game={game} now={new Date('2026-11-01')} />);
   expect(screen.queryByText('Фото с вечера')).not.toBeInTheDocument();
   expect(screen.queryByText('С экрана таймера')).not.toBeInTheDocument();
   expect(screen.queryByText(/УРОВНИ БЛАЙНДОВ/)).not.toBeInTheDocument();
   expect(screen.queryByText('Фото с вечера появятся позже')).not.toBeInTheDocument();
   expect(screen.getByText('Длительность')).toBeInTheDocument();
-  expect(screen.getByText('~1 ч 11 мин')).toBeInTheDocument();
+  expect(screen.getByText('1 ч 11 мин')).toBeInTheDocument();
   expect(screen.getByRole('columnheader', { name: 'Выигрыш' })).toBeInTheDocument();
 });
 test('only recent games without photos promise photos later', () => {

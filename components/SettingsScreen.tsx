@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '6.12',
+    date: "02 Nov '26",
+    notes: 'Страница игры: длительность показывается без знака «~».',
+  },
+  {
     version: '6.11',
     date: "02 Nov '26",
     notes: 'Описание ссылки на игру: убрана сумма банка.',
