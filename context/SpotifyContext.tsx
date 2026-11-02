@@ -5,6 +5,12 @@ import { playContext, searchPlaylists, SpotifyApiError, type SpotifyPlaylistItem
 import { loadLastPlaylist, loadVolume, saveLastPlaylist, saveVolume } from '@/lib/spotify/storage';
 import { AutoPauseController, type SiteAudioId } from '@/lib/spotify/autoPause';
 import type { SpotifyProgress } from '@/lib/spotify/progress';
+import { Fader } from '@/lib/fader';
+
+// Spotify fades out before an auto-pause and back in after the auto-resume.
+const HOLD_FADE_OUT_MS = 2000;
+const HOLD_FADE_IN_MS = 3000;
+const USER_PLAY_FADE_MS = 400;
 
 const SDK_URL = 'https://sdk.scdn.co/spotify-player.js';
 const PLAYER_NAME = 'Poker Timer';
@@ -34,6 +40,8 @@ export type SpotifyContextValue = {
   setVolume(v: number): void;
   playPlaylist(p: SpotifyPlaylistItem): Promise<void>;
   search(q: string): Promise<SpotifyPlaylistItem[]>;
+  /** Lowers or restores Spotify while the timer speaks (gain 0..1 on top of the user's volume). */
+  duckMusic(gain: number, rampMs: number): void;
   holdSiteAudio(id: SiteAudioId): void;
   releaseSiteAudio(id: SiteAudioId): void;
 };
@@ -90,15 +98,35 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const isPlayingRef = useRef(false);
   const isActiveRef = useRef(false);
   const controllerRef = useRef<AutoPauseController | null>(null);
+  const volumeRef = useRef(0.5);
+  const holdFaderRef = useRef<Fader | null>(null);
+  const duckFaderRef = useRef<Fader | null>(null);
+
+  // What the player actually plays at: the user's volume, lowered by auto-pause and timer phrases.
+  const effectiveVolume = () => volumeRef.current * (holdFaderRef.current?.value ?? 1) * (duckFaderRef.current?.value ?? 1);
+  const applyVolume = () => { playerRef.current?.setVolume(effectiveVolume()).catch(() => {}); };
+
+  if (!holdFaderRef.current) holdFaderRef.current = new Fader(applyVolume);
+  if (!duckFaderRef.current) duckFaderRef.current = new Fader(applyVolume);
 
   if (!controllerRef.current) {
+    const holdFader = holdFaderRef.current;
     controllerRef.current = new AutoPauseController({
       isPlayingHere: () => isActiveRef.current && isPlayingRef.current,
       isActiveHere: () => isActiveRef.current,
-      pause: () => playerRef.current?.pause() ?? Promise.resolve(),
-      resume: () => playerRef.current?.resume() ?? Promise.resolve(),
+      // A release during the fade-out cancels it, and then there is nothing to pause.
+      pause: async () => { if (await holdFader.rampTo(0, HOLD_FADE_OUT_MS)) await playerRef.current?.pause(); },
+      resume: async () => {
+        await playerRef.current?.resume();
+        await holdFader.rampTo(1, HOLD_FADE_IN_MS);
+      },
     });
   }
+
+  useEffect(() => () => {
+    holdFaderRef.current?.dispose();
+    duckFaderRef.current?.dispose();
+  }, []);
 
   // Fatal: the player can't work until the user reconnects.
   const fail = useCallback((message: string) => {
@@ -127,7 +155,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
           else showNotice('Нет связи со Spotify, пробуем ещё раз');
         });
       },
-      volume: loadVolume(),
+      volume: effectiveVolume(),
     });
     playerRef.current = player;
 
@@ -169,7 +197,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!getSpotifyClientId()) return;
-    setVolumeState(loadVolume());
+    volumeRef.current = loadVolume();
+    setVolumeState(volumeRef.current);
     setLastPlaylist(loadLastPlaylist());
     if (!loadTokens()) {
       setStatus('disconnected');
@@ -216,6 +245,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     await player.activateElement();
     try {
       await withToken(token => playContext(token, deviceId, playlist.uri));
+      holdFaderRef.current?.rampTo(1, USER_PLAY_FADE_MS);
       saveLastPlaylist(playlist);
       setLastPlaylist(playlist);
       controllerRef.current?.forgetPause();
@@ -235,6 +265,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (isActiveRef.current) {
+      holdFaderRef.current?.rampTo(1, USER_PLAY_FADE_MS);
       await player.resume();
       return;
     }
@@ -256,7 +287,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const setVolume = useCallback((v: number) => {
     setVolumeState(v);
     saveVolume(v);
-    playerRef.current?.setVolume(v);
+    volumeRef.current = v;
+    applyVolume();
   }, []);
 
   const search = useCallback(async (q: string) => {
@@ -276,6 +308,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     isActiveRef.current = false;
     isPlayingRef.current = false;
     clearTokens();
+    holdFaderRef.current?.setNow(1);
     setIsActiveHere(false);
     setIsPlaying(false);
     setPlayingElsewhere(false);
@@ -295,6 +328,10 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage);
   }, [disconnect]);
 
+  const duckMusic = useCallback((gain: number, rampMs: number) => {
+    duckFaderRef.current?.rampTo(gain, rampMs);
+  }, []);
+
   const holdSiteAudio = useCallback((id: SiteAudioId) => {
     controllerRef.current?.hold(id);
     setActiveHolds(controllerRef.current?.activeHolds() ?? []);
@@ -307,10 +344,10 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SpotifyContextValue>(() => ({
     status, errorMessage, notice, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, holdSiteAudio, releaseSiteAudio,
+    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
   }), [
     status, errorMessage, notice, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, holdSiteAudio, releaseSiteAudio,
+    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
   ]);
 
   return <SpotifyContext.Provider value={value}>{children}</SpotifyContext.Provider>;
@@ -318,6 +355,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
 
 export function useSpotify(): SpotifyContextValue | null {
   return useContext(SpotifyContext);
+}
+
+export function useSpotifyDuck(gain: number, rampMs: number): void {
+  const duck = useContext(SpotifyContext)?.duckMusic;
+  useEffect(() => { duck?.(gain, rampMs); }, [duck, gain, rampMs]);
 }
 
 export function useSiteAudioHold(id: SiteAudioId, active: boolean): void {

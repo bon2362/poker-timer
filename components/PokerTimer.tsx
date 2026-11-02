@@ -18,7 +18,8 @@ import { LoserImageOverlay } from './LoserImageOverlay';
 import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
 import { SpotifyMiniPlayer } from './spotify/SpotifyMiniPlayer';
-import { useSiteAudioHold } from '@/context/SpotifyContext';
+import { useSiteAudioHold, useSpotifyDuck } from '@/context/SpotifyContext';
+import { musicDuck, PHRASE_SECONDS } from '@/lib/musicDuck';
 import { playOneShot } from '@/lib/audio';
 import { shouldShowSidePanels } from '@/lib/timer';
 import { listSlideshowItems, type SlideshowItem } from '@/lib/supabase/slideshow';
@@ -224,7 +225,11 @@ export function PokerTimer() {
     mergeDialogDismissedAtCount !== activePlayersCount
   );
 
-  const { songPaused, songPlaying, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
+  // Background music steps aside while the timer speaks; the break song starts after "break starts".
+  const duck = musicDuck(state);
+  const breakPhraseDone = isOnBreak && stage.duration - state.timeLeft >= PHRASE_SECONDS;
+  const { songPaused, songPlaying, toggleSong, songTime } = useBreakSong(breakPhraseDone && state.config.breakSongEnabled, duck.gain, duck.rampMs);
+  useSpotifyDuck(duck.gain, duck.rampMs);
 
   const handleToggleBreakSong = useCallback(() => {
     if (!isOnBreak) return;
