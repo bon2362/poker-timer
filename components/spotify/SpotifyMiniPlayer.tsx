@@ -64,13 +64,16 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
   // Idle with nothing to show: no empty box on screen.
   if (!showControls && !nowPlaying) return null;
 
-  const position = `fixed bottom-7 z-[70] flex flex-col items-start gap-1.5 transition-[left] duration-500 ${panelOpen ? 'left-[388px]' : 'left-7'}`;
+  // A fixed-height box keeps the main row in place: hover rows grow downwards into the reserved space.
+  // 141px = the strip with the progress and next-track rows; the empty part lets clicks through.
+  const position = `pointer-events-none fixed bottom-7 z-[70] h-[141px] transition-[left] duration-500 ${panelOpen ? 'left-[388px]' : 'left-7'}`;
   const strip = 'flex max-w-[calc(100vw-56px)] rounded-xl bg-black/40 pr-[18px] animate-fade-in';
 
   if (!showControls) {
     return (
       <div className={position}>
-        <div className="flex max-w-[45vw] items-center gap-2.5 p-1 text-[17px] text-[#5a5a5a]">
+        {/* Centred on the strip's main row so the track name doesn't jump when the controls appear. */}
+        <div className="pointer-events-auto mt-[18px] flex max-w-[45vw] items-center gap-2.5 p-1 text-[17px] text-[#5a5a5a]">
           <SpotifyEqualizer playing={isPlaying && isActiveHere} />
           <span className="truncate">{nowPlaying}</span>
         </div>
@@ -93,7 +96,8 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
 
   return (
     <>
-      <div className={position} onMouseEnter={() => { setNow(Date.now()); setHovered(true); }} onMouseLeave={() => setHovered(false)}>
+      <div className={position}>
+      <div className="pointer-events-auto flex flex-col items-start gap-1.5" onMouseEnter={() => { setNow(Date.now()); setHovered(true); }} onMouseLeave={() => setHovered(false)}>
         {status === 'ready' ? (
           <div className={`${strip} flex-col gap-2.5 pl-2 pt-2 ${expanded ? 'pb-3 outline outline-[#2e2e2e]' : 'pb-2'}`}>
           <div className="flex items-center gap-4">
@@ -197,6 +201,7 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
           </div>
         )}
         {notice && <span className="px-1 text-[13px] text-[#a66]">{notice}</span>}
+      </div>
       </div>
 
       {searchOpen && <SpotifySearchDialog onPick={handlePick} onClose={() => setSearchOpen(false)} />}
