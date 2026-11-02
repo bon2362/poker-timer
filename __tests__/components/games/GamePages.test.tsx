@@ -56,6 +56,13 @@ test('unknown game returns 404', async () => {
   (getGameBySlug as jest.Mock).mockResolvedValue(null);
   await expect(GamePage({ params: Promise.resolve({ slug: 'missing' }) })).rejects.toThrow('NOT_FOUND');
 });
+test('link description does not reveal the bank', async () => {
+  (getGameBySlug as jest.Mock).mockResolvedValue(game);
+  const { generateMetadata } = await import('@/app/games/[slug]/page');
+  const metadata = await generateMetadata({ params: Promise.resolve({ slug: '2026-may-10' }) });
+  expect(metadata.description).toBe('Победитель: Алекс. 0 игроков.');
+  expect(metadata.openGraph?.description).toBe('Победитель: Алекс. 0 игроков.');
+});
 test('game metadata forbids indexing', async () => {
   (getGameBySlug as jest.Mock).mockResolvedValue(game);
   expect((await generateMetadata({ params: Promise.resolve({ slug: '2026-may-10' }) })).robots).toEqual({ index: false, follow: false });
