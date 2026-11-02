@@ -51,13 +51,21 @@ export function playOneShot(src: string): void {
 }
 
 /** Звук победителя — аплодисменты */
-export function playWinnerFanfare(): { stop: () => void } {
+export function playWinnerFanfare(onEnd?: () => void): { stop: () => void } {
   const audio = new Audio('/audio/applause.mp3');
-  audio.play().catch(() => {});
+  let ended = false;
+  const finish = () => {
+    if (ended) return;
+    ended = true;
+    onEnd?.();
+  };
+  audio.addEventListener('ended', finish);
+  audio.play().catch(finish);
   return {
     stop: () => {
       audio.pause();
       audio.currentTime = 0;
+      finish();
     },
   };
 }

@@ -5,6 +5,7 @@ import { AdminAuthProvider } from '@/context/AdminAuthContext';
 import { GameProvider } from '@/context/GameContext';
 import { TimerProvider } from '@/context/TimerContext';
 import { MinuteTimerProvider } from '@/context/MinuteTimerContext';
+import { SpotifyProvider } from '@/context/SpotifyContext';
 
 const PokerTimer = dynamic(
   () => import('@/components/PokerTimer').then(m => ({ default: m.PokerTimer })),
@@ -32,7 +33,7 @@ export default function Home() {
       <GameProvider>
         <TimerProvider>
           <MinuteTimerProvider>
-            {isMobile ? <MobileView /> : <PokerTimer />}
+            {isMobile ? <MobileView /> : <SpotifyProvider><PokerTimer /></SpotifyProvider>}
           </MinuteTimerProvider>
         </TimerProvider>
       </GameProvider>

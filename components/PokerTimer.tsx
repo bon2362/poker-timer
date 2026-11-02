@@ -17,6 +17,8 @@ import { MinuteTimerOverlay } from './MinuteTimerOverlay';
 import { LoserImageOverlay } from './LoserImageOverlay';
 import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
+import { SpotifyMiniPlayer } from './spotify/SpotifyMiniPlayer';
+import { useSiteAudioHold } from '@/context/SpotifyContext';
 import { playOneShot } from '@/lib/audio';
 import { shouldShowSidePanels } from '@/lib/timer';
 import { listSlideshowItems, type SlideshowItem } from '@/lib/supabase/slideshow';
@@ -222,7 +224,7 @@ export function PokerTimer() {
     mergeDialogDismissedAtCount !== activePlayersCount
   );
 
-  const { songPaused, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
+  const { songPaused, songPlaying, toggleSong, songTime } = useBreakSong(isOnBreak && state.config.breakSongEnabled);
 
   const handleToggleBreakSong = useCallback(() => {
     if (!isOnBreak) return;
@@ -232,6 +234,15 @@ export function PokerTimer() {
     }
     dispatch({ type: 'SAVE_DISPLAY_CONFIG', config: { ...state.config, breakSongEnabled: true } });
   }, [dispatch, isOnBreak, state.config, toggleSong]);
+
+  // Spotify ▶ during the break song mutes the song the same way the mute button does.
+  const handlePlayDuringBreakSong = useCallback(() => {
+    if (isOnBreak && songPlaying) toggleSong();
+  }, [isOnBreak, songPlaying, toggleSong]);
+
+  useSiteAudioHold('breakSong', isOnBreak && songPlaying);
+  useSiteAudioHold('tractor', state.tractorMomentActive && !state.isOver);
+  useSiteAudioHold('finalSlideshow', showWinner && finalSlideshowVisible);
 
   useEffect(() => {
     if (!canControl || !shouldPromptMerge) return;
@@ -452,6 +463,13 @@ export function PokerTimer() {
 
       {/* Clock */}
       <ClockDisplay />
+
+      {/* Spotify — shown on every screen, in and out of the game */}
+      <SpotifyMiniPlayer
+        canControl={canControl}
+        controlsVisible={controlsVisible}
+        onPlayDuringBreakSong={handlePlayDuringBreakSong}
+      />
 
       {/* Session overlay — shown when loading done and no active session */}
       {canControl && !loading && !activeSession && (

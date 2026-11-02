@@ -48,9 +48,11 @@ function savePersistedPaused(paused: boolean): void {
   window.localStorage.setItem(BREAK_SONG_PAUSED_KEY, String(paused));
 }
 
-export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSong: () => void; songTime: number } {
+export function useBreakSong(enabled: boolean): { songPaused: boolean; songPlaying: boolean; toggleSong: () => void; songTime: number } {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [songPaused, setSongPaused] = useState(loadPersistedPaused);
+  // True only once the browser actually started the song (autoplay may be blocked).
+  const [songPlaying, setSongPlaying] = useState(false);
   const [songTime, setSongTime] = useState(0);
   const persistedPausedRef = useRef(songPaused);
 
@@ -64,6 +66,7 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
     if (!enabled) {
       audioRef.current?.pause();
       setSongTime(0);
+      setSongPlaying(false);
       return;
     }
 
@@ -79,7 +82,7 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
 
     if (!persistedPausedRef.current) {
       audio.play()
-        .then(() => { if (cancelled) audio.pause(); })
+        .then(() => { if (cancelled) audio.pause(); else setSongPlaying(true); })
         .catch(() => { if (!cancelled) setPausedPreference(true); });
     } else {
       setSongPaused(true);
@@ -91,6 +94,7 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
       audio.pause();
       audio.src = '';
       audioRef.current = null;
+      setSongPlaying(false);
     };
   }, [enabled]);
 
@@ -98,12 +102,13 @@ export function useBreakSong(enabled: boolean): { songPaused: boolean; toggleSon
     const audio = audioRef.current;
     if (!audio) return;
     if (songPaused) {
-      audio.play().then(() => setPausedPreference(false)).catch(() => {});
+      audio.play().then(() => { setPausedPreference(false); setSongPlaying(true); }).catch(() => {});
     } else {
       audio.pause();
       setPausedPreference(true);
+      setSongPlaying(false);
     }
   };
 
-  return { songPaused, toggleSong, songTime };
+  return { songPaused, songPlaying, toggleSong, songTime };
 }

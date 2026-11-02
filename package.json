@@ -26,6 +26,7 @@
     "@types/node": "^20",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "@types/spotify-web-playback-sdk": "^0.1.19",
     "allure-playwright": "^3.7.1",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",

@@ -8,6 +8,7 @@ import { calcGameStats } from '@/lib/game';
 import { Avatar } from '../PlayerManager/PlayerManager';
 import { getWinnerImageUrl } from '@/lib/supabase/winnerImage';
 import { playWinnerFanfare } from '@/lib/audio';
+import { useSiteAudioHold } from '@/context/SpotifyContext';
 
 type Props = {
   onFinishGame?: () => Promise<GameActionResult>;
@@ -23,6 +24,8 @@ export function WinnerScreen({ onFinishGame }: Props) {
 
   const [finishError, setFinishError] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [fanfarePlaying, setFanfarePlaying] = useState(false);
+  useSiteAudioHold('winnerFanfare', fanfarePlaying);
 
   const handleFinishGame = async () => {
     if (!canControl) return;
@@ -40,7 +43,8 @@ export function WinnerScreen({ onFinishGame }: Props) {
   const winnerPlayer = winner ? players.find(p => p.id === winner.playerId) : null;
 
   useEffect(() => {
-    const fanfare = playWinnerFanfare();
+    setFanfarePlaying(true);
+    const fanfare = playWinnerFanfare(() => setFanfarePlaying(false));
     const stopFanfareTimer = setTimeout(() => fanfare.stop(), 30000);
 
     if (winnerPlayer) {
