@@ -5,6 +5,7 @@ import type { Player, Session, SessionPlayer, NewSessionData } from '@/types/gam
 import { fetchPlayers, createPlayer, updatePlayer as updatePlayerDB, deletePlayer as deletePlayerDB } from '@/lib/supabase/players';
 import { fetchActiveSession, createSession, updateSessionPlayer, mergeTables, toSessionPlayer } from '@/lib/supabase/sessions';
 import { getClient } from '@/supabase/client';
+import { subscribeChannel } from '@/supabase/channels';
 import { getCurrentPlayerImage } from '@/lib/supabase/imageVariants';
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const client = getClient();
     if (!client) return;
 
-    const channel = client
+    return subscribeChannel('game-realtime', () => client
       .channel('game-realtime')
       .on(
         'postgres_changes',
@@ -217,9 +218,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           }
         }
       )
-      .subscribe();
-
-    return () => { client.removeChannel(channel); };
+    );
   }, []);
 
   const addPlayer = useCallback(async (name: string): Promise<Player | null> => {

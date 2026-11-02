@@ -14,6 +14,11 @@ type ChangelogEntry =
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '6.15',
+    date: "02 Nov '26",
+    notes: 'Админка: переход между вкладками «Турнир» и «Оформление» больше не ломает страницу.',
+  },
+  {
     version: '6.14',
     date: "02 Nov '26",
     notes: 'Суммы показываются без обозначения валюты.',

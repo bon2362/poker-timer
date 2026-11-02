@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { getClient } from '@/supabase/client';
+import { subscribeChannel } from '@/supabase/channels';
 import { fetchMinuteTimerState, saveMinuteTimerState } from '@/lib/supabase/minuteTimerState';
 
 type MinuteTimerState = {
@@ -86,7 +87,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
     const client = getClient();
     if (!client) return;
 
-    const channel = client
+    return subscribeChannel('minute-timer-state-sync', () => client
       .channel('minute-timer-state-sync')
       .on(
         'postgres_changes',
@@ -102,9 +103,7 @@ export function MinuteTimerProvider({ children }: { children: ReactNode }) {
           });
         }
       )
-      .subscribe();
-
-    return () => { client.removeChannel(channel); };
+    );
   }, [applyRemoteState]);
 
   // Tick every 200ms for smooth countdown

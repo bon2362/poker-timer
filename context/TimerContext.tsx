@@ -4,11 +4,13 @@ import { timerReducer } from '@/reducer/timerReducer';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
+import { subscribeChannel } from '@/supabase/channels';
 import { fetchAppConfig, normalizeConfig, saveAppConfig } from '@/lib/supabase/appConfig';
 import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import { useGame } from '@/context/GameContext';
 import { markSessionStarted } from '@/lib/supabase/sessions';
 import type { TimerState, Action } from '@/types/timer';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 type TimerContextValue = {
   state: TimerState;
@@ -47,7 +49,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
   const [configReady, setConfigReady] = useState(false);
   const { activeSession, loading: gameLoading } = useGame();
   const suppressUntilRef = useRef<number>(0);
-  const channelRef = useRef(getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main'));
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Echo suppression: skip sync effect only for the exact state received from another source.
@@ -154,15 +156,18 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
 
   // --- Realtime: subscribe + receive anchor state from other devices ---
   useEffect(() => {
-    const channel = channelRef.current;
-    channel.on('broadcast', { event: 'state' }, ({ payload }) => {
-      suppressSyncSnapshotRef.current = toSyncSnapshot(payload);
-      dispatch({ type: 'RESTORE_STATE', payload });
-    });
-    channel.subscribe();
+    const sessionId = process.env.NEXT_PUBLIC_SESSION_ID ?? 'main';
+    const unsubscribe = subscribeChannel(
+      `timer:${sessionId}`,
+      () => getTimerChannel(sessionId).on('broadcast', { event: 'state' }, ({ payload }) => {
+        suppressSyncSnapshotRef.current = toSyncSnapshot(payload);
+        dispatch({ type: 'RESTORE_STATE', payload });
+      }),
+      channel => { channelRef.current = channel; },
+    );
     return () => {
-      getClient()?.removeChannel(channel);
-      channelRef.current = getTimerChannel(process.env.NEXT_PUBLIC_SESSION_ID ?? 'main');
+      channelRef.current = null;
+      unsubscribe();
     };
   }, []);
 
@@ -171,7 +176,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
     const client = getClient();
     if (!client) return;
 
-    const channel = client
+    return subscribeChannel('app-config-sync', () => client
       .channel('app-config-sync')
       .on(
         'postgres_changes',
@@ -184,9 +189,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
           dispatch({ type: 'RESTORE_CONFIG', config });
         }
       )
-      .subscribe();
-
-    return () => { client.removeChannel(channel); };
+    );
   }, []);
 
   // --- Event-driven sync: persist + broadcast only when significant state changes ---
@@ -248,7 +251,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
       .then(() => saveTimerState(payload));
 
     // Broadcast to other devices (only when WebSocket is connected)
-    if (channelRef.current.state === 'joined') {
+    if (channelRef.current?.state === 'joined') {
       channelRef.current.send({ type: 'broadcast', event: 'state', payload });
     }
   }, [state.currentStage, state.anchorTs, state.isPaused, state.isOver, state.elapsedBeforePause, state.warnedOneMin]);
@@ -260,7 +263,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
     const client = getClient();
     if (!client) return;
 
-    const channel = client
+    return subscribeChannel('timer-state-ios-sync', () => client
       .channel('timer-state-ios-sync')
       .on(
         'postgres_changes',
@@ -285,9 +288,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
           dispatch({ type: 'RESTORE_STATE', payload: restoredState });
         }
       )
-      .subscribe();
-
-    return () => { client.removeChannel(channel); };
+    );
   }, [dispatch]);
 
   // Persist config changes to durable storage. localStorage remains a cache/fallback,
