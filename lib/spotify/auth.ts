@@ -1,4 +1,4 @@
-const AUTH_KEY = 'spotifyAuth';
+export const SPOTIFY_AUTH_KEY = 'spotifyAuth';
 const PKCE_KEY = 'spotifyPkce';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const AUTHORIZE_URL = 'https://accounts.spotify.com/authorize';
@@ -19,7 +19,7 @@ export function getRedirectUri(): string {
 
 export function loadTokens(): SpotifyTokens | null {
   try {
-    const raw = window.localStorage.getItem(AUTH_KEY);
+    const raw = window.localStorage.getItem(SPOTIFY_AUTH_KEY);
     return raw ? (JSON.parse(raw) as SpotifyTokens) : null;
   } catch {
     return null;
@@ -27,11 +27,11 @@ export function loadTokens(): SpotifyTokens | null {
 }
 
 export function saveTokens(tokens: SpotifyTokens): void {
-  try { window.localStorage.setItem(AUTH_KEY, JSON.stringify(tokens)); } catch {}
+  try { window.localStorage.setItem(SPOTIFY_AUTH_KEY, JSON.stringify(tokens)); } catch {}
 }
 
 export function clearTokens(): void {
-  try { window.localStorage.removeItem(AUTH_KEY); } catch {}
+  try { window.localStorage.removeItem(SPOTIFY_AUTH_KEY); } catch {}
 }
 
 function randomString(length: number): string {

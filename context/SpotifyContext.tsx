@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { clearTokens, getSpotifyClientId, getValidAccessToken, loadTokens, startSpotifyLogin } from '@/lib/spotify/auth';
+import { clearTokens, getSpotifyClientId, SPOTIFY_AUTH_KEY, getValidAccessToken, loadTokens, startSpotifyLogin } from '@/lib/spotify/auth';
 import { playContext, searchPlaylists, SpotifyApiError, type SpotifyPlaylistItem } from '@/lib/spotify/api';
 import { loadLastPlaylist, loadVolume, saveLastPlaylist, saveVolume } from '@/lib/spotify/storage';
 import { AutoPauseController, type SiteAudioId } from '@/lib/spotify/autoPause';
@@ -9,7 +9,7 @@ const SDK_URL = 'https://sdk.scdn.co/spotify-player.js';
 const PLAYER_NAME = 'Poker Timer';
 
 export type SpotifyStatus = 'disabled' | 'disconnected' | 'connecting' | 'ready' | 'error';
-export type SpotifyTrack = { name: string; artists: string };
+export type SpotifyTrack = { name: string; artists: string; imageUrl: string | null };
 
 export type SpotifyContextValue = {
   status: SpotifyStatus;
@@ -142,7 +142,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       setIsPlaying(!state.paused);
       setPlayingElsewhere(false);
       const current = state.track_window.current_track;
-      setTrack(current ? { name: current.name, artists: current.artists.map(a => a.name).join(', ') } : null);
+      setTrack(current ? {
+        name: current.name,
+        artists: current.artists.map(a => a.name).join(', '),
+        imageUrl: current.album.images[0]?.url ?? null,
+      } : null);
     });
     player.addListener('initialization_error', () => fail('Браузер не поддерживает плеер Spotify'));
     player.addListener('authentication_error', () => { clearTokens(); fail('Подключите Spotify заново'); });
@@ -261,6 +265,15 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     setErrorMessage(null);
     setStatus('disconnected');
   }, []);
+
+  // Logging out from the admin page (another tab) removes the saved login.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SPOTIFY_AUTH_KEY && !e.newValue) disconnect();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [disconnect]);
 
   const holdSiteAudio = useCallback((id: SiteAudioId) => {
     controllerRef.current?.hold(id);

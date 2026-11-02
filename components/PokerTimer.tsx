@@ -468,6 +468,7 @@ export function PokerTimer() {
       <SpotifyMiniPlayer
         canControl={canControl}
         controlsVisible={controlsVisible}
+        panelOpen={canControl && !!activeSession && shouldShowSidePanels(state.tractorMomentActive) && !!state.config.showPlayers}
         onPlayDuringBreakSong={handlePlayDuringBreakSong}
       />
 

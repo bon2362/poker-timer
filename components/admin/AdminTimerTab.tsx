@@ -2,6 +2,7 @@
 import { GameProvider } from '@/context/GameContext';
 import { TimerProvider, useTimer } from '@/context/TimerContext';
 import { DisplayTab, TournamentTab } from '@/components/SettingsScreen';
+import { SpotifyAccountSection } from '@/components/spotify/SpotifyAccountSection';
 
 export type AdminTimerTabName = 'tournament' | 'display';
 
@@ -9,7 +10,10 @@ function TabContent({ tab }: { tab: AdminTimerTabName }) {
   const { state, dispatch, configReady } = useTimer();
   // The forms copy the config once, so they wait for the saved settings instead of the local cache.
   if (!configReady) return <p className="py-10 text-center text-sm text-[#888]">Загружаем настройки…</p>;
-  if (tab === 'display') return <DisplayTab config={state.config} onDisplaySave={config => dispatch({ type: 'SAVE_DISPLAY_CONFIG', config })} />;
+  if (tab === 'display') return <>
+    <DisplayTab config={state.config} onDisplaySave={config => dispatch({ type: 'SAVE_DISPLAY_CONFIG', config })} />
+    <SpotifyAccountSection />
+  </>;
   return <>
     <div className="flex justify-end px-6 pt-2"><button onClick={() => dispatch({ type: 'JUMP_TO_END' })} title="Перемотать к последней минуте (для теста)" className="rounded border border-[#333] px-[7px] py-[3px] text-[11px] text-[#555] hover:border-[#555] hover:text-[#888]">1:05</button></div>
     <TournamentTab config={state.config} onSave={config => dispatch({ type: 'SAVE_SETTINGS', config })} />
