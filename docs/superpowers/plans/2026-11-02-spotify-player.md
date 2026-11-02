@@ -135,7 +135,7 @@ Expected: PASS (2 теста)
 - Produces:
   - `lib/spotify/api.ts`:
     - `type SpotifyPlaylistItem = { uri: string; name: string; owner: string; imageUrl: string | null }`
-    - `searchPlaylists(token: string, query: string): Promise<SpotifyPlaylistItem[]>` — `GET https://api.spotify.com/v1/search?type=playlist&limit=20&q=…`. Пропускать `null` в `playlists.items` (Spotify их возвращает).
+    - `searchPlaylists(token: string, query: string): Promise<SpotifyPlaylistItem[]>` — `GET https://api.spotify.com/v1/search?type=playlist&limit=10&q=…` (в режиме разработки Spotify больше 10 не отдаёт, на 20 отвечает 400). Пропускать `null` в `playlists.items` (Spotify их возвращает).
     - `playContext(token: string, deviceId: string, contextUri: string): Promise<void>` — `PUT https://api.spotify.com/v1/me/player/play?device_id=…` с телом `{ context_uri }`.
     - `class SpotifyApiError extends Error { status: number }` — бросается на не-2xx.
   - `lib/spotify/storage.ts`: `loadLastPlaylist(): SpotifyPlaylistItem | null`, `saveLastPlaylist(p: SpotifyPlaylistItem): void`, `loadVolume(): number`, `saveVolume(v: number): void` (ключи из Global Constraints, `try/catch` вокруг `localStorage`).

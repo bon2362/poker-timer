@@ -16,7 +16,8 @@ type PlaylistResponse = {
 } | null;
 
 export async function searchPlaylists(token: string, query: string): Promise<SpotifyPlaylistItem[]> {
-  const params = new URLSearchParams({ q: query, type: 'playlist', limit: '20' });
+  // Apps in Spotify development mode may request at most 10 search results.
+  const params = new URLSearchParams({ q: query, type: 'playlist', limit: '10' });
   const res = await fetch(`${API}/search?${params}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new SpotifyApiError(res.status);
   const data: { playlists?: { items?: PlaylistResponse[] } } = await res.json();
