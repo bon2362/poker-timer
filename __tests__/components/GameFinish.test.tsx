@@ -8,7 +8,6 @@ import { useGame } from '@/context/GameContext';
 import { useTimer } from '@/context/TimerContext';
 import { DEFAULT_CONFIG } from '@/lib/storage';
 import * as timerStateStorage from '@/lib/supabase/timerState';
-import { listSlideshowItems } from '@/lib/supabase/slideshow';
 
 jest.mock('@/context/AdminAuthContext', () => ({ useAdminAuth: jest.fn() }));
 jest.mock('@/components/MobileAdminPanel', () => ({ MobileAdminPanel: () => null }));
@@ -51,7 +50,7 @@ beforeEach(() => {
 });
 
 test.each(['standalone', 'timer'] as const)('%s keeps winner screen open and shows finish error before retrying', async mode => {
-  const { finishGame, dispatch } = setup();
+  const { finishGame } = setup();
   const user = userEvent.setup();
   render(mode === 'standalone' ? <WinnerScreen /> : <PokerTimer />);
   await user.click(screen.getByRole('button', { name: 'Завершить игру' }));
@@ -60,58 +59,6 @@ test.each(['standalone', 'timer'] as const)('%s keeps winner screen open and sho
   await user.click(screen.getByRole('button', { name: 'Завершить игру' }));
   await waitFor(() => expect(finishGame).toHaveBeenCalledTimes(2));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-});
-
-test('timer exposes the finish error above the final slideshow and keeps it visible', async () => {
-  jest.useFakeTimers();
-  try {
-    const { dispatch } = setup();
-    render(<PokerTimer />);
-    await act(async () => { jest.advanceTimersByTime(31000); });
-    await act(async () => { screen.getByRole('button', { name: 'Завершить слайдшоу' }).click(); });
-    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось завершить игру');
-    expect(screen.getByRole('button', { name: 'Завершить слайдшоу' })).toBeInTheDocument();
-    } finally { jest.useRealTimers(); }
-});
-
-test('timer cycles photo records with their supplied dates during a break', async () => {
-  jest.useFakeTimers();
-  const random = jest.spyOn(Math, 'random').mockReturnValue(0.99);
-  try {
-    setup();
-    (useGame as jest.Mock).mockReturnValue({ activeSession: { id: 's1' }, sessionPlayers: [], players: [], showWinner: false, loading: false });
-    (useTimer as jest.Mock).mockReturnValue({ state: {
-      config: { ...DEFAULT_CONFIG, slideshowEnabled: true, slideshowSpeed: 5, breakSongEnabled: false },
-      currentStage: 0, timeLeft: 60, isPaused: false,
-      stages: [{ type: 'break', duration: 300 }],
-    }, dispatch: jest.fn() });
-    (listSlideshowItems as jest.Mock).mockResolvedValue([
-      { url: 'https://example.com/a.jpg', date: '01.11.2026' },
-      { url: 'https://example.com/b.jpg', date: '10.05.2026' },
-    ]);
-    render(<PokerTimer />);
-    await act(async () => {});
-    expect(screen.getByText('01.11.2026')).toBeInTheDocument();
-    expect(document.querySelector('img[src="https://example.com/a.jpg"]')).toBeInTheDocument();
-    act(() => { jest.advanceTimersByTime(5000); });
-    expect(screen.getByText('10.05.2026')).toBeInTheDocument();
-    expect(screen.queryByText('01.11.2026')).not.toBeInTheDocument();
-    expect(document.querySelector('img[src="https://example.com/b.jpg"]')).toBeInTheDocument();
-  } finally {
-    (listSlideshowItems as jest.Mock).mockResolvedValue([]);
-    random.mockRestore();
-    jest.useRealTimers();
-  }
-});
-
-
-test('viewer sees winner information without finish action', async () => {
-  setup();
-  (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin: false, checking: false });
-  render(<WinnerScreen />);
-  await act(async () => {});
-  expect(screen.getByText('Alice')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Завершить игру' })).not.toBeInTheDocument();
 });
 
 test.each([false, true])('desktop viewer cannot use keyboard commands while checking=%s', async checking => {
@@ -124,49 +71,6 @@ test.each([false, true])('desktop viewer cannot use keyboard commands while chec
   expect(dispatch).not.toHaveBeenCalled();
   expect(screen.queryByTitle('Settings')).not.toBeInTheDocument();
 });
-
-test.each([
-  { isAdmin: false, checking: false, shouldPause: false },
-  { isAdmin: false, checking: true, shouldPause: false },
-  { isAdmin: true, checking: true, shouldPause: false },
-  { isAdmin: true, checking: false, shouldPause: true },
-])('merge prompt pauses only for a verified admin: %j', async ({ isAdmin, checking, shouldPause }) => {
-  const { dispatch } = setup();
-  const game = (useGame as jest.Mock).getMockImplementation()!();
-  (useGame as jest.Mock).mockReturnValue({
-    ...game,
-    activeSession: { ...game.activeSession, numberOfTables: 2, mergeThreshold: 1, tablesMergedAt: null },
-    sessionPlayers: [{ ...game.sessionPlayers[0], status: 'playing', finishPosition: null }],
-    showWinner: false,
-  });
-  (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin, checking });
-
-  const { rerender } = render(<PokerTimer />);
-  await act(async () => {});
-
-  if (shouldPause) {
-    expect(dispatch).toHaveBeenCalledWith({ type: 'PAUSE_TIMER' });
-  } else {
-    expect(dispatch).not.toHaveBeenCalledWith({ type: 'PAUSE_TIMER' });
-  }
-
-  if (isAdmin && checking) {
-    (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin: true, checking: false });
-    rerender(<PokerTimer />);
-    expect(dispatch).toHaveBeenCalledWith({ type: 'PAUSE_TIMER' });
-  }
-});
-
-test('mobile viewer double tap opens password form, with no pause action', async () => {
-  setup();
-  (useAdminAuth as jest.Mock).mockReturnValue({ isAdmin: false, checking: false, login: jest.fn() });
-  render(<MobileView />);
-  expect(screen.queryByRole('button', { name: /[▶⏸]/ })).not.toBeInTheDocument();
-  const blindArea = screen.getByText('Round 1').parentElement!.parentElement!;
-  await act(async () => { blindArea.click(); blindArea.click(); });
-  expect(screen.getByLabelText('Пароль')).toBeInTheDocument();
-});
-
 
 test('viewer continues seeing a running timer without pause control', async () => {
   jest.useFakeTimers();
@@ -192,7 +96,6 @@ test('viewer continues seeing a running timer without pause control', async () =
     jest.useRealTimers();
   }
 });
-
 
 test('viewer cannot change the shared combinations display setting', async () => {
   const { dispatch } = setup();

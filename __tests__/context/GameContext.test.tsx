@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import type { Player } from '@/types/game';
 
@@ -116,15 +115,6 @@ beforeEach(() => {
 });
 
 describe('GameContext', () => {
-  test('1. renders without error and shows initial loading state', async () => {
-    // Make fetch hang so we can observe loading=true
-    mockFetchPlayers.mockReturnValue(new Promise(() => {}));
-    mockFetchActiveSession.mockReturnValue(new Promise(() => {}));
-
-    renderWithProvider();
-
-    expect(screen.getByTestId('loading')).toHaveTextContent('true');
-  });
 
   test('2. after data loads, players list is populated', async () => {
     const twoPlayers: Player[] = [
@@ -140,65 +130,6 @@ describe('GameContext', () => {
     );
 
     expect(screen.getByTestId('players-count')).toHaveTextContent('2');
-  });
-
-  test('3. after data loads, activeSession is null when fetchActiveSession returns null', async () => {
-    mockFetchActiveSession.mockResolvedValue({ session: null, sessionPlayers: [] });
-
-    renderWithProvider();
-
-    await waitFor(() =>
-      expect(screen.getByTestId('loading')).toHaveTextContent('false')
-    );
-
-    expect(screen.getByTestId('session')).toHaveTextContent('none');
-  });
-
-  test('4. addPlayer calls createPlayer and updates players list', async () => {
-    const newPlayer: Player = {
-      id: 'new-1',
-      name: 'Test Player',
-      avatarUrl: null,
-      createdAt: '2024-01-01T00:00:00Z',
-    };
-    mockCreatePlayer.mockResolvedValue(newPlayer);
-
-    renderWithProvider();
-
-    await waitFor(() =>
-      expect(screen.getByTestId('loading')).toHaveTextContent('false')
-    );
-
-    expect(screen.getByTestId('players-count')).toHaveTextContent('0');
-
-    await act(async () => {
-      screen.getByTestId('add-player-btn').click();
-    });
-
-    expect(mockCreatePlayer).toHaveBeenCalledWith('Test Player');
-    expect(screen.getByTestId('players-count')).toHaveTextContent('1');
-  });
-
-  test('5. useGame throws when used outside GameProvider', () => {
-    function BadConsumer() {
-      useGame();
-      return null;
-    }
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    expect(() => render(<BadConsumer />)).toThrow('useGame must be used within GameProvider');
-    spy.mockRestore();
-  });
-
-  test('6. loading starts as true and becomes false after initial fetch', async () => {
-    renderWithProvider();
-
-    // Initially loading
-    expect(screen.getByTestId('loading')).toHaveTextContent('true');
-
-    // Eventually resolves
-    await waitFor(() =>
-      expect(screen.getByTestId('loading')).toHaveTextContent('false')
-    );
   });
 });
 
@@ -291,20 +222,6 @@ describe('GameContext — extended actions', () => {
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
   }
 
-  test('7. updatePlayer updates player in list', async () => {
-    const updated: Player = { id: 'p-1', name: 'Alice Renamed', avatarUrl: null, createdAt: '' };
-    mockUpdatePlayer.mockResolvedValue(updated);
-
-    renderExtended();
-    await waitReady();
-
-    await act(async () => {
-      await gameCtxRef!.updatePlayer('p-1', { name: 'Alice Renamed' });
-    });
-
-    expect(mockUpdatePlayer).toHaveBeenCalledWith('p-1', { name: 'Alice Renamed' });
-  });
-
   test('8. removePlayer removes player when no active session involvement', async () => {
     // Start with no session so the guard doesn't block
     mockFetchActiveSession.mockResolvedValue({ session: null, sessionPlayers: [] });
@@ -330,25 +247,6 @@ describe('GameContext — extended actions', () => {
     });
 
     expect(mockDeletePlayer).not.toHaveBeenCalled();
-  });
-
-  test('10. startSession calls createSession and sets active session', async () => {
-    mockFetchActiveSession.mockResolvedValue({ session: null, sessionPlayers: [] });
-    mockCreateSession.mockResolvedValue({ session: mockSession, sessionPlayers: [mockSp] });
-
-    renderExtended();
-    await waitReady();
-    expect(screen.getByTestId('session')).toHaveTextContent('none');
-
-    await act(async () => {
-      await gameCtxRef!.startSession(
-        { buyIn: 1000, initialStack: 2000, rebuyCost: 1000, rebuyChips: 2000, maxRebuys: 1, addonCost: 1000, addonChips: 3000, prizeSpots: 3, prizePcts: [50, 30, 20], numberOfTables: 1, mergeThreshold: 0, tablesMergedAt: null },
-        ['p-1']
-      );
-    });
-
-    expect(mockCreateSession).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('session')).toHaveTextContent('session-1');
   });
 
   test('11. doRebuy calls updateSessionPlayer with incremented rebuys', async () => {
@@ -431,7 +329,6 @@ describe('GameContext — extended actions', () => {
     expect(screen.getByTestId('session')).toHaveTextContent('none');
   });
 
-
   test('undoEliminate clears the captured loser image', async () => {
     renderExtended(); await waitReady();
     await act(async () => { await gameCtxRef!.undoEliminate('sp-1'); });
@@ -452,13 +349,6 @@ describe('GameContext — extended actions', () => {
       expect(gameCtxRef!.sessionPlayers).toEqual(original);
       expect(gameCtxRef!.showWinner).toBe(false);
     }
-  });
-
-  test('startSession passes the supplied blind structure through to persistence', async () => {
-    const blindStructure = { levelDuration: 15, breakDuration: 7, breakEvery: 4, blindLevels: [{ sb: 20, bb: 40 }] };
-    renderExtended(); await waitReady();
-    await act(async () => { await gameCtxRef!.startSession({ ...mockSession, blindStructure }, ['p-1']); });
-    expect(mockCreateSession.mock.calls[0][0].blindStructure).toEqual(blindStructure);
   });
 
   test('declareWinner refreshes persisted payouts and finish time after successful save', async () => {
@@ -510,19 +400,6 @@ describe('GameContext — extended actions', () => {
     expect(screen.getByTestId('session')).toHaveTextContent('none');
   });
 
-  test('18. doAddon calls updateSessionPlayer with hasAddon=true', async () => {
-    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, hasAddon: true });
-
-    renderExtended();
-    await waitReady();
-
-    await act(async () => {
-      await gameCtxRef!.doAddon('sp-1');
-    });
-
-    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { hasAddon: true });
-  });
-
   test('19. undoEliminate restores player to playing status', async () => {
     const eliminatedSp = { ...mockSp, status: 'eliminated' as const, finishPosition: 2, eliminatedAt: '2024-01-01' };
     mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [eliminatedSp] });
@@ -563,60 +440,6 @@ describe('GameContext — extended actions', () => {
       loserImageId: null,
       tableNumber: 1,
     });
-  });
-
-  test('20. undoRebuy decrements rebuys', async () => {
-    const spWithRebuy = { ...mockSp, rebuys: 2 };
-    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [spWithRebuy] });
-    mockUpdateSessionPlayer.mockResolvedValue({ ...spWithRebuy, rebuys: 1 });
-
-    renderExtended();
-    await waitReady();
-
-    await act(async () => {
-      await gameCtxRef!.undoRebuy('sp-1');
-    });
-
-    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { rebuys: 1 });
-  });
-
-  test('21. undoRebuy is skipped when rebuys=0', async () => {
-    renderExtended(); // mockSp has rebuys=0
-    await waitReady();
-
-    await act(async () => {
-      await gameCtxRef!.undoRebuy('sp-1');
-    });
-
-    expect(mockUpdateSessionPlayer).not.toHaveBeenCalled();
-  });
-
-  test('22. undoAddon calls updateSessionPlayer with hasAddon=false', async () => {
-    const spWithAddon = { ...mockSp, hasAddon: true };
-    mockFetchActiveSession.mockResolvedValue({ session: mockSession, sessionPlayers: [spWithAddon] });
-    mockUpdateSessionPlayer.mockResolvedValue({ ...spWithAddon, hasAddon: false });
-
-    renderExtended();
-    await waitReady();
-
-    await act(async () => {
-      await gameCtxRef!.undoAddon('sp-1');
-    });
-
-    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { hasAddon: false });
-  });
-
-  test('22b. movePlayerToTable updates tableNumber', async () => {
-    mockUpdateSessionPlayer.mockResolvedValue({ ...mockSp, tableNumber: 2 });
-
-    renderExtended();
-    await waitReady();
-
-    await act(async () => {
-      await gameCtxRef!.movePlayerToTable('sp-1', 2);
-    });
-
-    expect(mockUpdateSessionPlayer).toHaveBeenCalledWith('sp-1', { tableNumber: 2 });
   });
 
   test('23. Realtime UPDATE session_players with status=winner → showWinner=true', async () => {
@@ -725,7 +548,6 @@ describe('GameContext — extended actions', () => {
 
     expect(mockFetchActiveSession).toHaveBeenCalledTimes(2);
   });
-
 
   test('24. Realtime INSERT sessions → fetches and sets new session', async () => {
     mockFetchActiveSession

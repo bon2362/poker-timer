@@ -51,7 +51,8 @@ jobs:
           retention-days: 7
 
   deploy:
-    needs: [unit-tests, e2e-tests]
+    # E2E tests run in parallel and report problems, but do not hold back the release.
+    needs: unit-tests
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

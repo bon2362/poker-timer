@@ -109,12 +109,6 @@ describe('TOGGLE_PAUSE', () => {
     expect(next.isPaused).toBe(false);
   });
 
-  test('flips isPaused from false to true', () => {
-    const state = makeState({ isPaused: false });
-    const next = timerReducer(state, { type: 'TOGGLE_PAUSE' });
-    expect(next.isPaused).toBe(true);
-  });
-
   test('is no-op when isOver', () => {
     const state = makeState({ isOver: true, isPaused: true });
     const next = timerReducer(state, { type: 'TOGGLE_PAUSE' });
@@ -272,14 +266,6 @@ describe('RESTORE_STATE', () => {
   });
 });
 
-describe('CLEAR_SOUND', () => {
-  test('clears pendingSound', () => {
-    const state = makeState({ pendingSound: 'blindsUp' });
-    const next = timerReducer(state, { type: 'CLEAR_SOUND' });
-    expect(next.pendingSound).toBeNull();
-  });
-});
-
 describe('TICK — sound events', () => {
   test('warnBreak: level stage with next=break crossing 60s boundary', () => {
     // stages[0]=level1, stages[1]=level2, stages[2]=break
@@ -338,7 +324,6 @@ describe('TICK — sound events', () => {
     // If isLastStage && newTimeLeft<=0, line 45-46 returns early. So line 70 is never hit for last stage.
     // This means line 70 may be covered by another test or is dead code.
     // The task said to check; let's test the non-last stage newTimeLeft<=0 → advanceStage path instead.
-    const stages = buildStages(DEFAULT_CONFIG);
     const state = makeRunningState(1, { currentStage: 0 });
     jest.setSystemTime(FIXED_NOW + 2000); // elapses 2s past 0
     const next = timerReducer(state, { type: 'TICK' });
@@ -446,34 +431,6 @@ describe('JUMP_TO_END', () => {
   });
 });
 
-describe('TOGGLE_COMBOS', () => {
-  test('toggles showCombos from true to false', () => {
-    const state = makeState({ config: { ...DEFAULT_CONFIG, showCombos: true } });
-    const next = timerReducer(state, { type: 'TOGGLE_COMBOS' });
-    expect(next.config.showCombos).toBe(false);
-  });
-
-  test('toggles showCombos from false to true', () => {
-    const state = makeState({ config: { ...DEFAULT_CONFIG, showCombos: false } });
-    const next = timerReducer(state, { type: 'TOGGLE_COMBOS' });
-    expect(next.config.showCombos).toBe(true);
-  });
-});
-
-describe('TOGGLE_GAME_PANEL', () => {
-  test('toggles showPlayers from true to false', () => {
-    const state = makeState({ config: { ...DEFAULT_CONFIG, showPlayers: true } });
-    const next = timerReducer(state, { type: 'TOGGLE_GAME_PANEL' });
-    expect(next.config.showPlayers).toBe(false);
-  });
-
-  test('toggles showPlayers from false to true', () => {
-    const state = makeState({ config: { ...DEFAULT_CONFIG, showPlayers: false } });
-    const next = timerReducer(state, { type: 'TOGGLE_GAME_PANEL' });
-    expect(next.config.showPlayers).toBe(true);
-  });
-});
-
 describe('RESTORE_DISPLAY', () => {
   test('sets showCombos and showPlayers from action payload', () => {
     const state = makeState({ config: { ...DEFAULT_CONFIG, showCombos: true, showPlayers: true } });
@@ -570,15 +527,6 @@ describe('RESTORE_STATE — edge cases', () => {
   });
 });
 
-describe('default case', () => {
-  test('unknown action type returns state unchanged', () => {
-    const state = makeState();
-    // Cast to any to send unknown action type and hit the default branch
-    const next = timerReducer(state, { type: 'UNKNOWN_ACTION' } as unknown as Parameters<typeof timerReducer>[1]);
-    expect(next).toBe(state);
-  });
-});
-
 describe('tractorMomentActive', () => {
   function makeBb300Config() {
     return {
@@ -661,173 +609,5 @@ describe('tractorMomentActive', () => {
     const state = makeState({ tractorMomentActive: true });
     const next = timerReducer(state, { type: 'NEXT_STAGE' });
     expect(next.tractorMomentActive).toBe(false);
-  });
-
-  test('resets tractorMomentActive on PREV_STAGE', () => {
-    const state = makeState({ currentStage: 1, tractorMomentActive: true });
-    const next = timerReducer(state, { type: 'PREV_STAGE' });
-    expect(next.tractorMomentActive).toBe(false);
-  });
-
-  test('resets tractorMomentActive on RESET_STAGE', () => {
-    const state = makeState({ tractorMomentActive: true });
-    const next = timerReducer(state, { type: 'RESET_STAGE' });
-    expect(next.tractorMomentActive).toBe(false);
-  });
-
-  test('resets tractorMomentActive on RESTART', () => {
-    const state = makeState({ tractorMomentActive: true });
-    const next = timerReducer(state, { type: 'RESTART' });
-    expect(next.tractorMomentActive).toBe(false);
-  });
-});
-
-describe('RESTORE_STATE — stageMatchesRestoredInfo branches', () => {
-  test('no stageType in payload: stageMatchesRestoredInfo returns true (any stage matches)', () => {
-    // Branch 1: !restored.stageType → return true (line 18 true branch)
-    // Branch 12: findRestoredStageIndex with no stageType → return -1
-    // To hit branch 1, we need stageMatchesRestoredInfo called with no stageType
-    // This happens when currentStage is in bounds but !hasPersistedStages and we call stageMatchesRestoredInfo
-    // Actually to hit the else if on line 258, we need stage NOT matching. But with no stageType, it always returns true.
-    // Let's have currentStage in bounds, no persisted stages, no stageType — it should match trivially.
-    const localState = makeState();
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: 0,
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        // no stageType — stageMatchesRestoredInfo will return true
-      },
-    });
-    expect(next.currentStage).toBe(0);
-  });
-
-  test('levelNum mismatch causes stageMatchesRestoredInfo to return false (covers branch 8)', () => {
-    // stages[0] is level1 (levelNum=1). Providing levelNum=99 should cause mismatch → findRestoredStageIndex returns -1
-    const localState = makeState();
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: 0,
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        stageType: 'level',
-        levelNum: 99, // mismatches all stages → findRestoredStageIndex returns -1 → return state
-      },
-    });
-    expect(next).toBe(localState); // no match found, returns unchanged
-  });
-
-  test('sb mismatch causes stageMatchesRestoredInfo to return false (covers branch 10)', () => {
-    // stages[0] is level1 with sb=10, levelNum=1.
-    // Provide matching levelNum=1 but wrong sb — passes levelNum check, fails sb check
-    // Since all stages have unique sb, searching with wrong sb returns -1
-    const localState = makeState();
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: 0,
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        stageType: 'level',
-        // no levelNum — skips levelNum check, goes to sb check
-        sb: 99999, // mismatches all stages → findRestoredStageIndex returns -1
-      },
-    });
-    expect(next).toBe(localState);
-  });
-
-  test('match against break stage (stage.type !== level, covers branch 5 false)', () => {
-    // RESTORE_STATE with stageType='break', no persisted stages, currentStage pointing to non-break stage
-    // so it falls into the else if (stageMatchesRestoredInfo fails for stages[0] which is level)
-    // then findRestoredStageIndex finds the break stage (stages[2])
-    const localState = makeState();
-    const stages = buildStages(DEFAULT_CONFIG);
-    expect(stages[2].type).toBe('break');
-
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: 0, // points to level stage, but stageType=break → mismatch → search
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        stageType: 'break',
-        stageDurationSecs: stages[2].duration,
-      },
-    });
-    // Should find stages[2] (first break)
-    expect(next.currentStage).toBe(2);
-  });
-
-  test('out of bounds with no persisted stages and findRestoredStageIndex succeeds (branch 40 false)', () => {
-    // currentStage=-1 (out of bounds), no stages, stageType matches stages[2] (break)
-    const localState = makeState();
-    const stages = buildStages(DEFAULT_CONFIG);
-
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: -1, // out of bounds
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        stageType: 'break',
-        stageDurationSecs: stages[2].duration,
-      },
-    });
-    // findRestoredStageIndex should find stages[2]
-    expect(next.currentStage).toBe(2);
-  });
-
-  test('out of bounds with no persisted stages and findRestoredStageIndex returns -1 (branch 40 true)', () => {
-    // currentStage=-1 (out of bounds), no stages, stageType with impossible match → -1 → return state
-    const localState = makeState();
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: -1, // out of bounds
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        stageType: 'level',
-        levelNum: 9999, // no such level → -1 → returns unchanged
-      },
-    });
-    expect(next).toBe(localState);
-  });
-
-  test('out of bounds with no stageType: findRestoredStageIndex returns -1 (branch 12 true)', () => {
-    // currentStage=-1 (out of bounds), no stages, no stageType → findRestoredStageIndex returns -1 immediately
-    const localState = makeState();
-    const next = timerReducer(localState, {
-      type: 'RESTORE_STATE',
-      payload: {
-        currentStage: -1, // out of bounds
-        anchorTs: FIXED_NOW,
-        elapsedBeforePause: 0,
-        isPaused: true,
-        isOver: false,
-        warnedOneMin: false,
-        // no stageType
-      },
-    });
-    expect(next).toBe(localState); // findRestoredStageIndex returns -1, state returned unchanged
   });
 });

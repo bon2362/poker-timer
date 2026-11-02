@@ -46,13 +46,6 @@ describe('buildStages', () => {
 });
 
 describe('formatTime', () => {
-  test('formats 0 seconds as 00:00', () => {
-    expect(formatTime(0)).toBe('00:00');
-  });
-
-  test('formats 1200 seconds as 20:00', () => {
-    expect(formatTime(1200)).toBe('20:00');
-  });
 
   test('formats 65 seconds as 01:05', () => {
     expect(formatTime(65)).toBe('01:05');

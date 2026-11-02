@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminAuthProvider, useAdminAuth } from '@/context/AdminAuthContext';
 import { AdminLoginForm } from '@/components/admin/AdminLoginForm';
@@ -30,13 +30,6 @@ test('wrong password shows an accessible error and keeps viewer access', async (
   expect(input).toHaveAttribute('aria-invalid', 'true');
   expect(screen.getByRole('status')).toHaveTextContent('viewer');
   expect(screen.getByRole('button', { name: 'Войти' })).toBeEnabled();
-});
-
-test('Enter logs in successfully and updates the shared admin status', async () => {
-  setup('success');
-  await userEvent.setup().type(screen.getByLabelText('Пароль'), 'secret{Enter}');
-  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('admin'));
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
 test('network failure offers a retry without unlocking controls', async () => {

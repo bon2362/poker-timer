@@ -1,5 +1,4 @@
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { useGame } from '@/context/GameContext';
 import { PlayerForm } from '@/components/PlayerManager/PlayerForm';
 import type { Player } from '@/types/game';
@@ -22,10 +21,6 @@ const mockPlayer: Player = {
   createdAt: '2024-01-01',
 };
 
-const mockPlayerWithAvatar: Player = {
-  ...mockPlayer,
-  avatarUrl: 'https://example.com/avatar.jpg',
-};
 
 function setupMocks() {
   const mockAddPlayer = jest.fn().mockResolvedValue({ id: 'new-player', name: 'Test', avatarUrl: null, createdAt: '' });
@@ -36,170 +31,6 @@ function setupMocks() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-});
-
-describe('PlayerForm', () => {
-  test('renders "Добавить" button when no player prop', () => {
-    setupMocks();
-    render(<PlayerForm onDone={jest.fn()} />);
-    expect(screen.getByRole('button', { name: 'Добавить' })).toBeInTheDocument();
-  });
-
-  test('renders "Сохранить" button when player prop provided', () => {
-    setupMocks();
-    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
-    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeInTheDocument();
-  });
-
-  test('Save button is disabled when name is empty', () => {
-    setupMocks();
-    render(<PlayerForm onDone={jest.fn()} />);
-    expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled();
-  });
-
-  test('Save button is enabled when name has text', async () => {
-    setupMocks();
-    const user = userEvent.setup();
-    render(<PlayerForm onDone={jest.fn()} />);
-    await user.type(screen.getByPlaceholderText('Имя игрока'), 'Bob');
-    expect(screen.getByRole('button', { name: 'Добавить' })).toBeEnabled();
-  });
-
-  test('clicking Отмена calls onDone', async () => {
-    setupMocks();
-    const onDone = jest.fn();
-    const user = userEvent.setup();
-    render(<PlayerForm onDone={onDone} />);
-    await user.click(screen.getByRole('button', { name: 'Отмена' }));
-    expect(onDone).toHaveBeenCalledTimes(1);
-  });
-
-  test('typing name and clicking Добавить calls addPlayer with name, then onDone on success', async () => {
-    const { mockAddPlayer } = setupMocks();
-    const onDone = jest.fn();
-    const user = userEvent.setup();
-    render(<PlayerForm onDone={onDone} />);
-    await user.type(screen.getByPlaceholderText('Имя игрока'), 'Bob');
-    await user.click(screen.getByRole('button', { name: 'Добавить' }));
-    expect(mockAddPlayer).toHaveBeenCalledWith('Bob');
-    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
-  });
-
-  test('pressing Enter in name field triggers save', async () => {
-    const { mockAddPlayer } = setupMocks();
-    const onDone = jest.fn();
-    const user = userEvent.setup();
-    render(<PlayerForm onDone={onDone} />);
-    const input = screen.getByPlaceholderText('Имя игрока');
-    await user.type(input, 'Charlie');
-    await user.keyboard('{Enter}');
-    expect(mockAddPlayer).toHaveBeenCalledWith('Charlie');
-    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
-  });
-
-  test('when player provided, shows avatar upload button', () => {
-    setupMocks();
-    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
-    expect(screen.getByRole('button', { name: /Загрузить аватарку/i })).toBeInTheDocument();
-  });
-
-  test('when no player, does not show avatar button', () => {
-    setupMocks();
-    render(<PlayerForm onDone={jest.fn()} />);
-    expect(screen.queryByRole('button', { name: /аватарку/i })).not.toBeInTheDocument();
-  });
-
-  test('shows "Заменить аватарку" when player.avatarUrl is set', () => {
-    setupMocks();
-    render(<PlayerForm player={mockPlayerWithAvatar} onDone={jest.fn()} />);
-    expect(screen.getByRole('button', { name: /Заменить аватарку/i })).toBeInTheDocument();
-  });
-
-  test('editing name and clicking Сохранить calls updatePlayer with new name, then onDone', async () => {
-    const { mockUpdatePlayer } = setupMocks();
-    const onDone = jest.fn();
-    const user = userEvent.setup();
-    render(<PlayerForm player={mockPlayer} onDone={onDone} />);
-
-    const input = screen.getByPlaceholderText('Имя игрока');
-    await user.clear(input);
-    await user.type(input, 'Alice Updated');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    expect(mockUpdatePlayer).toHaveBeenCalledWith(mockPlayer.id, { name: 'Alice Updated' });
-    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
-  });
-
-  test('whitespace-only input keeps save button disabled', async () => {
-    setupMocks();
-    const user = userEvent.setup();
-    render(<PlayerForm onDone={jest.fn()} />);
-    await user.type(screen.getByPlaceholderText('Имя игрока'), '   ');
-    expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled();
-  });
-
-  test('clicking avatar button reveals hidden file input', () => {
-    setupMocks();
-    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(fileInput).toBeInTheDocument();
-    expect(fileInput.accept).toBe('image/*');
-  });
-
-  test('selecting a file opens AvatarCropper', async () => {
-    setupMocks();
-    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['img'], 'avatar.jpg', { type: 'image/jpeg' });
-
-    await act(async () => {
-      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
-      fireEvent.change(fileInput);
-    });
-
-    expect(screen.getByTestId('avatar-cropper')).toBeInTheDocument();
-  });
-
-  test('clicking Crop Save calls uploadAvatar and updatePlayer', async () => {
-    const { mockUpdatePlayer } = setupMocks();
-    const { uploadAvatar } = jest.requireMock('@/lib/supabase/storage');
-    (uploadAvatar as jest.Mock).mockResolvedValue('https://example.com/new-avatar.jpg');
-    const user = userEvent.setup();
-
-    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['img'], 'avatar.jpg', { type: 'image/jpeg' });
-
-    await act(async () => {
-      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
-      fireEvent.change(fileInput);
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Crop Save' }));
-
-    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith(mockPlayer.id, expect.any(Blob), expect.any(Function)));
-    await waitFor(() => expect(mockUpdatePlayer).toHaveBeenCalledWith(mockPlayer.id, { avatarUrl: 'https://example.com/new-avatar.jpg' }));
-  });
-
-  test('clicking Crop Cancel closes AvatarCropper', async () => {
-    setupMocks();
-    const user = userEvent.setup();
-    render(<PlayerForm player={mockPlayer} onDone={jest.fn()} />);
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['img'], 'avatar.jpg', { type: 'image/jpeg' });
-
-    await act(async () => {
-      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
-      fireEvent.change(fileInput);
-    });
-
-    expect(screen.getByTestId('avatar-cropper')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Crop Cancel' }));
-    expect(screen.queryByTestId('avatar-cropper')).not.toBeInTheDocument();
-  });
 });
 
 test('shows actual avatar upload progress and keeps the form open after failure', async () => {

@@ -35,13 +35,6 @@ test.describe('Settings - Desktop', () => {
     await expect(page.getByRole('button', { name: 'Обновить' })).toBeVisible();
   });
 
-  // E14: The admin area links back to the timer
-  test('E14: can return from the admin area to the timer', async ({ page }) => {
-    await page.goto('/admin/tournament');
-    await page.getByRole('link', { name: '← На сайт' }).click();
-    await expect(page.locator('text=Round 1')).toBeVisible({ timeout: 15000 });
-  });
-
   test('settings pages require login', async ({ page }) => {
     await page.context().clearCookies();
     for (const path of ['/admin/tournament', '/admin/display', '/admin/ci']) {

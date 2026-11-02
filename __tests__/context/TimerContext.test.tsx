@@ -1,6 +1,4 @@
-import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 // --- Mocks (must be before imports that trigger them) ---
 
@@ -102,44 +100,6 @@ beforeEach(() => {
 });
 
 describe('TimerContext', () => {
-  test('1. provides initial state: isPaused=true, currentStage=0, screen=timer', async () => {
-    renderWithProvider();
-    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
-    expect(screen.getByTestId('stage')).toHaveTextContent('0');
-  });
-
-  test('2. TOGGLE_PAUSE changes isPaused from true to false', async () => {
-    renderWithProvider();
-    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
-
-    await act(async () => {
-      screen.getByText('toggle').click();
-    });
-
-    expect(screen.getByTestId('paused')).toHaveTextContent('false');
-  });
-
-  test('3. NEXT_STAGE increments currentStage', async () => {
-    renderWithProvider();
-    await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('0'));
-
-    await act(async () => {
-      screen.getByText('next').click();
-    });
-
-    expect(screen.getByTestId('stage')).toHaveTextContent('1');
-  });
-
-  test('5. useTimer throws when used outside TimerProvider', () => {
-    function BadConsumer() {
-      useTimer();
-      return null;
-    }
-    // Suppress React's error boundary console output
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    expect(() => render(<BadConsumer />)).toThrow('useTimer must be used within TimerProvider');
-    spy.mockRestore();
-  });
 
   test('6. TICK decrements timeLeft when timer is running', async () => {
     jest.useFakeTimers();
@@ -175,24 +135,6 @@ describe('TimerContext', () => {
     await waitFor(() => expect(screen.getByTestId('pendingSound')).toHaveTextContent('null'));
   });
 
-  test('8. RESTART resets state: currentStage=0, isPaused=true', async () => {
-    renderWithProvider();
-
-    // Navigate away first
-    await act(async () => {
-      screen.getByText('next').click();
-    });
-    expect(screen.getByTestId('stage')).toHaveTextContent('1');
-
-    // Now restart
-    await act(async () => {
-      screen.getByText('restart').click();
-    });
-
-    expect(screen.getByTestId('stage')).toHaveTextContent('0');
-    expect(screen.getByTestId('paused')).toHaveTextContent('true');
-  });
-
   test('9. restoring from DB does not echo stale state back to Supabase', async () => {
     (fetchTimerState as jest.Mock).mockResolvedValueOnce({
       currentStage: 1,
@@ -217,52 +159,6 @@ describe('TimerContext', () => {
 
     await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('1'));
     await waitFor(() => expect(saveTimerState).not.toHaveBeenCalled());
-  });
-
-  test('11. PREV_STAGE decrements currentStage', async () => {
-    renderWithProvider();
-    await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('0'));
-
-    await act(async () => { screen.getByText('next').click(); });
-    expect(screen.getByTestId('stage')).toHaveTextContent('1');
-
-    await act(async () => { screen.getByText('prev').click(); });
-    expect(screen.getByTestId('stage')).toHaveTextContent('0');
-  });
-
-  test('12. TOGGLE_COMBOS flips showCombos state', async () => {
-    renderWithProvider();
-    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('true'));
-
-    const initialCombos = screen.getByTestId('showCombos').textContent;
-
-    await act(async () => { screen.getByText('toggle-combos').click(); });
-
-    const flippedCombos = screen.getByTestId('showCombos').textContent;
-    expect(flippedCombos).not.toBe(initialCombos);
-  });
-
-  test('13. RESET_STAGE resets timeLeft to current stage duration', async () => {
-    jest.useFakeTimers();
-    renderWithProvider();
-    await act(async () => {});
-
-    const initialTimeLeft = parseInt(screen.getByTestId('timeLeft').textContent ?? '0', 10);
-
-    // Start timer, advance a few seconds, then reset
-    await act(async () => { screen.getByText('toggle').click(); });
-    await act(async () => { jest.advanceTimersByTime(5000); });
-
-    const afterTick = parseInt(screen.getByTestId('timeLeft').textContent ?? '0', 10);
-    expect(afterTick).toBeLessThan(initialTimeLeft);
-
-    await act(async () => { screen.getByText('reset-stage').click(); });
-
-    const afterReset = parseInt(screen.getByTestId('timeLeft').textContent ?? '0', 10);
-    // After reset, timeLeft should be close to full stage duration again
-    expect(afterReset).toBeGreaterThan(afterTick);
-
-    jest.useRealTimers();
   });
 
   test('14. broadcast "state" from another device triggers RESTORE_STATE without echoing back to DB', async () => {

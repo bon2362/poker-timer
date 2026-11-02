@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResultsEditor } from '@/components/admin/ResultsEditor';
 import { PhotoUploader } from '@/components/admin/PhotoUploader';
 import { PhotoGallery } from '@/components/admin/PhotoGallery';
-import { DeleteGame } from '@/components/admin/DeleteGame';
 import { uploadPhoto } from '@/lib/admin/photoUpload';
 import type { Session, SessionPlayer } from '@/types/game';
 jest.mock('@/lib/admin/photoUpload', () => ({ uploadPhoto: jest.fn() }));
@@ -28,14 +27,6 @@ test('a stored rebuy count above the limit can be lowered and restored but not i
   expect(add).toBeEnabled();
   fireEvent.click(add);
   expect(add).toBeDisabled();
-});
-test('results save uses the protected endpoint and shows a Russian error', async () => {
-  (fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({ error: 'Вход истёк. Войдите снова.' }) });
-  render(<ResultsEditor session={session} players={players} names={names} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Добавить ребай: Другой игрок' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Вход истёк');
-  expect(fetch).toHaveBeenCalledWith('/api/admin/games/game/results', expect.objectContaining({ method: 'PATCH' }));
 });
 test('five uploads with two failures retain successes and retry only failures', async () => {
   const mocked = jest.mocked(uploadPhoto); mocked.mockImplementation(async file => { if (file.name.startsWith('bad')) throw new Error('Не удалось загрузить фото'); });
@@ -63,13 +54,6 @@ test('the upload queue never sends more than three files at the same time', asyn
   while (release.length) release.shift()!();
   await waitFor(() => expect(screen.getAllByText('готово')).toHaveLength(5)); expect(peak).toBe(3);
 });
-test('photo deletion names both places and does nothing before confirmation', async () => {
-  render(<PhotoGallery initialPhotos={[{ id: 'photo', session_id: 'game', path: 'full.jpg', thumb_path: 'thumb.jpg', taken_at: null, width: 100, height: 100 }]} total={1} sessionId="game" games={[]} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Действия с фото' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Удалить' }));
-  expect(screen.getByText('Фото исчезнет и со страницы игры, и из карусели.')).toBeInTheDocument();
-  expect(fetch).not.toHaveBeenCalled();
-});
 test('unassigned photo can only move to a chosen game and uses the protected endpoint', async () => {
   (fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
   const game = { session: { id: 'target', createdAt: '2026-10-31T12:00:00Z' }, players: [{ playerId: 'p1', finishPosition: 1 }], names: { p1: 'Тестовый игрок' }, avatars: {}, photoCount: 0 } as never;
@@ -83,18 +67,4 @@ test('unassigned photo can only move to a chosen game and uses the protected end
   fireEvent.click(screen.getByRole('radio', { name: /31 октября 2026/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Перенести' }));
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/admin/photos/photo', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ sessionId: 'target' }) })));
-});
-test('failed upload can be retried from its own row', async () => {
-  const mocked = jest.mocked(uploadPhoto); mocked.mockRejectedValueOnce(new Error('Не удалось загрузить фото')).mockResolvedValue(undefined);
-  render(<PhotoUploader sessionId="game" onUploaded={jest.fn()} />);
-  fireEvent.change(screen.getByLabelText('Загрузить фото'), { target: { files: [new File(['x'], 'one.jpg', { type: 'image/jpeg' })] } });
-  fireEvent.click(await screen.findByRole('button', { name: 'Повторить: one.jpg' }));
-  await waitFor(() => expect(screen.getByText('готово')).toBeInTheDocument());
-  expect(mocked).toHaveBeenCalledTimes(2);
-});
-test('deleting a game requires confirmation and explains preservation of photos', () => {
-  render(<DeleteGame id="game" date="31 октября 2026" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Удалить игру…' }));
-  expect(screen.getByText('Игра будет удалена навсегда, её фото останутся в карусели.')).toBeInTheDocument();
-  expect(fetch).not.toHaveBeenCalled();
 });

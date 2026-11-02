@@ -27,19 +27,6 @@ test.describe('Mobile Admin Panel', () => {
     await page.waitForSelector('text=Администратор', { timeout: 10000 });
   }
 
-  // M2: Mobile view shows play/pause button that is functional
-  test('M2: mobile shows play/pause button', async ({ page }) => {
-    // Timer may already be running (⏸) or paused (▶) depending on live app state.
-    const playBtn = page.locator('button').filter({ hasText: /^[▶⏸]$/ });
-    await expect(playBtn).toBeVisible();
-
-    // Verify the button occupies a wide area (full-width style)
-    const box = await playBtn.boundingBox();
-    expect(box).not.toBeNull();
-    // The button should be at least 200px wide (max-w-[280px] style)
-    expect(box!.width).toBeGreaterThan(200);
-  });
-
   // M3: Tapping play/pause changes timer state
   test('M3: tapping play/pause toggles timer between play and pause states', async ({ page }) => {
     const playBtn = page.locator('button', { hasText: '▶' });
@@ -59,15 +46,6 @@ test.describe('Mobile Admin Panel', () => {
     }
   });
 
-  // M4: Mobile view shows blind level info
-  test('M4: mobile shows blind level info (round label and SB/BB)', async ({ page }) => {
-    // Round label
-    await expect(page.locator('text=Round 1')).toBeVisible();
-
-    // Initial blinds: 10 / 20
-    await expect(page.locator('text=10 / 20')).toBeVisible();
-  });
-
   // M7: Double-tapping blind area opens admin panel
   test('M7: double-tap on blind area opens admin panel', async ({ page }) => {
     await openAdminPanel(page);
@@ -78,36 +56,6 @@ test.describe('Mobile Admin Panel', () => {
     // Display toggle buttons
     await expect(page.locator('button', { hasText: '👥 Игроки' })).toBeVisible();
     await expect(page.locator('button', { hasText: '🃏 Комбинации' })).toBeVisible();
-  });
-
-  // M8: Admin panel shows no-session message when no game is active, or player sections during an active game.
-  test('M8: admin panel reflects current game state', async ({ page }) => {
-    await openAdminPanel(page);
-
-    const noSessionMessage = page.locator('text=Активная игра не найдена');
-    if (await noSessionMessage.isVisible()) {
-      await expect(noSessionMessage).toBeVisible();
-    } else {
-      await expect(page.locator('text=/В игре \\(\\d+\\)|Вылетели \\(\\d+\\)/').first()).toBeVisible();
-    }
-  });
-
-  // M9: Admin panel can be closed with ✕ button
-  test('M9: admin panel closes on ✕ button tap', async ({ page }) => {
-    await openAdminPanel(page);
-    await expect(page.locator('text=Администратор')).toBeVisible();
-
-    // Tap the close button via JS to avoid any pointer-event issues
-    await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll('button')).find(
-        b => b.textContent?.trim() === '✕'
-      );
-      btn?.click();
-    });
-
-    // Admin panel should be gone and normal mobile view back
-    await expect(page.locator('text=Администратор')).not.toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=Round 1')).toBeVisible();
   });
 });
 

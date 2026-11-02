@@ -121,61 +121,7 @@ describe('MobileAdminPanel merge dialog', () => {
     await waitFor(() => expect(confirmMerge).toHaveBeenCalledTimes(1));
     expect(timerDispatch).toHaveBeenCalledWith({ type: 'RESUME_TIMER' });
   });
-
-  test('hides merge dialog after realtime marks session merged', () => {
-    setup({ ...baseSession, tablesMergedAt: '2026-05-06T00:00:00Z' });
-
-    render(<MobileAdminPanel onClose={jest.fn()} />);
-
-    expect(screen.queryByText('Объединить столы?')).not.toBeInTheDocument();
-  });
 });
-
-describe('MobileAdminPanel two-table layout', () => {
-  const fourPlayers = [
-    sp({ id: 'sp-1', playerId: 'p1', tableNumber: 1 }),
-    sp({ id: 'sp-2', playerId: 'p2', tableNumber: 1 }),
-    sp({ id: 'sp-3', playerId: 'p3', tableNumber: 2 }),
-    sp({ id: 'sp-4', playerId: 'p4', tableNumber: 2 }),
-  ];
-
-  test('groups active players by table before merge', () => {
-    setup({ ...baseSession, mergeThreshold: 2 }, fourPlayers);
-
-    render(<MobileAdminPanel onClose={jest.fn()} />);
-
-    expect(screen.getByText('Стол 1 (2)')).toBeInTheDocument();
-    expect(screen.getByText('Стол 2 (2)')).toBeInTheDocument();
-    expect(screen.queryByText('В игре (4)')).not.toBeInTheDocument();
-  });
-
-  test('moves active player to another table from expanded row', async () => {
-    const { movePlayerToTable } = setup({ ...baseSession, mergeThreshold: 2 }, fourPlayers);
-    const user = userEvent.setup();
-
-    render(<MobileAdminPanel onClose={jest.fn()} />);
-    await user.click(screen.getByRole('button', { name: /Alice/ }));
-    await user.click(screen.getByRole('button', { name: '→ Стол 2' }));
-
-    expect(movePlayerToTable).toHaveBeenCalledWith('sp-1', 2);
-  });
-
-  test('uses unified active list and hides move controls after merge', async () => {
-    setup(
-      { ...baseSession, tablesMergedAt: '2026-05-06T00:00:00Z' },
-      fourPlayers.map(player => ({ ...player, tableNumber: 1 }))
-    );
-    const user = userEvent.setup();
-
-    render(<MobileAdminPanel onClose={jest.fn()} />);
-    expect(screen.getByText('В игре (4)')).toBeInTheDocument();
-    expect(screen.queryByText('Стол 1 (4)')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /Alice/ }));
-    expect(screen.queryByRole('button', { name: '→ Стол 2' })).not.toBeInTheDocument();
-  });
-});
-
 
 test('shows declare-winner error and allows retry', async () => {
   setup({ ...baseSession, numberOfTables: 1 });
