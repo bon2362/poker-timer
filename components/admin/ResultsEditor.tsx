@@ -20,7 +20,7 @@ export function ResultsEditor({ session, players, names }: { session: Session; p
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   const control = 'h-9 min-w-9 rounded-md border border-[#444] px-2 text-sm disabled:opacity-30';
-  return <section className="min-w-0"><div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[11px] tracking-[2px] text-[#888]">РЕЗУЛЬТАТЫ</h2><span className={`text-sm ${dirty ? 'text-yellow-400' : 'text-[#ddd]'}`}>Банк {money(bank)} RSD</span></div>
+  return <section className="min-w-0"><div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[11px] tracking-[2px] text-[#888]">РЕЗУЛЬТАТЫ</h2><span className={`text-sm ${dirty ? 'text-yellow-400' : 'text-[#ddd]'}`}>Банк {money(bank)}</span></div>
     <div className="space-y-2">{[...draft].sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0)).map(player => {
       const name = names[player.playerId] ?? 'Игрок'; const payout = payouts.get(player.id) ?? 0; const previous = saved.find(p => p.id === player.id)?.payout ?? 0;
       return <div key={player.id} className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg bg-[#242424] px-3 py-2.5">

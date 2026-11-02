@@ -137,11 +137,11 @@ export function SessionSetup() {
       {/* Financial fields */}
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: 'Взнос (RSD)', val: buyIn, set: setBuyIn },
+          { label: 'Взнос', val: buyIn, set: setBuyIn },
           { label: 'Начальный стек', val: initialStack, set: setInitialStack },
-          { label: 'Ребай (RSD)', val: rebuyCost, set: setRebuyCost },
+          { label: 'Ребай', val: rebuyCost, set: setRebuyCost },
           { label: 'Фишек за ребай', val: rebuyChips, set: setRebuyChips },
-          { label: 'Аддон (RSD)', val: addonCost, set: setAddonCost },
+          { label: 'Аддон', val: addonCost, set: setAddonCost },
           { label: 'Фишек за аддон', val: addonChips, set: setAddonChips },
         ].map(({ label, val, set }) => (
           <div key={label} className="bg-[#242424] rounded-lg p-3">

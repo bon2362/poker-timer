@@ -106,7 +106,7 @@ describe('PrizeSummary', () => {
     // toLocaleString('ru') uses a non-breaking space (\u00a0) as thousands separator
     const amountSpans = container.querySelectorAll('span.tabular-nums');
     const amounts = Array.from(amountSpans).map(el => el.textContent ?? '');
-    expect(amounts[0]).toMatch(/1.980/);  // 1 980 RSD (with any whitespace/nbsp between digits)
+    expect(amounts[0]).toMatch(/1.980/);  // 1 980 (with any whitespace/nbsp between digits)
     expect(amounts[1]).toMatch(/825/);
     expect(amounts[2]).toMatch(/495/);
   });

@@ -55,7 +55,7 @@ export function GamePanel({ isOpen, onToggle }: Props) {
         <div>
           <div className="text-[11px] text-[#555] tracking-[2px] uppercase">Фонд</div>
           <div className="text-[18px] font-bold text-[#ccc] tabular-nums mt-0.5">
-            {stats.bank.toLocaleString('ru')} RSD
+            {stats.bank.toLocaleString('ru')}
           </div>
         </div>
         <button

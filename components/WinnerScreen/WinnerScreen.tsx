@@ -96,7 +96,7 @@ export function WinnerScreen({ onFinishGame }: Props) {
 
           {/* Payout */}
           <div className="text-[38px] font-black text-yellow-400 tabular-nums drop-shadow-lg">
-            {stats.payouts[0]?.toLocaleString('ru')} RSD
+            {stats.payouts[0]?.toLocaleString('ru')}
           </div>
 
           {/* Runner-ups */}
@@ -110,7 +110,7 @@ export function WinnerScreen({ onFinishGame }: Props) {
                   <div key={sp.id} className="flex items-center gap-2 justify-center">
                     <Avatar player={p} size={24} />
                     <span className="text-[#888] text-[13px]">
-                      {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
+                      {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')}
                     </span>
                   </div>
                 );
@@ -152,7 +152,7 @@ export function WinnerScreen({ onFinishGame }: Props) {
         )}
 
         <div className="text-[36px] font-black text-yellow-400 tabular-nums">
-          {stats.payouts[0]?.toLocaleString('ru')} RSD
+          {stats.payouts[0]?.toLocaleString('ru')}
         </div>
 
         {runnerUps.length > 0 && (
@@ -165,7 +165,7 @@ export function WinnerScreen({ onFinishGame }: Props) {
                 <div key={sp.id} className="flex items-center gap-3 justify-center">
                   <Avatar player={p} size={28} />
                   <span className="text-[#666] text-[14px]">
-                    {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')} RSD
+                    {sp.finishPosition}-е место: {p.name} — {payout.toLocaleString('ru')}
                   </span>
                 </div>
               );

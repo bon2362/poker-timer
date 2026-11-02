@@ -276,8 +276,8 @@ describe('SessionSetup', () => {
     const user = userEvent.setup();
     render(<SessionSetup />);
 
-    // Find the rebuy cost input via its label text "Ребай (RSD)"
-    const rebuyCostLabel = screen.getByText('Ребай (RSD)');
+    // Find the rebuy cost input via its label text "Ребай"
+    const rebuyCostLabel = screen.getByText('Ребай');
     const rebuyCostField = rebuyCostLabel.closest('div')!.querySelector('input') as HTMLInputElement;
 
     await user.clear(rebuyCostField);
@@ -290,7 +290,7 @@ describe('SessionSetup', () => {
     setupMocks({ activeSession: mockActiveSession, sessionPlayers: [] });
     render(<SessionSetup />);
 
-    const buyInLabel = screen.getByText('Взнос (RSD)');
+    const buyInLabel = screen.getByText('Взнос');
     const buyInInput = buyInLabel.closest('div')!.querySelector('input') as HTMLInputElement;
     expect(buyInInput).toBeDisabled();
   });
