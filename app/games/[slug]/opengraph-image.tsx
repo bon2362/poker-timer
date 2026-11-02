@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getGameBySlug } from '@/lib/games/queries';
-import { gameDate, number } from '@/components/games/format';
+import { gameDate } from '@/components/games/format';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const alt = 'Результаты покерного вечера · BSP';
@@ -30,7 +30,6 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     <div tw="absolute left-[64px] top-[56px] bottom-[56px] flex w-[620px] flex-col justify-between">
       <div tw="flex items-center text-[28px] tracking-[2px] text-[#ccc]"><img src={logo} alt="" width={48} height={48} tw="mr-[14px]" />BSP · ПОКЕР</div>
       <div tw="flex flex-col"><div tw="flex mb-[24px] font-serif italic text-[46px]">{gameDate(game.session.createdAt)}</div><div tw="flex text-[26px] tracking-[8px] text-[#a78bfa]">ПОБЕДИТЕЛЬ</div><div tw={`flex mt-[10px] ${game.winner.name.length > 12 ? 'text-[80px]' : 'text-[112px]'}`}>{game.winner.name.toUpperCase()}</div></div>
-      <div tw="flex items-center"><span tw="text-[30px] text-[#aaa]">банк</span><span tw="ml-[18px] text-[56px] text-[#facc15]">{number(game.bank)} RSD</span></div>
     </div>
   </div>, { ...size, fonts: [
     { name: 'ui-sans-serif', data: sans, style: 'normal', weight: 700 },
