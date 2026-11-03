@@ -39,3 +39,12 @@ export async function playContext(token: string, deviceId: string, contextUri: s
   });
   if (!res.ok) throw new SpotifyApiError(res.status);
 }
+
+export async function setShuffle(token: string, deviceId: string, state: boolean): Promise<void> {
+  const params = new URLSearchParams({ state: String(state), device_id: deviceId });
+  const res = await fetch(`${API}/me/player/shuffle?${params}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new SpotifyApiError(res.status);
+}

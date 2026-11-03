@@ -38,7 +38,7 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
 
   if (!spotify || spotify.status === 'disabled') return null;
 
-  const { status, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, activeHolds, lastPlaylist, volume, errorMessage, notice } = spotify;
+  const { status, track, nextTrack, progress, isPlaying, shuffle, isActiveHere, playingElsewhere, activeHolds, lastPlaylist, volume, errorMessage, notice } = spotify;
   const scrubbing = scrubMs !== null;
   const showControls = canControl && (controlsVisible || hovered || scrubbing);
   const onlyBreakSong = activeHolds.length > 0 && activeHolds.every(id => id === 'breakSong');
@@ -144,6 +144,22 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
               <button className={iconButton} onClick={() => setSearchOpen(true)} disabled={playBlocked} title="Найти музыку">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8.5" cy="8.5" r="6" /><line x1="13" y1="13" x2="18" y2="18" /></svg>
               </button>
+              {/* At the end of the row, so showing it on hover moves nothing else. */}
+              {(hovered || scrubbing) && isActiveHere && (
+                <button
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors animate-fade-in ${shuffle ? 'text-[#1db954] hover:text-[#1ed760]' : 'text-[#999] hover:text-[#ddd]'}`}
+                  onClick={() => spotify.toggleShuffle()}
+                  aria-pressed={shuffle}
+                  title={shuffle ? 'Выключить перемешивание' : 'Перемешивать'}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 5h3.5c2 0 3 1 4.5 5s2.5 5 4.5 5H17" />
+                    <path d="M2 15h3.5c1.3 0 2.2-.5 3-1.7M11.5 6.7c.8-1.2 1.7-1.7 3-1.7H17" />
+                    <polyline points="14.5,2.5 17,5 14.5,7.5" />
+                    <polyline points="14.5,12.5 17,15 14.5,17.5" />
+                  </svg>
+                </button>
+              )}
               {playBlocked && !isPlaying && <span className="text-[13px] text-[#777]">Музыка продолжится сама</span>}
             </div>
           </div>

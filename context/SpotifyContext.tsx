@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { clearTokens, getSpotifyClientId, SPOTIFY_AUTH_KEY, getValidAccessToken, loadTokens, startSpotifyLogin } from '@/lib/spotify/auth';
-import { playContext, searchPlaylists, SpotifyApiError, type SpotifyPlaylistItem } from '@/lib/spotify/api';
+import { playContext, searchPlaylists, setShuffle, SpotifyApiError, type SpotifyPlaylistItem } from '@/lib/spotify/api';
 import { loadLastPlaylist, loadVolume, saveLastPlaylist, saveVolume } from '@/lib/spotify/storage';
 import { AutoPauseController, type SiteAudioId } from '@/lib/spotify/autoPause';
 import type { SpotifyProgress } from '@/lib/spotify/progress';
@@ -26,6 +26,7 @@ export type SpotifyContextValue = {
   nextTrack: SpotifyTrack | null;
   progress: SpotifyProgress | null;
   isPlaying: boolean;
+  shuffle: boolean;
   isActiveHere: boolean;
   playingElsewhere: boolean;
   volume: number;
@@ -37,6 +38,7 @@ export type SpotifyContextValue = {
   next(): Promise<void>;
   previous(): Promise<void>;
   seek(positionMs: number): Promise<void>;
+  toggleShuffle(): Promise<void>;
   setVolume(v: number): void;
   playPlaylist(p: SpotifyPlaylistItem): Promise<void>;
   search(q: string): Promise<SpotifyPlaylistItem[]>;
@@ -87,6 +89,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const [nextTrack, setNextTrack] = useState<SpotifyTrack | null>(null);
   const [progress, setProgress] = useState<SpotifyProgress | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [shuffle, setShuffleState] = useState(false);
   const [isActiveHere, setIsActiveHere] = useState(false);
   const [playingElsewhere, setPlayingElsewhere] = useState(false);
   const [volume, setVolumeState] = useState(0.5);
@@ -181,6 +184,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       isPlayingRef.current = !state.paused;
       setIsActiveHere(true);
       setIsPlaying(!state.paused);
+      setShuffleState(state.shuffle);
       setPlayingElsewhere(false);
       setTrack(toTrack(state.track_window.current_track));
       setNextTrack(toTrack(state.track_window.next_tracks[0]));
@@ -284,6 +288,20 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     await player.seek(positionMs);
   }, []);
 
+  // Shows the new state right away; on failure the button goes back.
+  const toggleShuffle = useCallback(async () => {
+    const deviceId = deviceIdRef.current;
+    if (!deviceId || !isActiveRef.current) return;
+    const nextState = !shuffle;
+    setShuffleState(nextState);
+    try {
+      await withToken(token => setShuffle(token, deviceId, nextState));
+    } catch (e) {
+      setShuffleState(!nextState);
+      handleApiError(e);
+    }
+  }, [shuffle, handleApiError, withToken]);
+
   const setVolume = useCallback((v: number) => {
     setVolumeState(v);
     saveVolume(v);
@@ -343,11 +361,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SpotifyContextValue>(() => ({
-    status, errorMessage, notice, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
+    status, errorMessage, notice, track, nextTrack, progress, isPlaying, shuffle, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
+    connect, disconnect, togglePlay, next, previous, seek, toggleShuffle, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
   }), [
-    status, errorMessage, notice, track, nextTrack, progress, isPlaying, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, seek, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
+    status, errorMessage, notice, track, nextTrack, progress, isPlaying, shuffle, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
+    connect, disconnect, togglePlay, next, previous, seek, toggleShuffle, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
   ]);
 
   return <SpotifyContext.Provider value={value}>{children}</SpotifyContext.Provider>;
