@@ -141,10 +141,12 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
                   className="absolute left-0 top-[9px] m-0 h-3.5 w-24 cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-[#ddd] [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#ddd]"
                 />
               </div>
-              <button className={iconButton} onClick={() => setSearchOpen(true)} disabled={playBlocked} title="Найти музыку">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8.5" cy="8.5" r="6" /><line x1="13" y1="13" x2="18" y2="18" /></svg>
-              </button>
-              {/* At the end of the row, so showing it on hover moves nothing else. */}
+              {/* Hover-only buttons sit at the end of the row, so showing them moves nothing else. */}
+              {(hovered || scrubbing) && (
+                <button className={`${iconButton} animate-fade-in`} onClick={() => setSearchOpen(true)} disabled={playBlocked} title="Найти музыку">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8.5" cy="8.5" r="6" /><line x1="13" y1="13" x2="18" y2="18" /></svg>
+                </button>
+              )}
               {(hovered || scrubbing) && isActiveHere && (
                 <button
                   className={`flex h-8 w-8 shrink-0 items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors animate-fade-in ${shuffle ? 'text-[#1db954] hover:text-[#1ed760]' : 'text-[#999] hover:text-[#ddd]'}`}
