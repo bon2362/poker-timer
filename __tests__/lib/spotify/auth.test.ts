@@ -1,4 +1,4 @@
-import { getValidAccessToken, loadTokens, saveTokens } from '@/lib/spotify/auth';
+import { canUseLibrary, getValidAccessToken, loadTokens, saveTokens } from '@/lib/spotify/auth';
 
 describe('getValidAccessToken', () => {
   beforeEach(() => {
@@ -20,5 +20,19 @@ describe('getValidAccessToken', () => {
     expect(body).toContain('grant_type=refresh_token');
     expect(body).toContain('refresh_token=r1');
     expect(loadTokens()).toEqual({ accessToken: 'new', refreshToken: 'r1', expiresAt: 1_000_000 + 3_600_000 });
+  });
+
+  test('a refresh keeps the Liked Songs permission when Spotify omits the scope', async () => {
+    const scope = 'streaming user-library-read user-library-modify';
+    saveTokens({ accessToken: 'old', refreshToken: 'r1', expiresAt: 1_000_000 + 30_000, scope });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: 'new', expires_in: 3600 }),
+    }) as unknown as typeof fetch;
+
+    await getValidAccessToken(1_000_000);
+
+    expect(canUseLibrary()).toBe(true);
+    expect(canUseLibrary({ accessToken: 'a', refreshToken: 'r', expiresAt: 0 })).toBe(false);
   });
 });

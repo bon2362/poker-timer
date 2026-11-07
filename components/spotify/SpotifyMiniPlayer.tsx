@@ -38,7 +38,7 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
 
   if (!spotify || spotify.status === 'disabled') return null;
 
-  const { status, track, nextTrack, progress, isPlaying, shuffle, isActiveHere, playingElsewhere, activeHolds, lastPlaylist, volume, errorMessage, notice } = spotify;
+  const { status, track, nextTrack, progress, isPlaying, shuffle, liked, libraryAllowed, isActiveHere, playingElsewhere, activeHolds, lastPlaylist, volume, errorMessage, notice } = spotify;
   const scrubbing = scrubMs !== null;
   const showControls = canControl && (controlsVisible || hovered || scrubbing);
   const onlyBreakSong = activeHolds.length > 0 && activeHolds.every(id => id === 'breakSong');
@@ -157,6 +157,20 @@ export function SpotifyMiniPlayer({ canControl, controlsVisible, panelOpen, onPl
                     <path d="M2 15h3.5c1.3 0 2.2-.5 3-1.7M11.5 6.7c.8-1.2 1.7-1.7 3-1.7H17" />
                     <polyline points="14.5,2.5 17,5 14.5,7.5" />
                     <polyline points="14.5,12.5 17,15 14.5,17.5" />
+                  </svg>
+                </button>
+              )}
+              {(hovered || scrubbing) && isActiveHere && hereTrack && (
+                // Logins from before Liked Songs support lack the permission: the click logs in again instead.
+                <button
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors animate-fade-in disabled:opacity-30 disabled:cursor-not-allowed ${liked ? 'text-[#1db954] hover:text-[#1ed760]' : 'text-[#999] hover:text-[#ddd]'}`}
+                  onClick={() => (libraryAllowed ? spotify.toggleLiked() : spotify.connect())}
+                  disabled={libraryAllowed && liked === null}
+                  aria-pressed={liked === true}
+                  title={!libraryAllowed ? 'Подключите Spotify заново, чтобы ставить лайки' : liked ? 'Убрать из любимых треков' : 'Добавить в любимые треки'}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+                    <path d="M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z" />
                   </svg>
                 </button>
               )}

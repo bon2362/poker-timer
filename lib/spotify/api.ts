@@ -48,3 +48,21 @@ export async function setShuffle(token: string, deviceId: string, state: boolean
   });
   if (!res.ok) throw new SpotifyApiError(res.status);
 }
+
+// Liked Songs live in the user's library; Spotify takes full track URIs here.
+export async function isTrackLiked(token: string, trackUri: string): Promise<boolean> {
+  const params = new URLSearchParams({ uris: trackUri });
+  const res = await fetch(`${API}/me/library/contains?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new SpotifyApiError(res.status);
+  const data: boolean[] = await res.json();
+  return data[0] === true;
+}
+
+export async function setTrackLiked(token: string, trackUri: string, liked: boolean): Promise<void> {
+  const params = new URLSearchParams({ uris: trackUri });
+  const res = await fetch(`${API}/me/library?${params}`, {
+    method: liked ? 'PUT' : 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new SpotifyApiError(res.status);
+}

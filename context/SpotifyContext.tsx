@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { clearTokens, getSpotifyClientId, SPOTIFY_AUTH_KEY, getValidAccessToken, loadTokens, startSpotifyLogin } from '@/lib/spotify/auth';
-import { playContext, searchPlaylists, setShuffle, SpotifyApiError, type SpotifyPlaylistItem } from '@/lib/spotify/api';
+import { canUseLibrary, clearTokens, getSpotifyClientId, SPOTIFY_AUTH_KEY, getValidAccessToken, loadTokens, startSpotifyLogin } from '@/lib/spotify/auth';
+import { isTrackLiked, playContext, searchPlaylists, setShuffle, setTrackLiked, SpotifyApiError, type SpotifyPlaylistItem } from '@/lib/spotify/api';
 import { loadLastPlaylist, loadVolume, saveLastPlaylist, saveVolume } from '@/lib/spotify/storage';
 import { AutoPauseController, type SiteAudioId } from '@/lib/spotify/autoPause';
 import type { SpotifyProgress } from '@/lib/spotify/progress';
@@ -16,7 +16,7 @@ const SDK_URL = 'https://sdk.scdn.co/spotify-player.js';
 const PLAYER_NAME = 'Poker Timer';
 
 export type SpotifyStatus = 'disabled' | 'disconnected' | 'connecting' | 'ready' | 'error';
-export type SpotifyTrack = { name: string; artists: string; imageUrl: string | null };
+export type SpotifyTrack = { uri: string; name: string; artists: string; imageUrl: string | null };
 
 export type SpotifyContextValue = {
   status: SpotifyStatus;
@@ -27,6 +27,9 @@ export type SpotifyContextValue = {
   progress: SpotifyProgress | null;
   isPlaying: boolean;
   shuffle: boolean;
+  /** null: not known yet, or the login predates the Liked Songs permission. */
+  liked: boolean | null;
+  libraryAllowed: boolean;
   isActiveHere: boolean;
   playingElsewhere: boolean;
   volume: number;
@@ -39,6 +42,7 @@ export type SpotifyContextValue = {
   previous(): Promise<void>;
   seek(positionMs: number): Promise<void>;
   toggleShuffle(): Promise<void>;
+  toggleLiked(): Promise<void>;
   setVolume(v: number): void;
   playPlaylist(p: SpotifyPlaylistItem): Promise<void>;
   search(q: string): Promise<SpotifyPlaylistItem[]>;
@@ -68,7 +72,7 @@ function loadSdk(): Promise<void> {
 
 function toTrack(t: Spotify.Track | null | undefined): SpotifyTrack | null {
   if (!t) return null;
-  return { name: t.name, artists: t.artists.map(a => a.name).join(', '), imageUrl: t.album.images[0]?.url ?? null };
+  return { uri: t.uri, name: t.name, artists: t.artists.map(a => a.name).join(', '), imageUrl: t.album.images[0]?.url ?? null };
 }
 
 function apiErrorMessage(e: unknown): string {
@@ -90,6 +94,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState<SpotifyProgress | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [shuffle, setShuffleState] = useState(false);
+  const [liked, setLiked] = useState<boolean | null>(null);
+  const [libraryAllowed, setLibraryAllowed] = useState(false);
   const [isActiveHere, setIsActiveHere] = useState(false);
   const [playingElsewhere, setPlayingElsewhere] = useState(false);
   const [volume, setVolumeState] = useState(0.5);
@@ -202,6 +208,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!getSpotifyClientId()) return;
     volumeRef.current = loadVolume();
+    setLibraryAllowed(canUseLibrary());
     setVolumeState(volumeRef.current);
     setLastPlaylist(loadLastPlaylist());
     if (!loadTokens()) {
@@ -302,6 +309,32 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     }
   }, [shuffle, handleApiError, withToken]);
 
+  // Asks Spotify whether each new track is already in Liked Songs.
+  const trackUri = isActiveHere ? track?.uri ?? null : null;
+  useEffect(() => {
+    setLiked(null);
+    if (!trackUri || !libraryAllowed) return;
+    let cancelled = false;
+    withToken(token => isTrackLiked(token, trackUri))
+      .then(v => { if (!cancelled) setLiked(v); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [trackUri, libraryAllowed, withToken]);
+
+  const toggleLiked = useCallback(async () => {
+    if (!trackUri || liked === null) return;
+    const nextState = !liked;
+    setLiked(nextState);
+    try {
+      await withToken(token => setTrackLiked(token, trackUri, nextState));
+    } catch (e) {
+      setLiked(!nextState);
+      // 403 here means a missing permission, not a missing Premium: the player keeps working.
+      if (e instanceof SpotifyApiError && e.status === 403) showNotice('Подключите Spotify заново, чтобы ставить лайки');
+      else handleApiError(e);
+    }
+  }, [trackUri, liked, withToken, handleApiError, showNotice]);
+
   const setVolume = useCallback((v: number) => {
     setVolumeState(v);
     saveVolume(v);
@@ -333,6 +366,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     setTrack(null);
     setNextTrack(null);
     setProgress(null);
+    setLibraryAllowed(false);
     setErrorMessage(null);
     setStatus('disconnected');
   }, []);
@@ -361,11 +395,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SpotifyContextValue>(() => ({
-    status, errorMessage, notice, track, nextTrack, progress, isPlaying, shuffle, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, seek, toggleShuffle, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
+    status, errorMessage, notice, track, nextTrack, progress, isPlaying, shuffle, liked, libraryAllowed, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
+    connect, disconnect, togglePlay, next, previous, seek, toggleShuffle, toggleLiked, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
   }), [
-    status, errorMessage, notice, track, nextTrack, progress, isPlaying, shuffle, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
-    connect, disconnect, togglePlay, next, previous, seek, toggleShuffle, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
+    status, errorMessage, notice, track, nextTrack, progress, isPlaying, shuffle, liked, libraryAllowed, isActiveHere, playingElsewhere, volume, lastPlaylist, activeHolds,
+    connect, disconnect, togglePlay, next, previous, seek, toggleShuffle, toggleLiked, setVolume, playPlaylist, search, duckMusic, holdSiteAudio, releaseSiteAudio,
   ]);
 
   return <SpotifyContext.Provider value={value}>{children}</SpotifyContext.Provider>;

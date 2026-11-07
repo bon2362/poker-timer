@@ -2,12 +2,14 @@ export const SPOTIFY_AUTH_KEY = 'spotifyAuth';
 const PKCE_KEY = 'spotifyPkce';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const AUTHORIZE_URL = 'https://accounts.spotify.com/authorize';
-const SCOPES = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state';
+// Liked Songs need the library scopes; logins made before 6.24 don't have them.
+const LIBRARY_SCOPES = ['user-library-read', 'user-library-modify'];
+const SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state', ...LIBRARY_SCOPES].join(' ');
 const REFRESH_MARGIN_MS = 60_000;
 
-export type SpotifyTokens = { accessToken: string; refreshToken: string; expiresAt: number };
+export type SpotifyTokens = { accessToken: string; refreshToken: string; expiresAt: number; scope?: string };
 
-type TokenResponse = { access_token: string; refresh_token?: string; expires_in: number };
+type TokenResponse = { access_token: string; refresh_token?: string; expires_in: number; scope?: string };
 
 export function getSpotifyClientId(): string | null {
   return process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || null;
@@ -28,6 +30,12 @@ export function loadTokens(): SpotifyTokens | null {
 
 export function saveTokens(tokens: SpotifyTokens): void {
   try { window.localStorage.setItem(SPOTIFY_AUTH_KEY, JSON.stringify(tokens)); } catch {}
+}
+
+/** Whether the saved login lets the site read and change Liked Songs. */
+export function canUseLibrary(tokens: SpotifyTokens | null = loadTokens()): boolean {
+  const granted = tokens?.scope?.split(' ') ?? [];
+  return LIBRARY_SCOPES.every(s => granted.includes(s));
 }
 
 export function clearTokens(): void {
@@ -83,11 +91,12 @@ async function requestTokens(body: Record<string, string>): Promise<TokenRespons
   return res.json();
 }
 
-function toTokens(data: TokenResponse, previousRefreshToken: string, now: number): SpotifyTokens {
+function toTokens(data: TokenResponse, previous: Pick<SpotifyTokens, 'refreshToken' | 'scope'>, now: number): SpotifyTokens {
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token ?? previousRefreshToken,
+    refreshToken: data.refresh_token ?? previous.refreshToken,
     expiresAt: now + data.expires_in * 1000,
+    scope: data.scope ?? previous.scope,
   };
 }
 
@@ -119,7 +128,7 @@ export async function completeSpotifyLogin(params: URLSearchParams): Promise<voi
   } catch {
     throw new Error('Spotify не выдал доступ. Попробуйте подключить ещё раз.');
   }
-  saveTokens(toTokens(data, '', Date.now()));
+  saveTokens(toTokens(data, { refreshToken: '' }, Date.now()));
   window.localStorage.removeItem(PKCE_KEY);
 }
 
@@ -140,7 +149,7 @@ export async function getValidAccessToken(now: number = Date.now()): Promise<str
       client_id: clientId,
     })
       .then(data => {
-        const next = toTokens(data, tokens.refreshToken, now);
+        const next = toTokens(data, tokens, now);
         saveTokens(next);
         return next.accessToken;
       })
