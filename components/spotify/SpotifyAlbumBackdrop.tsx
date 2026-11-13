@@ -6,11 +6,11 @@ type Layer = { url: string; loaded: boolean };
 
 const FADE_MS = 1500;
 
-// The cover of the track playing here, blurred and darkened behind the whole timer screen.
-// A new cover fades in over the old one; pausing or playing elsewhere fades the backdrop out.
-export function SpotifyAlbumBackdrop({ warning }: { warning: boolean }) {
+// The cover of the track playing here, blurred behind the whole timer screen while no game is running.
+// A new cover fades in over the old one; pausing, playing elsewhere or starting a game fades it out.
+export function SpotifyAlbumBackdrop({ enabled }: { enabled: boolean }) {
   const spotify = useSpotify();
-  const active = Boolean(spotify && spotify.status !== 'disabled' && spotify.isActiveHere && spotify.isPlaying);
+  const active = Boolean(enabled && spotify && spotify.status !== 'disabled' && spotify.isActiveHere && spotify.isPlaying);
   const url = active ? spotify?.track?.imageUrl ?? null : null;
   const [layers, setLayers] = useState<Layer[]>([]);
 
@@ -39,13 +39,9 @@ export function SpotifyAlbumBackdrop({ warning }: { warning: boolean }) {
           src={layer.url}
           alt=""
           onLoad={() => handleLoad(layer.url)}
-          className={`absolute inset-0 h-full w-full scale-125 object-cover blur-3xl brightness-[.45] saturate-150 transition-opacity duration-[1500ms] ${layer.loaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 h-full w-full scale-125 object-cover blur-3xl brightness-75 saturate-150 transition-opacity duration-[1500ms] ${layer.loaded ? 'opacity-100' : 'opacity-0'}`}
         />
       ))}
-      {/* Extra shade keeps the white digits readable on light covers. */}
-      <div className="absolute inset-0 bg-black/35" />
-      {/* The last-minute warning stays visible on top of the cover. */}
-      <div className={`absolute inset-0 bg-[#3a1a0a] transition-opacity duration-[1500ms] ${warning ? 'opacity-75' : 'opacity-0'}`} />
     </div>
   );
 }
