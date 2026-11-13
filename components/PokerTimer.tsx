@@ -18,7 +18,7 @@ import { LoserImageOverlay } from './LoserImageOverlay';
 import { MergeTablesDialog } from './MergeTablesDialog';
 import { useBreakSong } from './BreakSongPlayer';
 import { SpotifyMiniPlayer } from './spotify/SpotifyMiniPlayer';
-import { SpotifyAlbumBackdrop } from './spotify/SpotifyAlbumBackdrop';
+import { SpotifyAlbumBackdrop, useAlbumCoverShowing } from './spotify/SpotifyAlbumBackdrop';
 import { useSiteAudioHold, useSpotifyDuck } from '@/context/SpotifyContext';
 import { musicDuck, PHRASE_SECONDS } from '@/lib/musicDuck';
 import { playOneShot } from '@/lib/audio';
@@ -41,6 +41,8 @@ export function PokerTimer() {
   const canControl = isAdmin && !checking;
   const [loginOpen, setLoginOpen] = useState(false);
   const { activeSession, showWinner, loading, sessionPlayers, players, finishGame, confirmMerge } = useGame();
+  // Before a game, the playing track's cover takes over the screen and the setup prompt waits for the mouse.
+  const coverShowing = useAlbumCoverShowing(!loading && !activeSession);
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const [loserOverlay, setLoserOverlay] = useState<LoserOverlayState | null>(null);
@@ -344,8 +346,8 @@ export function PokerTimer() {
   }
 
   return (
-    <div className={`relative isolate flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
-      {/* Blurred cover of the playing Spotify track, only before a game is set up (the setup overlay already dims it) */}
+    <div className={`flex flex-col h-screen overflow-hidden select-none transition-[background] duration-[1500ms] ${isWarning ? 'bg-[#3a1a0a]' : 'bg-[#1a1a1a]'}`}>
+      {/* Before a game: the playing Spotify track's cover covers the timer; the player and corner buttons stay on top */}
       <SpotifyAlbumBackdrop enabled={!loading && !activeSession} />
       {/* Top bar */}
       <div className="relative w-full px-7 pt-5">
@@ -482,7 +484,7 @@ export function PokerTimer() {
 
       {/* Session overlay — shown when loading done and no active session */}
       {canControl && !loading && !activeSession && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className={`fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-500 ${coverShowing && !controlsVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl p-8 text-center max-w-[320px]">
             <div className="text-4xl mb-4">🃏</div>
             <h2 className="text-[18px] font-semibold text-[#ccc] mb-2">Игра не настроена</h2>

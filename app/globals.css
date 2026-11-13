@@ -3,6 +3,18 @@
 @theme {
   --animate-eq-bar: eq-bar 0.9s ease-in-out infinite alternate;
   --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-cover-drift: cover-drift 40s ease-in-out infinite alternate;
+  --animate-cover-breathe: cover-breathe 20s ease-in-out infinite alternate;
+
+  @keyframes cover-drift {
+    from { transform: scale(1.4) translate(-4%, -3%) rotate(0deg); }
+    to { transform: scale(1.6) translate(4%, 3%) rotate(6deg); }
+  }
+
+  @keyframes cover-breathe {
+    from { transform: scale(1) translateY(0); }
+    to { transform: scale(1.05) translateY(-1.5%); }
+  }
 
   @keyframes eq-bar {
     from { transform: scaleY(0.3); }
