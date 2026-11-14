@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
-import { timerReducer } from '@/reducer/timerReducer';
+import { trackedTimerReducer } from '@/reducer/trackTransition';
+import { logTimerEvent } from '@/lib/timerLog';
 import { createInitialState } from '@/reducer/initialState';
 import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
@@ -45,7 +46,7 @@ function syncSnapshotMatchesState(snapshot: SyncSnapshot, state: TimerState): bo
 }
 
 export function TimerProvider({ children, silent = false }: { children: ReactNode; silent?: boolean }) {
-  const [state, dispatch] = useReducer(timerReducer, undefined, createInitialState);
+  const [state, dispatch] = useReducer(trackedTimerReducer, undefined, createInitialState);
   const [configReady, setConfigReady] = useState(false);
   const { activeSession, loading: gameLoading } = useGame();
   const suppressUntilRef = useRef<number>(0);
@@ -80,10 +81,58 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
   const appConfigRestoringRef = useRef(false);
   const didStartConfigPersistRef = useRef(false);
 
+  // Diagnostics: detect when this device's timer stopped running (sleep, background tab).
+  const lastTickAtRef = useRef<number>(Date.now());
+  const lastGapRef = useRef<{ gapMs: number; at: number } | null>(null);
+
   // Timer tick — just recomputes timeLeft from anchor, no decrement
   useEffect(() => {
-    const id = setInterval(() => dispatch({ type: 'TICK' }), 1000);
+    lastTickAtRef.current = Date.now();
+    const id = setInterval(() => {
+      const now = Date.now();
+      const gapMs = now - lastTickAtRef.current;
+      lastTickAtRef.current = now;
+      if (gapMs > 5000) {
+        lastGapRef.current = { gapMs, at: now };
+        // Background tabs tick about once a minute; log only real sleeps separately.
+        if (gapMs > 120_000) logTimerEvent({ kind: 'wake', cause: 'tick_gap', details: { gapMs } });
+      }
+      dispatch({ type: 'TICK' });
+    }, 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Diagnostics: log every stage / pause / anchor change together with its cause.
+  useEffect(() => {
+    const t = state.lastTransition;
+    if (!t) return;
+    const gap = lastGapRef.current;
+    const recentGap = gap && Date.now() - gap.at < 60_000 ? gap.gapMs : undefined;
+    logTimerEvent({
+      kind: 'change',
+      cause: t.cause,
+      fromStage: t.fromStage,
+      toStage: t.toStage,
+      details: {
+        wasPaused: t.wasPaused,
+        isPaused: t.isPaused,
+        prevAnchorTs: t.prevAnchorTs,
+        anchorTs: t.anchorTs,
+        elapsedBeforePause: t.elapsedBeforePause,
+        timeLeftBefore: t.timeLeftBefore,
+        visibility: typeof document !== 'undefined' ? document.visibilityState : undefined,
+        online: typeof navigator !== 'undefined' ? navigator.onLine : undefined,
+        recentTickGapMs: recentGap,
+      },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.lastTransition]);
+
+  // Diagnostics: tab hidden / shown (phone locked, laptop lid, switched tab).
+  useEffect(() => {
+    const onVisibility = () => logTimerEvent({ kind: 'visibility', cause: document.visibilityState });
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   // Audio side effects
@@ -124,7 +173,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
       if (!saved) {
         if (config) {
           appConfigRestoringRef.current = true;
-          dispatch({ type: 'RESTORE_CONFIG', config, resetInitialTimer: true });
+          dispatch({ type: 'RESTORE_CONFIG', config, resetInitialTimer: true, origin: 'config_load' });
         } else {
           saveConfigQueueRef.current = saveConfigQueueRef.current
             .catch(() => {})
@@ -134,19 +183,19 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
       }
 
       if (isPersistedTimerStateStaleForSession(saved.updatedAt, activeSession?.createdAt)) {
-        dispatch({ type: 'RESTART' });
+        dispatch({ type: 'RESTART', origin: 'session_load' });
         if (config) {
           appConfigRestoringRef.current = true;
-          dispatch({ type: 'RESTORE_CONFIG', config, resetInitialTimer: true });
+          dispatch({ type: 'RESTORE_CONFIG', config, resetInitialTimer: true, origin: 'config_load' });
         }
         return;
       }
 
       suppressSyncSnapshotRef.current = toSyncSnapshot(saved);
-      dispatch({ type: 'RESTORE_STATE', payload: saved });
+      dispatch({ type: 'RESTORE_STATE', payload: saved, origin: 'initial' });
       if (config) {
         appConfigRestoringRef.current = true;
-        dispatch({ type: 'RESTORE_CONFIG', config });
+        dispatch({ type: 'RESTORE_CONFIG', config, origin: 'config_load' });
       }
     });
 
@@ -161,9 +210,10 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
       `timer:${sessionId}`,
       () => getTimerChannel(sessionId).on('broadcast', { event: 'state' }, ({ payload }) => {
         suppressSyncSnapshotRef.current = toSyncSnapshot(payload);
-        dispatch({ type: 'RESTORE_STATE', payload });
+        dispatch({ type: 'RESTORE_STATE', payload, origin: 'broadcast' });
       }),
       channel => { channelRef.current = channel; },
+      status => logTimerEvent({ kind: 'channel', cause: `broadcast:${status}` }),
     );
     return () => {
       channelRef.current = null;
@@ -186,7 +236,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
           const config = normalizeConfig(row?.config_json);
           if (!config) return;
           appConfigRestoringRef.current = true;
-          dispatch({ type: 'RESTORE_CONFIG', config });
+          dispatch({ type: 'RESTORE_CONFIG', config, origin: 'config_sync' });
         }
       )
     );
@@ -285,9 +335,11 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
             stages: parsePersistedStages(row.stages_json),
           };
           suppressSyncSnapshotRef.current = toSyncSnapshot(restoredState);
-          dispatch({ type: 'RESTORE_STATE', payload: restoredState });
+          dispatch({ type: 'RESTORE_STATE', payload: restoredState, origin: 'db' });
         }
-      )
+      ),
+      undefined,
+      status => logTimerEvent({ kind: 'channel', cause: `db:${status}` }),
     );
   }, [dispatch]);
 

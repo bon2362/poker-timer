@@ -52,6 +52,20 @@ export type TimerState = {
   tractorMomentActive: boolean;
   config: Config;
   pendingSound: SoundEvent | null;
+  lastTransition?: TimerTransition; // diagnostics: last stage/pause/anchor change and its cause
+};
+
+export type TimerTransition = {
+  seq: number;
+  cause: string;
+  fromStage: number;
+  toStage: number;
+  wasPaused: boolean;
+  isPaused: boolean;
+  prevAnchorTs: number;
+  anchorTs: number;
+  elapsedBeforePause: number;
+  timeLeftBefore: number;
 };
 
 export type Action =
@@ -63,10 +77,10 @@ export type Action =
   | { type: 'PREV_STAGE' }
   | { type: 'RESET_STAGE' }
   | { type: 'GO_TO_LAST' }
-  | { type: 'RESTART' }
+  | { type: 'RESTART'; origin?: string }
   | { type: 'SAVE_SETTINGS'; config: Config }
   | { type: 'SAVE_DISPLAY_CONFIG'; config: Config }
-  | { type: 'RESTORE_CONFIG'; config: Config; resetInitialTimer?: boolean }
+  | { type: 'RESTORE_CONFIG'; config: Config; resetInitialTimer?: boolean; origin?: string }
   | { type: 'CLEAR_SOUND' }
   | { type: 'TOGGLE_COMBOS' }
   | { type: 'TOGGLE_GAME_PANEL' }
@@ -77,4 +91,4 @@ export type Action =
       isPaused: boolean; isOver: boolean; warnedOneMin: boolean;
       stageType?: Stage['type']; levelNum?: number; sb?: number; bb?: number; stageDurationSecs?: number;
       stages?: Stage[];
-    } };
+    }; origin?: 'broadcast' | 'db' | 'initial' };

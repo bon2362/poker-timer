@@ -10,6 +10,7 @@ export function subscribeChannel(
   topic: string,
   create: () => RealtimeChannel,
   onReady?: (channel: RealtimeChannel) => void,
+  onStatus?: (status: string, err?: Error) => void,
 ): () => void {
   let channel: RealtimeChannel | null = null;
   let cancelled = false;
@@ -17,7 +18,8 @@ export function subscribeChannel(
   const start = () => {
     if (cancelled) return;
     channel = create();
-    channel.subscribe();
+    if (onStatus) channel.subscribe((status, err) => onStatus(status, err));
+    else channel.subscribe();
     onReady?.(channel);
   };
 
