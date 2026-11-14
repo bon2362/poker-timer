@@ -16,7 +16,7 @@ const SDK_URL = 'https://sdk.scdn.co/spotify-player.js';
 const PLAYER_NAME = 'Poker Timer';
 
 export type SpotifyStatus = 'disabled' | 'disconnected' | 'connecting' | 'ready' | 'error';
-export type SpotifyTrack = { uri: string; name: string; artists: string; imageUrl: string | null };
+export type SpotifyTrack = { uri: string; name: string; artists: string; artist: string; album: string; imageUrl: string | null };
 
 export type SpotifyContextValue = {
   status: SpotifyStatus;
@@ -72,7 +72,14 @@ function loadSdk(): Promise<void> {
 
 function toTrack(t: Spotify.Track | null | undefined): SpotifyTrack | null {
   if (!t) return null;
-  return { uri: t.uri, name: t.name, artists: t.artists.map(a => a.name).join(', '), imageUrl: t.album.images[0]?.url ?? null };
+  return {
+    uri: t.uri,
+    name: t.name,
+    artists: t.artists.map(a => a.name).join(', '),
+    artist: t.artists[0]?.name ?? '',
+    album: t.album.name,
+    imageUrl: t.album.images[0]?.url ?? null,
+  };
 }
 
 function apiErrorMessage(e: unknown): string {
