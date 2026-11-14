@@ -91,4 +91,4 @@ export type Action =
       isPaused: boolean; isOver: boolean; warnedOneMin: boolean;
       stageType?: Stage['type']; levelNum?: number; sb?: number; bb?: number; stageDurationSecs?: number;
       stages?: Stage[];
-    }; origin?: 'broadcast' | 'db' | 'initial' };
+    }; origin?: 'broadcast' | 'db' | 'initial' | 'resync' };

@@ -18,6 +18,7 @@ jest.mock('@/lib/supabase/timerState', () => ({
   isPersistedTimerStateStaleForSession: jest.fn().mockReturnValue(false),
   parsePersistedStages: jest.fn(),
   saveTimerState: jest.fn().mockResolvedValue(undefined),
+  advanceTimerStage: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock('@/lib/supabase/appConfig', () => ({
@@ -370,5 +371,41 @@ describe('admin connection', () => {
     await act(async () => { screen.getByText('next').click(); });
     await waitFor(() => expect(screen.getByTestId('pendingSound')).toHaveTextContent('null'));
     expect(playSound).not.toHaveBeenCalled();
+  });
+});
+
+describe('waking up after sleep', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.mocked(fetchTimerState).mockResolvedValue(null);
+  });
+
+  test('takes the current round from the DB instead of advancing its own stale round', async () => {
+    jest.useFakeTimers();
+    const start = Date.now();
+    jest.setSystemTime(start);
+    const stages = jest.requireActual('@/lib/timer').buildStages(DEFAULT_CONFIG);
+    const running = (currentStage: number, anchorTs: number) => ({
+      currentStage, anchorTs, elapsedBeforePause: 0, isPaused: false, isOver: false, warnedOneMin: false,
+      stageType: stages[currentStage].type, levelNum: 0, sb: 0, bb: 0,
+      stageDurationSecs: stages[currentStage].duration, stages,
+    });
+    // On load: round 0 just started and running.
+    jest.mocked(fetchTimerState).mockResolvedValue(running(0, start));
+    renderWithProvider();
+    await act(async () => {});
+    await waitFor(() => expect(screen.getByTestId('paused')).toHaveTextContent('false'));
+    expect(screen.getByTestId('stage')).toHaveTextContent('0');
+
+    // The device sleeps long enough for round 0 to expire; others meanwhile moved on to stage 3.
+    const wakeAt = start + stages[0].duration * 1000 + 60_000;
+    jest.mocked(fetchTimerState).mockResolvedValue(running(3, wakeAt - 30_000));
+    jest.mocked(saveTimerState).mockClear();
+    jest.setSystemTime(wakeAt);
+    await act(async () => { jest.advanceTimersByTime(1000); });
+    await act(async () => { jest.advanceTimersByTime(1000); });
+
+    expect(screen.getByTestId('stage')).toHaveTextContent('3');
+    expect(jest.mocked(saveTimerState).mock.calls.some(([p]) => p.currentStage === 1)).toBe(false);
   });
 });

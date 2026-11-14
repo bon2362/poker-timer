@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
 import { trackedTimerReducer } from '@/reducer/trackTransition';
 import { logTimerEvent } from '@/lib/timerLog';
 import { createInitialState } from '@/reducer/initialState';
@@ -7,7 +7,7 @@ import { playSound } from '@/lib/audio';
 import { getClient, getTimerChannel } from '@/supabase/client';
 import { subscribeChannel } from '@/supabase/channels';
 import { fetchAppConfig, normalizeConfig, saveAppConfig } from '@/lib/supabase/appConfig';
-import { fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
+import { advanceTimerStage, fetchTimerState, isPersistedTimerStateStaleForSession, parsePersistedStages, saveTimerState } from '@/lib/supabase/timerState';
 import { useGame } from '@/context/GameContext';
 import { markSessionStarted } from '@/lib/supabase/sessions';
 import type { TimerState, Action } from '@/types/timer';
@@ -46,7 +46,10 @@ function syncSnapshotMatchesState(snapshot: SyncSnapshot, state: TimerState): bo
 }
 
 export function TimerProvider({ children, silent = false }: { children: ReactNode; silent?: boolean }) {
-  const [state, dispatch] = useReducer(trackedTimerReducer, undefined, createInitialState);
+  const [state, rawDispatch] = useReducer(trackedTimerReducer, undefined, createInitialState);
+  // Internal updates (ticks, remote state) go through rawDispatch; user actions through `dispatch`,
+  // which waits while the device is catching up with the shared state after sleep or reconnect.
+  const dispatch = rawDispatch;
   const [configReady, setConfigReady] = useState(false);
   const { activeSession, loading: gameLoading } = useGame();
   const suppressUntilRef = useRef<number>(0);
@@ -80,6 +83,54 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
   }, [activeSession, state.isPaused, state.isOver, state.anchorTs]);
   const appConfigRestoringRef = useRef(false);
   const didStartConfigPersistRef = useRef(false);
+  // Config is written back to the DB only after it was loaded from there; otherwise a fresh
+  // browser could overwrite the shared settings with its local defaults during page load.
+  const configLoadedRef = useRef(false);
+
+  // --- Catch-up after sleep / hidden tab / reconnect ---
+  // A device that slept (locked phone, closed laptop lid) or lost its realtime connection has
+  // missed other devices' changes. Acting on that stale state (auto-advancing an expired round,
+  // or a pause tap) would write an old round to the DB and pull every other device back.
+  // So before ticking or applying user actions again, it reloads the shared state from the DB.
+  const resyncingRef = useRef(false);
+  const needsResyncRef = useRef(false);
+  const lastResyncAttemptRef = useRef(0);
+  const pendingUserActionsRef = useRef<Action[]>([]);
+
+  const resync = useCallback((reason: string) => {
+    if (resyncingRef.current) return;
+    resyncingRef.current = true;
+    needsResyncRef.current = true;
+    lastResyncAttemptRef.current = Date.now();
+    const timeout = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 5000));
+    const load = saveQueueRef.current.catch(() => {}).then(() => fetchTimerState());
+    Promise.race([load, timeout])
+      .then(saved => {
+        if (saved === 'timeout' || !saved) {
+          logTimerEvent({ kind: 'resync', cause: `${reason}:failed` });
+          return;
+        }
+        needsResyncRef.current = false;
+        logTimerEvent({ kind: 'resync', cause: reason, toStage: saved.currentStage });
+        suppressSyncSnapshotRef.current = toSyncSnapshot(saved);
+        rawDispatch({ type: 'RESTORE_STATE', payload: saved, origin: 'resync' });
+      })
+      .catch(() => logTimerEvent({ kind: 'resync', cause: `${reason}:error` }))
+      .finally(() => {
+        resyncingRef.current = false;
+        const pending = pendingUserActionsRef.current;
+        pendingUserActionsRef.current = [];
+        pending.forEach(action => rawDispatch(action));
+      });
+  }, []);
+
+  const guardedDispatch = useCallback((action: Action) => {
+    if (resyncingRef.current) {
+      pendingUserActionsRef.current.push(action);
+      return;
+    }
+    rawDispatch(action);
+  }, []);
 
   // Diagnostics: detect when this device's timer stopped running (sleep, background tab).
   const lastTickAtRef = useRef<number>(Date.now());
@@ -97,10 +148,14 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
         // Background tabs tick about once a minute; log only real sleeps separately.
         if (gapMs > 120_000) logTimerEvent({ kind: 'wake', cause: 'tick_gap', details: { gapMs } });
       }
-      dispatch({ type: 'TICK' });
+      // Missed ticks mean this device was asleep: catch up from the DB before ticking on.
+      if (gapMs > 3000) resync('tick_gap');
+      else if (needsResyncRef.current && now - lastResyncAttemptRef.current > 3000) resync('retry');
+      if (resyncingRef.current) return;
+      rawDispatch({ type: 'TICK' });
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [resync]);
 
   // Diagnostics: log every stage / pause / anchor change together with its cause.
   useEffect(() => {
@@ -130,10 +185,13 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
 
   // Diagnostics: tab hidden / shown (phone locked, laptop lid, switched tab).
   useEffect(() => {
-    const onVisibility = () => logTimerEvent({ kind: 'visibility', cause: document.visibilityState });
+    const onVisibility = () => {
+      logTimerEvent({ kind: 'visibility', cause: document.visibilityState });
+      if (document.visibilityState === 'visible' && configLoadedRef.current) resync('visible');
+    };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, []);
+  }, [resync]);
 
   // Audio side effects
   useEffect(() => {
@@ -169,6 +227,7 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
     Promise.all([fetchAppConfig(), fetchTimerState()]).then(([config, saved]) => {
       if (cancelled) return;
       setConfigReady(true);
+      configLoadedRef.current = true;
 
       if (!saved) {
         if (config) {
@@ -213,7 +272,11 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
         dispatch({ type: 'RESTORE_STATE', payload, origin: 'broadcast' });
       }),
       channel => { channelRef.current = channel; },
-      status => logTimerEvent({ kind: 'channel', cause: `broadcast:${status}` }),
+      status => {
+        logTimerEvent({ kind: 'channel', cause: `broadcast:${status}` });
+        if (status !== 'SUBSCRIBED') needsResyncRef.current = configLoadedRef.current;
+        else if (needsResyncRef.current) resync('reconnect');
+      },
     );
     return () => {
       channelRef.current = null;
@@ -276,6 +339,10 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
 
     if (!changed) return;
 
+    // A device that has not caught up yet keeps counting locally, but does not push its own
+    // auto-advance to others: its idea of the current round may be outdated.
+    if (needsResyncRef.current && state.lastTransition?.cause === 'auto_advance') return;
+
     const stage = state.stages[state.currentStage];
     const payload = {
       currentStage: state.currentStage,
@@ -293,6 +360,26 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
       // Full stage list for backend RPC navigation (apply_timer_command)
       stages: state.stages,
     };
+
+    // Auto-advance (round time ran out) is not broadcast and not written blindly: every
+    // up-to-date device reaches the next round on its own at the same moment. The DB accepts it
+    // only if it still holds the round this device was counting; otherwise this device was out
+    // of date (missed a pause or a round change) and takes the DB state instead.
+    const t = state.lastTransition;
+    if (t?.cause === 'auto_advance' && t.toStage === state.currentStage && t.anchorTs === state.anchorTs) {
+      const expected = { stage: t.fromStage, anchorTs: t.prevAnchorTs };
+      saveQueueRef.current = saveQueueRef.current
+        .catch(() => {})
+        .then(() => advanceTimerStage(expected, payload))
+        .then(row => {
+          if (!row) return;
+          if (row.currentStage === payload.currentStage && row.anchorTs === payload.anchorTs) return;
+          logTimerEvent({ kind: 'advance_refused', fromStage: payload.currentStage, toStage: row.currentStage, details: { isPaused: row.isPaused } });
+          suppressSyncSnapshotRef.current = toSyncSnapshot(row);
+          rawDispatch({ type: 'RESTORE_STATE', payload: row, origin: 'db' });
+        });
+      return;
+    }
 
     // Save local changes to DB in order; out-of-order RPC completion can otherwise
     // make a stale play/pause state look newer than the user's last action.
@@ -339,7 +426,11 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
         }
       ),
       undefined,
-      status => logTimerEvent({ kind: 'channel', cause: `db:${status}` }),
+      status => {
+        logTimerEvent({ kind: 'channel', cause: `db:${status}` });
+        if (status !== 'SUBSCRIBED') needsResyncRef.current = configLoadedRef.current;
+        else if (needsResyncRef.current) resync('reconnect');
+      },
     );
   }, [dispatch]);
 
@@ -356,13 +447,15 @@ export function TimerProvider({ children, silent = false }: { children: ReactNod
       return;
     }
 
+    if (!configLoadedRef.current) return;
+
     saveConfigQueueRef.current = saveConfigQueueRef.current
       .catch(() => {})
       .then(() => saveAppConfig(state.config));
   }, [state.config]);
 
   return (
-    <TimerContext.Provider value={{ state, dispatch, configReady }}>
+    <TimerContext.Provider value={{ state, dispatch: guardedDispatch, configReady }}>
       {children}
     </TimerContext.Provider>
   );

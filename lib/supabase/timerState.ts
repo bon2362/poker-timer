@@ -72,6 +72,10 @@ export async function fetchTimerState(): Promise<PersistedTimerState | null> {
     .eq('id', 'main')
     .maybeSingle();
   if (error || !data) return null;
+  return timerStateFromRow(data);
+}
+
+function timerStateFromRow(data: Record<string, unknown>): PersistedTimerState {
   return {
     currentStage: data.current_stage as number,
     anchorTs: data.anchor_ts as number,
@@ -142,4 +146,39 @@ export async function saveTimerState(state: PersistedTimerState): Promise<void> 
   if (!data) {
     console.warn('saveTimerState: timer_state write returned no row; check RLS or set_timer_state RPC');
   }
+}
+
+/**
+ * Auto-advance with a check: the DB moves to the next round only if it still holds the round
+ * this device was counting. Returns the resulting DB row (the device's new state if accepted,
+ * someone else's newer state if refused), or null if the call failed.
+ */
+export async function advanceTimerStage(
+  expected: { stage: number; anchorTs: number },
+  state: PersistedTimerState,
+): Promise<PersistedTimerState | null> {
+  const client = getClient();
+  if (!client) return null;
+  const { data, error } = await client.rpc('advance_timer_stage', {
+    expected_stage_arg: expected.stage,
+    expected_anchor_ts_arg: expected.anchorTs,
+    current_stage_arg: state.currentStage,
+    anchor_ts_arg: state.anchorTs,
+    elapsed_before_pause_arg: state.elapsedBeforePause,
+    is_paused_arg: state.isPaused,
+    is_over_arg: state.isOver,
+    warned_one_min_arg: state.warnedOneMin,
+    stage_type_arg: state.stageType,
+    level_num_arg: state.levelNum,
+    sb_arg: state.sb,
+    bb_arg: state.bb,
+    stage_duration_secs_arg: state.stageDurationSecs,
+    stages_json_arg: state.stages ?? null,
+  });
+  if (error || !data) {
+    if (error) console.warn('advanceTimerStage failed', error.message);
+    return null;
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined;
+  return row ? timerStateFromRow(row) : null;
 }
